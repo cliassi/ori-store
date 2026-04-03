@@ -8,13 +8,41 @@
     margin-bottom: 4px;
   }
   .table-items th,.table-items td{
-    border-bottom: solid 1px #ccc !important;
+    /* border-bottom: solid 1px #ccc !important; */
+  }
+  .datatable-table td, .datatable-table th, .table td, .table th{
+    padding: 2px;
+  }
+  tr.even{
+    background:rgba(24, 204, 99, 0.2);
+  }
+  tr.odd{
+    background:rgba(21, 108, 214, 0.2);
   }
 </style>
 <?php
 $obj = R::dispense('customer');
 if (defined('ID')) {
     $obj = R::load('customer', ID);
+}
+ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
+
+if(isset($post->deliver)){
+  foreach($post->delivered_by as $key => $value){
+    $ii = R::load('invoice_item', $key);
+    $ii->delivered_by = trim($value);
+    $ii->delivered_at = now();
+    R::store($ii);
+  }
+  redir("?");
+}
+
+if(uid()==1 && isset($get->delids)){
+  if(isset($get->delids)){
+    del("invoice_item", "invoice_id IN ($get->delids)");
+    del("invoice", "id IN ($get->delids)");
+  }
+  redir("?");
 }
 
 if(isset($post->idToDelete)){
@@ -129,7 +157,7 @@ if(isset($post->save_delivery_date)){
   R::store($invoice);
 }
 
-print "
+print "<form method='post'>
 <div class='row'>
           <!-- Zero config table start -->
           <div class='col-sm-12'>
@@ -145,23 +173,33 @@ print "
                   <table id='simpletable' class='table table-striped table-bordered nowrap'>
                     <thead>
                       <tr>
-                        <th class='text-center'><a class='btn btn-success' href='/store/product/sell'>Order</a></th>
+                        <th class='text-center'><a class='btn btn-success' href='/store/product/sell?c=".ID."'>Order</a></th>
                         <th class='text-center'><a class='btn btn-warning' href='../../collection/add?customer=".ID."'>Collection</a></th>
-                        <th class='text-center'><a class='btn btn-danger'>Refund</a></th>
+                        <th class='text-center'>
+                        <a class='btn btn-danger'>Refund</a>
+                        <a class='btn btn-info' onClick='redirectWithSelected()'><i class='fas fa-print'></i> Print</a>
+                        <a class='btn btn-warning' onClick='redirectWithSelected2()'><i class='fas fa-trash'></i> Delete</a>
+                        <th class='text-center'><a class='btn btn-success' href='/store/customer/edit/".ID."'>Profile</a></th>
+                        
+                        </th>
                       </tr>
                     </thead>
                     <tbody>";
 
-print "<table class='table table-striped table-bordered nowrap'>";
+print "<table class='table table-bordered nowrap'>";
 print "<thead>";
 print "<tr>";
-print "<th># </th>
-        <th>Ref No. </th>
+print "<th width='20px'># </th>
+<th width='50px'>D&D</th>
+        <th width='50px'>Ref No. </th>
         <th>Particulars</th>
-        <th>Approve ? </th>
-        <th>Debit </th>
-        <th>Credit  </th>
-        <th>Balance</th>
+        <th width='50px'>Delivery</th>
+        <th width='50px'>Invoice By</th>
+        <th width='50px'>Approve?</th>
+        <th width='20px'></th>
+        <th width='30px'>Debit </th>
+        <th width='30px'>Credit  </th>
+        <th width='30px'>Balance</th>
         <th width='50px'></th>";
 print "</tr>";
 print "</thead>";
@@ -171,22 +209,45 @@ if(isset($get->show) && $get->show == "all"){
 } else{
   $limit = " limit 0,10";
 }
+$limit = "";
+$opening = 0;
 if(METHOD == 'pending_delivery'){
   $trans = select("SELECT * FROM (SELECT * FROM (
-    SELECT 'invoice' src, id, invoice_date date, created_at, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
-  ) a ORDER BY created_at $limit) b");
+    SELECT 'invoice' src, id, invoice_date date, created_at, created_by, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
+  ) a ORDER BY created_at $limit) b ORDER BY date, created_at");
 } else{
+
+    // SELECT 'invoice' src, id, invoice_date date, created_at, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
   $trans = select("SELECT * FROM (SELECT * FROM (
-    SELECT 'invoice' src, id, invoice_date date, created_at, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
+    SELECT 'invoice' src, '' pm, '' ab, i.id, ii.id id2, IFNULL(ii.delivery_date,i.invoice_date) dd, i.created_at sort_date, i.invoice_date date, '' payment_date, i.created_at, i.delivered_by, i.created_by, (SELECT particulars FROM product_variance WHERE product_variance.id=ii.product_variance_id) particulars, ii.price * ii.quantity amount FROM `invoice` i, `invoice_item` ii WHERE i.id=ii.invoice_id AND i.customer_id=$obj->id
     UNION
-    SELECT 'collection' src, id, date, created_at, approved_by delivered_by, description particulars, amount FROM `collection` WHERE customer_id=$obj->id
-  ) a ORDER BY created_at $limit) b");
+    SELECT 'collection' src, payment_method pm, approved_by ab, id, 0 id2, '' dd, created_at sort_date, date, payment_date, created_at, approved_by delivered_by, created_by, description particulars, amount FROM `collection` WHERE customer_id=$obj->id
+  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY sort_date");
+
+  // $opq = select("SELECT SUMT() ");
 }
 
 $i = 1;
+$counter = $trans->num_rows;
+$users = userList();
+$lastDate = '';
+$class = 'odd';
 while ($item = mysqli_fetch_object($trans)) {
-  print "<tr>";
-  print "<td>$i</td>";
+  if($lastDate == '') $lastDate = $item->sort_date;
+  if($lastDate != $item->sort_date){
+    $class = $class == 'even' ? 'odd' : 'even';
+    $lastDate = $item->sort_date;
+  } 
+  $lastDate = $item->sort_date;
+  if(isset($get->show) && $get->show == "all"){
+    print "<tr class='$item->src $class'>"; //$counter--;
+    print "<td title='$item->sort_date'>$i</td>";
+  } else{
+    print "<tr class='$item->src $class ".($i <= ($counter - 10) ? 'hidden':'')."'>"; //$counter--;
+    print "<td title='$item->sort_date'>".($i - $counter + 10)."</td>";
+  }
+  // print "<td>".df($item->sort_date).(date('Ymd', strtotime($item->date)) != date('Ymd', strtotime($item->created_at)) ? " (".df($item->date).")":"")."</td>";
+  print "<td>".df($item->sort_date)."".($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'>".df($item->dd)."</div>" : '')."</td>";
   if($item->src == 'invoice'){
     $delivered_by = "Select";
     if($item->delivered_by){
@@ -196,72 +257,137 @@ while ($item = mysqli_fetch_object($trans)) {
 
     print "<div>";
     if(METHOD == 'pending_delivery'){
-?>
-    <form method="post">
-      <input type="date" name="delivery_date" value="<?php print $item->date; ?>" onchange="updateDeliveryDate()" class="form-control">
-      <button name='save_delivery_date' id="update-delivery" class='btn btn-warning hidden' value='<?php print $item->id; ?>'>Change Date</button>
-    </form>
-<?php
+      print '<form method="post">
+        <input type="date" name="delivery_date" value="<?php print $item->date; ?>" onchange="updateDeliveryDate()" class="form-control">
+        <button name="save_delivery_date" id="update-delivery" class="btn btn-warning hidden" value='.$item->id.'>Change Date</button>
+      </form>';
     } else{
-      print df($item->date);
+      print "";
     }
-    print "</div>
-    <input type='checkbox' class='toggle-checkbox'><br>";
-    print "<button class='btn btn-sm btn-primary dropdown-toggle selected-delivery-man' type='button' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'>$delivered_by </button>
-    <div class='dropdown-menu'>";
-      $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
-      while ($man = mysqli_fetch_object($objs)) {
-        print "<a class='dropdown-item delivery-man-item'>$man->name</a>";
-      }
-    print "</div></td>";
+    print "</div>";
+    print "</td>";
   } else{
     print "<td class='text-center'>
-      <div>OR".zerofill($item->id, 5)."</div>
-      <div>".df($item->date)."</div>";
+      <div>OR".zerofill($item->id, 5)."</div>";
   }
   if($item->src == 'invoice'){
-    $ois = R::find("invoice_item", "invoice_id=?", [$item->id]);
+    $oi = R::load("invoice_item", $item->id2);
+    if(!nn($oi->description)){
+      $oi->description = $item->particulars;
+    }
     print "<td>";
     print "<table class='table table-bordered table-items'>";
     $k = 1;
-    foreach($ois as $oi){
       $pv = R::load("product_variance", $oi->product_variance_id);
       print "<tr>
-        <td><input type='checkbox'></td>
-        <td><div class='order-item'><span class='item-count'>$k.</span> ($oi->name $oi->description $pv->size x $pv->unit) <span class='item-price'>($oi->price X <span class='item-qty'> $oi->quantity</span> = ($oi->quantity*$oi->price)</span></div></td>
-        <td title='$oi->delivered_by'><span class='d-icon btn btn-sm ".($oi->delivered_by ? "btn-success":"btn-warning")."' data-id='$oi->id'><i class='fas fa-shipping-fast'></i></span></td>
-      </tr>";
+        <td><div class='order-item'>$oi->description <span class='item-price'>($oi->price X <span class='item-qty'> $oi->quantity</span> = ".nf($oi->quantity*$oi->price).")</span></div></td></tr>";
       $k++;
-    }
     print "</table>";
 
     
     print "</td>";
-  } elseif(strrpos($item->particulars, 'bank account') !== FALSE){
-  print "<td>$item->particulars</td>";
+    print "<td>";
+    print "<table class='table table-bordered table-items'>";
+    $k = 1;
+      $pv = R::load("product_variance", $oi->product_variance_id);
+      print "<tr>
+        <td title='$oi->delivered_by'>";
+        print "<button title='$oi->delivered_by ".(nn($oi->delivered_at) ? ' @ '.df($oi->delivered_at) : '')."' class='btn btn-sm ".($oi->delivered_by ? "btn-success":"btn-warning")." selected-delivery-man' type='button' aria-expanded='false'><i class='fas fa-shipping-fast'></i> ".($oi->delivered_by ? "$oi->delivery_staff":"")."<span></span></button>";
+      // <div class='dropdown-menu'>";
+      // $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
+      // while ($man = mysqli_fetch_object($objs)) {
+      //   print "<a class='dropdown-item delivery-man-item' data-id='$oi->id'>$man->name</a>";
+      // }
+      // print "</div>";
+        // print "<span class='d-icon btn btn-sm ".($oi->delivered_by ? "btn-success":"btn-warning")."' data-id='$oi->id'><i class='fas fa-shipping-fast'></i></span></td>";
+      print "</tr>";
+      $k++;
+    print "</table>";
+
+    
+    print "</td>";
+    print "<td class='text-center'>".( $users[$item->created_by])."</td>";
+  // } elseif(strrpos($item->particulars, 'bank account') !== FALSE){
+  //   print "<td>$item->particulars</td>";
+    
+  //   if($item->ab){
+  //     print "<td><a class='btn btn-sm btn-success'><i class='fas fa-check'></i> Approved</a></td>";
+  //   } elseif(isUserIn([])){
+  //     print "<td><a href='?approved=$item->id' class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a></td>";
+  //   } else {
+  //     print "<td><a class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a></td>";
+  //   }
+  // } else{
+  //   print "<td>".df($item->date)." $item->particulars</td>";
+
+  //   print "<td></td>";
+  // }
+
+
+} else{
+  if($item->src == 'collection'){
+    $particularText = preg_replace('/^\s*\d{1,2}\s+[A-Za-z]{3},\s+\d{4}\s+/', '', (string)$item->particulars);
+    $actualPaymentDate = nn($item->payment_date) ? $item->payment_date : $item->date;
+    $displayDate = (nn($actualPaymentDate) && strtotime($actualPaymentDate)) ? date('d M, Y', strtotime($actualPaymentDate)) : '';
+    $particularText = trim($displayDate . " " . $particularText);
+    print "<td> $particularText</td>";
   } else{
-    print "<td></td>";
+    print "<td> $item->particulars</td>";
   }
   print "<td></td>";
+}
+
+
+ 
+//  print "<td nowrap class='text-right'>";
+ 
+ 
+
+  // Add Approve column
+  print "<td class='text-center'>";
+  if($item->src == 'collection' && $item->pm == 'Bank'){
+    if($item->ab){
+      print "<a class='btn btn-sm btn-success' title='Approved by user {$item->ab}'><i class='fas fa-check'></i> Approved</a>";
+    } elseif(uid() == 1){
+      print "<a href='javascript:approveCollection($item->id)' class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+    } else {
+      print "<a class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+    }
+  }
+  print "</td>";
+
+
+ 
+
   if($item->src == 'invoice'){
+    print "<td><input type='radio' id='itme_$item->id' value='$item->id'></td>";
     print "<td class='text-right'>".nf($item->amount)."</td>";
     print "<td></td>";
     sum('balance',$item->amount);
     sum('debit',$item->amount);
   } else{
     print "<td></td>";
+    print "<td></td>";
+    print "<td></td>";
     print "<td class='text-right'>".nf($item->amount)."</td>";
     sum('balance',0 - $item->amount);
     sum('credit',$item->amount);
   }
   print "<td class='text-right'>".nf(sum('balance'))."</td>";
-  print "<td>";
+  print "<td nowrap class='text-right'>";
   if($item->src == 'invoice'){
-  print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a><br>";
-  print "<a type='button' class='btn btn-sm btn-info pb-1' href='".ROOT."/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a><br>";
-    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
+  //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
+    if(uid() == 1){
+      print "<a type='button' class='btn btn-sm btn-info pb-1' href='".ROOT."/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
+    }
   } else{
-    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+    if(uid() == 1){
+      if($item->src == 'collection'){
+        print "<a type='button' class='btn btn-sm btn-info pb-1' href='".ROOT."/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
+      }
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+    }
   }
   print "</td>";
 
@@ -271,16 +397,16 @@ while ($item = mysqli_fetch_object($trans)) {
   $i++;
 }
 print "<tr>
-  <td colspan='2'><a class='btn btn-info' href='javascript:addRemarks()'>Remarks</a></td>
-  <td><a href='?dir=files' class='btn btn-success'>Files</a>
+  <td colspan='3'>
+  <a class='btn btn-info' href='javascript:addRemarks()'>Remarks</a> <a href='?dir=files' class='btn btn-sm btn-success'>Files</a>
 ";
 if(isset($get->show) && $get->show == "all"){
-  print "<a href='?show=10' class='btn btn-shadow btn-light frht' style='color: #000 !important'>Show last 10</a>";
+  print "<a href='?show=10' class='btn btn-sm btn-shadow btn-light frht' style='color: #000 !important'>Show last 10</a>";
 } else{
-  print "<a href='?show=all' class='btn btn-shadow btn-light frht' style='color: #000 !important'>Show all</a>";
+  print "<a href='?show=all' class='btn btn-sm btn-shadow btn-light frht' style='color: #000 !important'>Show all</a>";
 }
 print "</td>
-<th class='text-right'>TOTAL</th>
+<th class='text-right' colspan='5'><button name='deliver' class='btn btn-sm btn-success hidden'>Submit</button> TOTAL</th>
 <th class='text-right'>".nf(sum('debit'))."</th>
 <th class='text-right'>".nf(sum('credit'))."</th>
 <th class='text-right'>".nf(sum('balance'))."</th>
@@ -401,6 +527,7 @@ $remarks = select("*", "customer_remarks", "customer_id=$obj->id AND trash=0 AND
   
 
 ?>
+</form>
 
 <form method="post" id="save_remarks_form" mehtod="post">
   <input type="hidden" name='remarks' id='remarks'>
@@ -459,9 +586,59 @@ $remarks = select("*", "customer_remarks", "customer_id=$obj->id AND trash=0 AND
     })
   }
 
+function redirectWithSelected() {
+  // Select all checked radio buttons
+  const selectedRadios = document.querySelectorAll('input[type="radio"]:checked');
+
+  // Extract their values and join with commas
+  const ids = Array.from(selectedRadios).map(r => r.value).join(',');
+
+  // Build the new URL
+  const newPage = "http://store.apurewater.com/store/app/pages/view/exportables/invoice.php?id=" + ids;
+
+  
+  window.open(newPage, '_blank');
+}
+
+function redirectWithSelected2() {
+  if(confirm("Are you sure?")){
+  // Select all checked radio buttons
+    const selectedRadios = document.querySelectorAll('input[type="radio"]:checked');
+
+    // Extract their values and join with commas
+    const ids = Array.from(selectedRadios).map(r => r.value).join(',');
+
+    // Build the new URL
+    const newPage = "?delids=" + ids;
+    location.href = newPage;
+  }
+  
+}
+
   $(".delivery-man-item").click(function(){
+    const id = $(this).data('id');
     const val = $(this).text();
-    $(".selected-delivery-man").text(val);
+    console.log(val);
+    $(this).parent().parent().find('span').text(val);
+    $('.oi-' + id).val(val);
+
+    // const id = $(this).data('id');
+    // const delivered_by = $(".selected-delivery-man").text().trim();
+    // if(delivered_by == "Select"){
+    //   swal.fire({
+    //   title: 'Error!',
+    //   text: 'Please select Delivery Staff',
+    //   icon: 'error',
+    //   confirmButtonText: 'OK',
+    // });
+    // } else{
+    //   $(this).addClass('btn-success');
+    //   $(this).removeClass('btn-warning');
+    //   $.post("/store/ajax/save_state.php", {id:id,delivered_by:delivered_by}, function(res){
+    //     console.log(res);
+    //     $("#items").html(res);
+    //   });
+    // }
   });
 
   
@@ -544,6 +721,21 @@ $remarks = select("*", "customer_remarks", "customer_id=$obj->id AND trash=0 AND
     });
     */
 
+
+  $('input[type="radio"]').mousedown(function(e) {
+      if (this.checked) {
+        $(this).data('wasChecked', true);
+      } else {
+        $(this).data('wasChecked', false);
+      }
+    });
+
+    $('input[type="radio"]').click(function(e) {
+      if ($(this).data('wasChecked')) {
+        $(this).prop('checked', false).trigger('change');
+      }
+    });
+    
     $(".remove-file").click(function(){
         var pin = prompt("Enter Pin");
         if(pin != ""){
@@ -562,6 +754,10 @@ $remarks = select("*", "customer_remarks", "customer_id=$obj->id AND trash=0 AND
         }
     });
 
-
+    function approveCollection(id){
+  if(confirm("Are you sure you want to approve this collection?")){
+    location.href = "?approved=" + id;
+  }
+}
 
 </script>

@@ -5,7 +5,7 @@
   }
 
   if (isset($post->save)) {
-    // dd($post);
+    //dd($post);
     try {
         // if($obj->code == ''){
         //   $obj->code = 'AP'.rand(1000,9999);
@@ -61,7 +61,7 @@
       background: #fefefe;
       border: solid 2px #fafafa;
       border-radius: 5px;
-      height: 380px;
+      height: 420px;
       margin-bottom: 15px;
       box-shadow: 0 0 5px #ddd;
     }
@@ -176,16 +176,25 @@
         </div>
         <div class="card-body">
           <?php
-          $products = R::find('product');
+         // $products = R::find('product');
+         $products = R::find('product', '1 ORDER BY sort_order');
+		 $cp = [];
+		 if(isset($get->c)){
+			 $cp = toA("customer_product_variance", "product_variance_id", "price", "customer_id = '$get->c'");
+		 }
           foreach($products as $product){
             $variances = R::find("product_variance", "product_id=? AND deleted_by IS NULL ORDER BY sort_order", [$product->id]);
             $i = 1;
             print "<div class='outer-wrapper'><div class='products-wrapper' id='product-$product->id'>";
             foreach ($variances as $key => $var) {
+			  if(isset($cp[$var->id])){
+				  $var->price = $cp[$var->id];
+			  }
               if($var->image_orientation == 'L'){
                 print "<div class='ol' title='W.P: $var->wprice'>";
                 print "<div class='qty-wrapper'><select class='cart-item' data-product='$var->id'>";
                 for($counter = 0; $counter<=10; $counter++) { print "<option class='dropdown-item qty qty-$counter' value='$counter'>".($counter>0?'+':'')."$counter</option>"; }
+                print "<option class='dropdown-item qty qty-custom' value='custom'>Custom</option>";
                 print "</select></div>";
                 print "<div class='img'><img src='".ROOT."/{$var->image}' height='64px'></div>
                   <table><tr><td width='35%' class='unit'>$var->size x $var->unit</td><td width='35%'>$var->particulars</td><td width='30%' class='price lexend'><small>RM</small>$var->price</td></tr></table>
@@ -194,6 +203,7 @@
                 print "<div class='op' title='$var->id'>";
                 print "<div class='qty-wrapper'><select class='cart-item' data-product='$var->id'>";
                 for($counter = 0; $counter<=10; $counter++) { print "<option class='dropdown-item qty qty-$counter' value='$counter'>".($counter>0?'+':'')."$counter</option>"; }
+                print "<option class='dropdown-item qty qty-custom' value='custom'>Custom</option>";
                 print "</select></div>";
                 print "
                   <div class='img'><img src='".ROOT."/{$var->image}' height='64px'></div>
@@ -316,7 +326,11 @@
                 <?php
                 $customers = R::find('customer');
                 foreach ($customers as $key => $customer) {
-                  print "<option value='$customer->id'>$customer->company</option>";
+                  print "<option value='$customer->id' ";
+                  if(isset($get->c) && $get->c == $customer->id){
+                    print "selected";
+                  }
+                  print ">$customer->company</option>";
                 }
                 ?>
               </select>
@@ -399,6 +413,46 @@
           t.append('<option>' + sq + '</option>');
         }
         t.val(sq);
+      });
+
+      $(document).on('focus', 'select.cart-item', function(){
+        $(this).data('prev', $(this).val());
+      });
+
+      $(document).on('change', 'select.cart-item', function(){
+        const t = $(this);
+        const val = t.val();
+        if(val != 'custom') return;
+
+        const prev = t.data('prev');
+
+        Swal.fire({
+          title: 'Enter quantity',
+          input: 'number',
+          inputAttributes: {
+            min: 0,
+            step: 1
+          },
+          inputValue: (prev && prev != 'custom') ? prev : '',
+          showCancelButton: true,
+          confirmButtonText: 'OK'
+        }).then((result) => {
+          if(!result.isConfirmed){
+            t.val(prev ? prev : '0');
+            return;
+          }
+
+          let q = parseInt(result.value, 10);
+          if(isNaN(q) || q < 0) q = 0;
+          const sq = q.toString();
+
+          if(t.find('option[value="' + sq + '"]').length === 0){
+            t.append('<option value="' + sq + '">' + (q > 0 ? '+' : '') + sq + '</option>');
+          }
+
+          t.val(sq);
+          t.data('prev', sq);
+        });
       });
 
       $('.product-wrapper button').on('click', function(event) {

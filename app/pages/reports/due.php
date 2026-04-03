@@ -41,6 +41,9 @@ if(METHOD == 'add'){
               <tbody>
                 <?php 
                 foreach ($objs as $key => $obj) {
+                  $transfer_tran = getSum("invoice i, invoice_item ii", "price*quantity", "i.id=ii.invoice_id AND customer_id=$obj->id");
+                  $transfer_col = getSum("collection", "amount", "customer_id=$obj->id");
+                  if($transfer_tran - $transfer_col == 0) continue;
                   print "<tr>";
                   foreach ($fields as $key => $value) {
                     if(isset($value['display'])) {
@@ -49,9 +52,7 @@ if(METHOD == 'add'){
                         if($value['type'] == "image") {
                           print "<td height='84px'>".($obj->$key ? "<a data-lightbox='{$obj->$key}'><img src='/store/{$obj->$key}' height='60px'></a>" : "")."</td>";
                           $printed = true;
-                        } elseif($value['type'] == 'due'){                        	
-													$transfer_tran = getSum("invoice i, invoice_item ii", "price*quantity", "i.id=ii.invoice_id AND customer_id=$obj->id");
-													$transfer_col = getSum("collection", "amount", "customer_id=$obj->id");
+                        } elseif($value['type'] == 'due'){
                           print "<td class='right'>".nf($transfer_tran - $transfer_col)."</td>";
                           sum('total',$transfer_tran - $transfer_col);
                         }

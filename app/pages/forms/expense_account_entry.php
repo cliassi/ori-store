@@ -34,7 +34,8 @@ print "<input required type='radio' name='payment_method' class='pm' value='Cash
 print "<input required type='radio' name='payment_method' class='pm' value='Online' ".($object->payment_method == 'Online' ? 'checked' : '')."> Online ";
 		// .se2("expense_account_entry///", "payment_method", ($object->payment_method ? $object->payment_method : 'Cash')).
 print "</tr>";
-print "<tr><td>Expense Date</td><td>".ds("expense_date", $object->expense_date, true)."</td><td></td><td>Account</td><td id='bank_account'></td></tr>";
+print "<tr><td>Expense Date</td><td>".ds("expense_date", $object->expense_date, true)."</td><td></td><td>Account</td><td id='bank_account'>
+</td></tr>";
 print "<tr><td colspan='5'><hr></td></tr>";
 print "<tr><td>Particulars Date</td><td>".ds("particular_date", $object->particular_date, true)."</td><td></td><td></td></tr>";
 print "<tr><td>".str("Particulars")."</td><td colspan='7'><textarea name='particulars' rows='5' id='particulars' class='form-control required'>$object->particulars</textarea></td></tr>
@@ -104,13 +105,13 @@ closeForm();
 
 	$(".pm").change(function(){
 		if($(".pm:checked").val() == 'Online'){
-		// 	$.post("/app/ajax/bank_account.php", {'company': '<?php print $acc->company; ?>'}, function(data){
-		// 		$("#bank_account").html(data);
-		// 	});
-			$("#particulars").val('Online Payment kore ');
+			$.post("/store/ajax/bank_account.php", {'company': '<?php print $acc->company; ?>'}, function(data){
+				$("#bank_account").html(data);
+			});
+			// $("#particulars").val('Online Payment kore ');
 		} else{
 		// 	$("#bank_account").html('');
-			$("#particulars").val('Petty Cash theke ');
+			// $("#particulars").val('Petty Cash theke ');
 		}
 	});
 

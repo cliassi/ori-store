@@ -70,12 +70,13 @@ if(isset($post->save)){
                             <th>Product</th>
                             <th>Image</th>
                             <th>Description</th>
-                            <th colspan="2">Custom Qty</th>
-                            <th>Qty</th>
+                            <th>Cost</th>
+                            <th colspan="2">Custom Qty/grm</th>
+                            <!-- <th>Qty</th> -->
             <?php if(METHOD != 'damage'): ?>
                             <th>Cost</th>
-                            <th>Total Amount</th>
             <?php endif; ?>
+                            <th>Total Amount</th>
                             <th></th>
                           </tr>
                         </thead>
@@ -92,31 +93,32 @@ if(isset($post->save)){
                             print "<td rowspan='".count($variances)."'>$product->name</td>";
                             $vi = 1;
                             foreach($variances as $variance){
-                              if(!$variance->image_single) continue;
+                              // if(!$variance->image_single) continue;
                               $active = false;
                               if(isset($get->v) && isset($get->qty) && $get->v == $variance->id) $active = true;
                               if($vi > 1) print "<tr class='".($active?'active':'')."'>";
-                              print "<td><img src='".ROOT."/$variance->image_single' class='w64'></td>";
+                              print "<td><img src='".ROOT."/$variance->image' class='w64'></td>";
                               print "<td>$variance->particulars</td>";
-                              print "<td><input class='form-control custom-qty' style='width:100px' type='number' data-id='$variance->id' data-cost='$variance->cost' name='variance[$variance->id]' id='qty_{$variance->id}' step='any' ";
+                              print "<td>".nf($variance->cost/$variance->unit,4)."</td>";
+                              print "<td><input class='form-control custom-qty' style='width:100px' type='number' data-id='$variance->id' data-cost='".($variance->cost/$variance->unit)."' name='variance[$variance->id]' id='qty_{$variance->id}' step='any' ";
                               if($active){
                                 print " value='$get->qty'";
                               }
-                              print "></td><td>$pc->uom2</td>";
-                              print "<td>";
-                              for($q = 0; $q <= 10; $q+=1){
-                                print "<span class='variance' data-id='$variance->id' data-cost='$variance->cost' data-qty='$q'>
-                                  <input type='radio' value='$q'> $q</span>";
-                              }
-                              print "</td>";
+                              print "></td><td>$variance->unit</td>";
+                              // print "<td>";
+                              // for($q = 0; $q <= 10; $q+=1){
+                              //   print "<span class='variance' data-id='$variance->id' data-cost='$variance->cost' data-qty='$q'>
+                              //     <input type='radio' value='$q'> $q</span>";
+                              // }
+                              // print "</td>";
                               if(METHOD != 'damage'):
                               print "<td><input class='form-control' type='number' id='var_{$variance->id}' value='$variance->cost' step='any'></td>";
-                              print "<td><input class='form-control' readonly id='tot_{$variance->id}'";
                               if($active){
                                 print " value='".($get->qty*$variance->cost)."'";
                               }
                               print "></td>";
                                 endif;
+                              print "<td><input class='form-control' style='width:100px' readonly id='tot_{$variance->id}'></td>";
                               print "<td><button class='btn btn-success' name='save'>Save</button></td>";
                               if($vi > 1) print "</tr>";
                               $vi++;

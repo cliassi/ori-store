@@ -13,6 +13,7 @@ $account = R::load("expense_account", $object->accountid);
 
 $object->accountpath = $account->path;
 $object->company = $account->company;
+$object->branch_id = $branch_id;
 
 if(METHOD=="add") {
 	$object->tran_type = 'Debit';

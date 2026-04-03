@@ -27,6 +27,7 @@ if (isset($post->save)) {
       $ii->product_variance_id = $variance->id;
       $ii->quantity = $qty;
       $ii->price = $variance->price;
+      $ii->branch_id = $branch_id;
       $ii->cost = $variance->cost;
       $ii->name = $product->name;
       $ii->description = "$variance->particulars $variance->size x $variance->unit";

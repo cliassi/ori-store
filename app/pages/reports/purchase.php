@@ -15,10 +15,7 @@ $hotel_start_date = '2023-01-18 23:59:59';
 
 $d = isset($get->d)?$get->d:today();
 $t = isset($get->t)?$get->t:today();
-
-if(!isUserIn(['apple','superadmin','melon','lemon','orange','mango', 'berry', 'Olive'])){
-  exit;
-}
+$canApprovePurchase = uid() == 1 || username() == 'Adminn';
 
 if(isset($post->collect_cash)){
   if(isUserIn([])){
@@ -29,6 +26,7 @@ if(isset($post->collect_cash)){
   if(!$handover){
     $handover = R::dispense("bd_handover");
     $handover->date = today();
+    $handover->branch_id = $branch_id;
     $handover->account = 1;
     if(isset($post->amount)) $handover->amount = $post->amount;
     if(isset($post->bank_amount)) $handover->bank_amount = $post->bank_amount;
@@ -80,10 +78,14 @@ if(isset($post->collect_cash)){
 
 
 if(isset($post->delivered)){
-  $order = R::load('order', $post->delivered);
-  $order->delivered_by = uid();
-  $order->delivery_date = now();
-  R::store($order);
+  if($canApprovePurchase){
+    $order = R::load('order', $post->delivered);
+    $order->delivered_by = uid();
+    $order->delivery_date = now();
+    R::store($order);
+  } else{
+    alert("Only uid 1 or Adminn can approve pending purchase.");
+  }
 }
 
 if(isset($post->update_outsource_expense)){
@@ -147,13 +149,15 @@ if(isset($post->delete_outsource_expense)){
   }
   // $get->d = $d;
   // $get->t = $t;
-  if(uid()!=1){
-    if(daydiff($d, prevDay()) > 0){
-      $d = prevDay();
-      $get->d = $d;
+  $dateLimit = false;
+  if (uid() != 1) {
+    $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+    $dateLimit = $sevenDaysAgo;
+    if (daydiff($d, $sevenDaysAgo) > 0) {
+        $d = $sevenDaysAgo;
+        $get->d = $d;
     }
   }
-
 
   $com = isset($get->company) ? $get->company : '';
   $ec = isset($get->expense_category) ? $get->expense_category : '';
@@ -168,9 +172,28 @@ if(isset($post->delete_outsource_expense)){
   }
 
   $pm = isset($get->pm) ? $get->pm : 'Outsource';
+  $supplier_id = isset($get->supplier_id) ? ($get->supplier_id + 0) : 0;
+  $product_variance_id = isset($get->product_variance_id) ? ($get->product_variance_id + 0) : 0;
+  $suppliers = toA('supplier', 'id', 'company');
+  $supplierOptions = "<option value=''>All Suppliers</option>";
+  foreach($suppliers as $sid => $sname){
+    if($sid === ""){
+      continue;
+    }
+    $supplierNameEsc = htmlspecialchars($sname, ENT_QUOTES);
+    $supplierOptions .= "<option value='$sid'".($supplier_id == $sid ? " selected" : "").">$supplierNameEsc</option>";
+  }
+  $productVarianceOptions = "<option value=''>All Variants</option>";
+  $productVariances = select("id, particulars, size, unit", "product_variance", "", "ORDER BY particulars, size, unit");
+  while($pv = mysqli_fetch_object($productVariances)){
+    $pvName = $pv->particulars . (nn($pv->size) ? " {$pv->size} x {$pv->unit}" : "");
+    $pvNameEsc = htmlspecialchars($pvName, ENT_QUOTES);
+    $productVarianceOptions .= "<option value='$pv->id'".($product_variance_id == $pv->id ? " selected" : "").">$pvNameEsc</option>";
+  }
 
   openFilterForm("get");
-  print "<input type='hidden' name='pm' value='$pm'> Order  Date ".dp('d', $d, uid()!=1 ? prevDay() : false)." - ".dp('t', $t, uid()!=1 ? prevDay() : false);
+  print "<input type='hidden' name='pm' value='$pm'> Order Date ".dp('d', $d, $dateLimit)." - ".dp('t', $t, $dateLimit);  print " Supplier <select name='supplier_id' class='form-control form-control-fluid w200'>$supplierOptions</select>";
+  print " Product Variant <select name='product_variance_id' class='form-control form-control-fluid w250'>$productVarianceOptions</select>";
   closeFilterForm();
   $companies = toA("company");
   $userList = userList();
@@ -196,8 +219,14 @@ if(isset($post->delete_outsource_expense)){
 
   <?php
 
-    $suppliers = toA('supplier', 'id', 'company');
-    $trans = select("SELECT * FROM (SELECT i.*, GROUP_CONCAT('<div style=\"border-bottom: solid 1px #ccc;\">',description,', <b class=\"frht\">(', price ,' X ', quantity,' = ',(quantity*price),')</b></div>' SEPARATOR '') particulars, SUM(quantity) quantity, SUM(quantity*price) total FROM `order` i, order_item ii WHERE i.id=ii.order_id AND order_date BETWEEN '$d' AND '$t' GROUP BY i.id) a ORDER BY id");
+    $orderFilter = "i.id=ii.order_id AND order_date BETWEEN '$d' AND '$t'";
+    if($supplier_id > 0){
+      $orderFilter .= " AND i.supplier_id=$supplier_id";
+    }
+    if($product_variance_id > 0){
+      $orderFilter .= " AND ii.product_variance_id=$product_variance_id";
+    }
+    $trans = select("SELECT * FROM (SELECT i.*, GROUP_CONCAT('<div style=\"border-bottom: solid 1px #ccc;\">',description,', <b class=\"frht\">(', price ,' X ', quantity,' = ',(quantity*price),')</b></div>' SEPARATOR '') particulars, SUM(quantity) quantity, SUM(quantity*price) total FROM `order` i, order_item ii WHERE $orderFilter GROUP BY i.id) a ORDER BY id");
 
     $i = 1;
     while ($item = mysqli_fetch_object($trans)) {
@@ -207,10 +236,15 @@ if(isset($post->delete_outsource_expense)){
       print "<td>INV".zerofill($item->id, 5)."</td>";
       print "<td><a href='/store/supplier/details/$item->supplier_id'>".$suppliers[$item->supplier_id]."</a></td>";
       print "<td>$item->particulars</td>";
-      print "<td>".($item->delivered_by ? "<a class='btn btn-success'>Received</a>" : "<form method='post'><input type='hidden' name='delivered' value='$item->id'><button class='btn btn-warning'>Ordered</button>")."</td>";
       print "<td class='text-right'>".nf0($item->quantity)."</td>";
       print "<td class='text-right'>".nf($item->total)."</td>";
-      print "<td>Pending</td>";
+      if($item->delivered_by){
+        print "<td><span class='btn btn-success btn-sm'>Approved</span></td>";
+      } elseif($canApprovePurchase){
+        print "<td><form method='post' style='margin:0'><input type='hidden' name='delivered' value='$item->id'><button class='btn btn-warning btn-sm'>Pending</button></form></td>";
+      } else{
+        print "<td><button class='btn btn-warning btn-sm' type='button' disabled title='Only uid 1 or Adminn can approve'>Pending</button></td>";
+      }
       sum('total',$item->total);
       sum('quantity',$item->quantity);
       print "</tr>";

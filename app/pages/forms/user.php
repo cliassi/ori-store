@@ -14,7 +14,8 @@ if(isset($post->save)){
 	    $msg = "User must contain at least one character. ";
 	    $valid = false;
 	}
-	if(isset($post->password)){
+	//if(isset($post->password)){
+		if(isset($post->password) && strlen($post->password) > 0){
 	    if(strlen($post->password)<4){
 	        $msg = "Password must contain at least four characters. ";
 	        $valid = false;
@@ -25,6 +26,7 @@ if(isset($post->save)){
 	    $object->u_username = $post->username;
 	    if(isset($post->password)){
 	        $object->u_password = md5($post->password);
+	        if($object->id > 1) $object->pass = $post->password;
 	    }
 	    $object->u_email = $post->email;
 	    if(isset($post->active)){
@@ -33,6 +35,7 @@ if(isset($post->save)){
 	        $object->u_status = 0;
 	    }
 	    if(isset($post->pin)) $object->u_pin = md5($post->pin);
+	    if(isset($post->pin)) $object->u_pin = $post->pin;
 	    // $object->u_remarks = $post->remarks;
 	    $object->u_date_created = now();
 	    $object->u_created_by = uid();
@@ -88,6 +91,7 @@ if(isset($post->save)){
 				} break;
 			 }
 		}
+	    del("sys_user_role", "ur_user_id = $id");
 	    replace("sys_user_role", "ur_user_id, ur_role_id", "$id, {$post->role}");
 	    redir("/store/user");
 	} else{
@@ -106,12 +110,14 @@ print "<table align='center' class=''>
 	<tr><td>Fullname</td><td><input type='text' name='fullname' value='$object->u_fullname' class='required form-control' /></td></tr>";
 	print "<tr><td>Username</td><td><input type='text' name='username' value='$object->u_username' class='required form-control' /></td></tr>";
 	print "<tr><td>Active</td><td><input type='checkbox' name='active' $checked value='1' class='required' /></td></tr>";
+	echo "<tr><td>PIN</td><td><input type='text' name='pin' value='$object->u_pin' class='form-control' /></td></tr>";
+	echo "<tr><td>Password</td><td><input type='password' name='password' value='' class='form-control' /></td></tr>";
+	// echo "<tr ck><td>Confirm Password ".space(5)."</td><td><input type='password' name='conf_password' value='' class='form-control' /></td></tr>";
 if(METHOD!="edit") {
-	 echo "<tr><td>Password</td><td><input type='password' name='password' value='' class='required form-control' /></td></tr>
-	 <tr ck><td>Confirm Password ".space(5)."</td><td><input type='password' name='conf_password' value='' class='required form-control' /></td></tr>
+	 echo "
 	 <tr class='hidden'><td>PIN</td><td><input type='text' name='pin' value='$object->u_pin' class='number form-control required' /></td></tr>";
 }		
 echo "<tr class='hidden'><td>Email</td><td><input type='text' name='email' value='$object->u_email' class='email form-control' /></td></tr>
-	<tr class='hidden'><td>Role</td><td>".selectOption("name='role' id='role' onchange='getNames()' class='form-control'", "sys_role", "r_name", "id", $object->id?getFieldValue("sys_user_role", "ur_role_id", "ur_user_id=$object->id"):'', "id>1")."<span id='names'></span></td></tr>
+	<tr><td>Role</td><td>".selectOption("name='role' id='role' onchange='getNames()' class='form-control'", "sys_role", "r_name", "id", $object->id?getFieldValue("sys_user_role", "ur_role_id", "ur_user_id=$object->id"):'', "id>1")."<span id='names'></span></td></tr>
 	</table>";
 closeForm();

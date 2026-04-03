@@ -30,6 +30,82 @@ function upload($files, $name = '', $dir = '', $_name = 'file')
     return $filename;
 }
 
+if (!function_exists('ensureMysqlColumn')) {
+    function ensureMysqlColumn($table, $column, $definition)
+    {
+        global $c;
+
+        $table = preg_replace('/[^A-Za-z0-9_]/', '', $table);
+        $column = preg_replace('/[^A-Za-z0-9_]/', '', $column);
+        $definition = trim((string) $definition);
+        if (!$table || !$column || !$definition || !isset($c)) {
+            return false;
+        }
+
+        $check = $c->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+        if ($check && $check->num_rows > 0) {
+            return true;
+        }
+
+        return (bool) $c->query("ALTER TABLE `$table` ADD `$column` $definition");
+    }
+}
+
+
+function convertPdfToImages(string $pdfFilename, string $outputName){
+    $pdfPath = __DIR__ . '/' . $pdfFilename;
+    $outputBase = __DIR__ . '/' . $outputName;
+    $pdftoppm = 'C:\\poppler\\Library\\bin\\pdftoppm.exe'; // Use your actual path
+
+    if (!file_exists($pdfPath)) {
+        throw new Exception("PDF file not found: $pdfPath");
+    }
+
+    $cmd = "\"$pdftoppm\" -jpeg \"$pdfPath\" \"$outputBase\" 2>&1";
+    $output = shell_exec($cmd);
+
+    // Output files will be: outputName-1.jpg, outputName-2.jpg, etc.
+    $generatedFiles = glob($outputBase . '-*.jpg');
+
+    // Optionally rename them to remove the -1/-2 suffix if only one page
+    if (count($generatedFiles) === 1) {
+        $finalName = __DIR__ . '/' . $outputName . '.jpg';
+        rename($generatedFiles[0], $finalName);
+        return [$finalName];
+    }
+
+    return $generatedFiles;
+}
+
+
+
+function accountEntry($accountid, $particulars, $amount, $type, $data = []){
+    global $branch_id;
+    $data = (object)$data;
+    $entry = R::dispense("expense_account_entry");
+    $accountpath = $accountid ? getFieldValue("expense_account", "path", "id=$accountid") : '';
+    $entry->accountid = $accountid;
+    $entry->amount = $amount;
+    $entry->branch_id = $branch_id;
+    $entry->particulars = $particulars;
+    $entry->tran_type = $type;
+    if(isset($data->remarks)) $entry->remarks = $data->remarks;
+    if(isset($data->entry_type)) $entry->entry_type = $data->entry_type;
+    if(isset($data->entry_id)) $entry->entry_id = $data->entry_id;
+    if(isset($data->url)) $entry->url = $data->url;
+    if(isset($data->month)) $entry->month = $data->month;
+    if(isset($data->hotel)) $entry->hotel = $data->hotel;
+    if(isset($data->bank) && nn($data->bank)) $entry->bank = $data->bank;
+    if(isset($data->expense_date)) $entry->expense_date = $data->expense_date;
+    if(isset($data->payment_method)) $entry->payment_method = $data->payment_method;
+    $entry->entry_by = uid();
+    $entry->entry_time = now();
+    $entry->accountpath = $accountpath;
+
+    R::store($entry);
+    return $entry;
+}
+
 function addLink($print = true)
 {
     $link = '<div class="col-6 text-right right"><a href="' . mlink('add') . '" class="btn btn-primary" style="position">Add</a></div>';
@@ -152,18 +228,20 @@ function buildForm($formItems = [], $_class='form-group')
     $form = "";
     foreach ($formItems as $key => $fi) {
         $class = isset($fi['class']) ? $fi['class'] : $_class;
+        $required = !empty($fi['required']) ? " required" : "";
+        $requiredFile = (!empty($fi['required']) && empty($fi['value'])) ? " required" : "";
         if ($fi['type'] == 'text') {
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
-                    <input type='text' id='$key' class='form-control' name='$key' value='{$fi['value']}'>
+                    <input type='text' id='$key' class='form-control' name='$key' value='{$fi['value']}'{$required}>
                 </div>
             </div>";
         } elseif ($fi['type'] == 'textarea') {
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
-                    <textarea id='$key' type='text' class='form-control' name='$key'>{$fi['value']}</textarea>
+                    <textarea id='$key' type='text' class='form-control' name='$key'{$required}>{$fi['value']}</textarea>
                 </div>
             </div>";
         } elseif ($fi['type'] == 'dropdown') {
@@ -171,11 +249,16 @@ function buildForm($formItems = [], $_class='form-group')
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
                     ";
-                    $form .= "<select name='$key' id='$key' class='form-control'>";
+                    $form .= "<select name='$key' id='$key' class='form-control'{$required}>";
             if (isset($fi['table'])) {
                 $valueField = isset($fi['valueField']) ? $fi['valueField'] : 'id';
                 $textField = isset($fi['textField']) ? $fi['textField'] : 'name';
-                $opts = R::find($fi['table']);
+                $filter = isset($fi['filter']) ? $fi['filter'] : '';
+                if($filter){
+                    $opts = R::find($fi['table'], $filter);
+                } else{
+                    $opts = R::find($fi['table']);
+                }
                 foreach ($opts as $key => $op) {
                     $form .= "<option value='". $op->$valueField . "'";
                     if ($fi['value'] == $op->$valueField) {
@@ -200,7 +283,7 @@ function buildForm($formItems = [], $_class='form-group')
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='text-center'>
                     <label for='$key'>{$fi['label']}</label>
-                    <input id='$key' type='file' accept='image/*' name='$key'>";
+                    <input id='$key' type='file' accept='image/*' name='$key'{$requiredFile}>";
             if ($fi['value']) {
                 $form .= "<img src='" . ROOT . "/{$fi['value']}' height='200px'>";
             }
@@ -212,22 +295,24 @@ function buildForm($formItems = [], $_class='form-group')
             $form .= "</div>";
         } elseif ($fi['type'] == 'radios') {
             $form .= "<div class='col-{$fi['col']}'>";
-            foreach($fi['options'] as $opt) $form .=  "<div class='radio-label'><input name='$key' class='$class' type='radio' value='$opt'><span>{$opt}</span></div>";
+            foreach($fi['options'] as $opt) $form .=  "<div class='radio-label'><input name='$key' class='$class' type='radio' value='$opt'{$required}><span>{$opt}</span></div>";
             $form .= "</div>";
         } elseif ($fi['type'] == 'radio') {
             $form .= "<div class='col-{$fi['col']}'>";
-            foreach($fi['options'] as $opt) $form .=  "<input name='$key' class='$class' type='radio' value='$opt'>{$opt}".space(3);
+            foreach($fi['options'] as $opt) $form .=  "<input name='$key' class='$class' type='radio' value='$opt'{$required}>{$opt}".space(3);
             $form .= "</div>";
         } elseif ($fi['type'] == 'date2') {
             $form .= "<div class='col-{$fi['col']}'>
                 <label for='$key'>{$fi['label']}</label><br>
                 ".dateSelector($key)."
             </div>";
+        } elseif($fi['type'] == 'html'){
+            $form .= "<div class='col-{$fi['col']}'>{$fi['html']}</div>";
         } else{
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
-                    <input type='{$fi['type']}' class='form-control' name='$key' id='$key' value='{$fi['value']}'>
+                    <input type='{$fi['type']}' class='form-control' name='$key' id='$key' value='{$fi['value']}'{$required}>
                 </div>
             </div>";
         }
@@ -236,8 +321,13 @@ function buildForm($formItems = [], $_class='form-group')
 }
 
 
-function nf2($amount){
-    // if($amount)
+function nf2($number, $decimals = 2)
+{
+    // If the number is a whole number, don't display decimal places
+    if (is_float($number) && floor($number) == $number) {
+        return number_format($number, 0); // No decimals
+    }
+    return number_format($number, $decimals);
 }
 function dp($name='date', $date = false, $min = false){
     return "<input type='date' name='$name' class='form-control form-control-fluid dp w120' value='$date' ".($min? "min='$min'":"").">";
@@ -250,7 +340,7 @@ function dp2($name='date', $date = false){
     return "<input type='date' name='$name' class='datepicker form-control form-control-fluid' value='$date'>";
 }
 
-function isUserIn($users = []){return true;
+function isUserIn($users = []){//return true;
     if(uid() == 1) return true;
     return in_array(strtolower(username()), $users);
     // return in_array('lemon', $users);

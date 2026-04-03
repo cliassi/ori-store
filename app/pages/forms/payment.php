@@ -6,10 +6,12 @@ if (defined('ID')) {
 if (isset($post->save)) {
     try {
         $obj->supplier_id = $post->supplier_id;
+        $obj->created_by = uid();
         $obj->date = $post->date;
         $obj->amount = $post->amount;
         $obj->payment_method = $post->payment_method;
         $obj->description = $post->description;
+        $obj->branch_id = $branch_id;
 
         R::store($obj);
 
@@ -77,6 +79,7 @@ if (isset($post->save)) {
                   </div>
                 </form>
               </div>
+              
             </div>
           </div>
 

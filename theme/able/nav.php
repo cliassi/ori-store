@@ -18,6 +18,15 @@
   .incentive-staffs{
     display: none !important;
   }
+  nav a{
+    text-decoration: none;
+    color: #333 !important;
+  }
+  nav .pc-hasmenu ul a:hover{
+    background-color: rgba(70, 128, 255,.1);
+    border-radius: 5px;
+    background-clip border-box;
+  }
 </style>
 
 
@@ -25,16 +34,29 @@
 
 <!-- <a href='/store/report/cash' style='position: absolute; left: 125px; top: 121px; font-weight: bold;'>Petty Cash</a> -->
 <?php
+$accs = ['bank'=>'Bank Accounts'];
+
+$banks = R::find('bank');
+foreach ($banks as $key => $b) {
+  $accs['bank_transaction/history/'.$b->id] = $b->name;
+}
+
 $menu_content = "";
 $menus = [
   [
     'name'=>'Store',
     'children'=>[
       'dashboard'=>'Dashboard', 
+      'customer'=>'Customer +', 
+      // 'area'=>'Area +', 
       'report/daily'=>'Daily Sales Collection', 
       'report/cash'=>'Petty Cash Statement', 
       'report/order'=>'Daily Order', 
       'report/purchase'=>'Daily Purchase', 
+      'supplier'=>'Supplier +',
+      'company'=>'File Manager',
+      'order/return?supplier=0'=>'Supplier Goods Return',
+      'report/goods_return'=>'Supplier Return Report',
       // 'report/due'=>'Customer Due Reports',
     ]
   ],  
@@ -44,21 +66,35 @@ $menus = [
   //     'a'=>''
   //   ]
   // ],
+  // [
+  //   'name'=>'Customer',
+  //   'children'=>[
+  //     'customer'=>'Customer +', 
+  //     'area'=>'Area +', 
+  //   ],
+  // ],
+  // [
+  //   'name' => 'Orders <i class="fas fa-bell"></i>',
+  //   'children'=>[
+  //     'customer_order'=>'Customer Order',
+  //     'customer_confirm_order'=>'Pending Delivery',
+  //   ],
+  // ],
   [
-    'name'=>'Customer',
+    
+    'name'=>'Order n Delivery',
     'children'=>[
-      'customer'=>'Customer +', 
-    ],
-  ],
-  [
-    'name'=>'Delivery Process',
-    'children'=>[
-      'dcollect'=>'Order Detail Report',
-      'report/stock'=>'Collection+',
-      'delivery?s=all'=>'Return+ Report',
+      'dcollect_order'=>'Order List',
+      'dcollect_collect'=>'Pending Collect',
+      // 'dcollect_delivery'=>'Delivery Status',
+      'dcollect_delivery_status'=>'Delivery Status', 
+      'dcollect_pending'=>'Pending Order',
+      'cnr'=>'C n R Report',
+      // 'delivery2'=>'Report',
+      // 'dcollect'=>'Order,Pending, Delivery',
       // 'customer'=>'Deliver',
       // 'delivery'=>'Return',
-      'report/pending_delivery'=>'Pending Delivery Report',
+      // 'report/pending_delivery'=>'Pending Delivery Report',
       /*
       'report/order'=>'Order',
       'dcollect'=>'Collect',
@@ -77,13 +113,11 @@ $menus = [
       // 'Order'=>'Order Person ',
       // 'salesman'=>'Sales Persons +',
       // 'Collection'=>'Collection Persons ',
-      'incentive'=>'Incentive Staff',
-      'delivery'=>[
-        'name'=>'Staff Incentive Statement',
-        'children'=>[
-          'salesman'=>'Sales Persons +',
-        ]
-      ],
+      'incentive'=>'Sales Staff',
+      'store_staff'=>'Store Staff',
+      // 'delivery'=> 'Delivery Staff Incentive',
+      'incentive_d'=> 'Delivery Staff',
+      'lorry' => 'Lorry',
       // 'Approve'=>'Approve',
     ]
   ],
@@ -93,21 +127,25 @@ $menus = [
       'product'=>'Main Product', 
       'product/details#product-0'=>'Product +', 
       'product/details#product-1'=>'Pricing',
-      'Product'=>'Product Aging Report',
+      // 'Product'=>'Product Aging Report',
       'report/stock'=>'Product Stock Report',
       'order/damage'=>'Damage/Loss',
       'report/damage'=>'Damage/Loss Report',
       'Packing'=>'Packing',
     ],
   ],
+  // [
+  //   'name'=>'Supplier',
+  //   'children'=>[
+  //     'supplier'=>'Supplier +',
+  //     'Goods'=>'Goods Receive',
+  //     'order/return?supplier=0'=>'Supplier Goods Return',
+  //     'report/goods_return'=>'Supplier Return Report',
+  //   ]
+  // ],
   [
-    'name'=>'Supplier',
-    'children'=>[
-      'supplier'=>'Supplier +',
-      'Goods'=>'Goods Receive',
-      'order/return?supplier=0'=>'Goods Return',
-      'report/goods_return'=>'Goods Return Report',
-    ]
+    'name'=>'Acc',
+    'children'=> $accs
   ],
   [
     'name'=>'Expense',
@@ -128,9 +166,23 @@ $menus = [
   [
     'name'=>'User',
     'children'=>[
-      'user'=>'Manage User',
-      ''=>'',
-      'auth?logout'=>'Logout',
+      'user/add'=>'Add User',
+      'user'=>'List of User',
+      'user/role'=>'List of Roles',
+      'user/permission'=>'User Permission',
+      'auth?logout'=>'Logout ('.username().')',
+    ]
+  ],   
+  [
+    'name'=>'Outlet',
+    'children'=>[
+      'report/outlet'=>'Outlet Account',
+      'division_branch?tab=branches'=>'Branch',
+      'division_branch/add_branch'=>'Add Branch',
+      'division_branch?tab=districts'=>'District',
+      'division_branch/add_district'=>'Add District',
+      'division_branch?tab=divisions'=>'Division',
+      'division_branch/add_division'=>'Add Division',
     ]
   ],                    
 ];
@@ -195,9 +247,25 @@ foreach ($menus as $key => $menu) {
 }
 print "<ul class='pc-navbar'>$menu_content</ul>";
 ?>
+<span><input type='text' name='key' id='search-key' class='form-control' placeholder="Search..." style="width: 135px; display: inline-block;"></span>
 </div></div>
 
 
+<script type="text/javascript">
+  $("#search-key").keyup(function(){
+    const key = $("#search-key").val().trim();
+    if(key.length > 1){
+      $.post('/store/ajax/search_customer.php', { key: key })
+      .done((response) => {
+        $("#search-result-wrapper").html(response);
+        $("#content-wrapper").hide();
+      });
+    } else{
+      $("#content-wrapper").show();
+      $("#search-result-wrapper").html('');
+    }
+  });
+</script>
 
 <!--   <a data-bs-toggle='modal' data-bs-target='#orderModal'>
     <span style="float: right; font-size: 3rem; margin-right: 50px; margin-top: -15px;"><i class='fas fa-shopping-cart'></i></span>

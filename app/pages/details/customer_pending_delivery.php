@@ -228,7 +228,12 @@ print " Delivery by <span><select class='form-select supplier-select inline-bloc
   print "<a type='button' class='btn btn-sm btn-info pb-1' href='".ROOT."/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a><br>";
     print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
   } else{
-    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+    if(uid() == 1){
+      if($item->src == 'collection'){
+        print "<a type='button' class='btn btn-sm btn-info pb-1' href='".ROOT."/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
+      }
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+    }
   }
   print "</td>";
 

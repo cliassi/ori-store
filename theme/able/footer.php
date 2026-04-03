@@ -29,6 +29,14 @@
 
 
 <script>
+    document.querySelectorAll('.custom-tooltip').forEach(el => {
+        const title = el.getAttribute('title');
+        if (title) {
+        el.setAttribute('data-title', title);
+        el.removeAttribute('title');
+        }
+    });
+    
     $('.famous-personnel').slick({
         dots: true,
         autoplay: true,

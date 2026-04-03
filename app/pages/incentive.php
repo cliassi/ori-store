@@ -9,23 +9,35 @@ if(METHOD == 'add'){
   if(isset($post->save_incentive)){
     $incentive = R::dispense("incentive");
     $incentive->salesman = $get->s;
-    $incentive->date = $post->date;
-    $incentive->particulars = $post->particulars;
-    $incentive->amount = $post->amount;
+    $incentive->incentive = $post->incentive;
+    // $incentive->particulars = $post->particulars;
+    // $incentive->amount = $post->amount;
     $incentive->created_by = uid();
     $incentive->created_at = now();
 
     R::store($incentive);
   }
+  if(isset($get->token)){
+    $token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
+    if($token){
+      R::trash($token);
+      if(isset($get->del) && isset($get->id)){
+        $st = R::load('staff_salary', $get->id);
+        R::trash($st);
+        redir("?");
+      }
+    }
+  }
   if (isset($post->save)) {
     try {
       if(isset($post->id)){
-        $staff = R::load('staff', $post->id);
+        $staff = R::load('staff_salary', $post->id);
       } else{
-        $staff = R::dispense('staff');
+        $staff = R::dispense('staff_salary');
       }
-      $staff->name = $post->name;
-      $staff->basic = $post->basic;//$post->index;
+      $staff->name = trim($post->name);
+      $staff->category = 'Marketing';
+      $staff->incentive = $post->incentive;//$post->index;
       R::store($staff);
 
       if (count($_FILES) > 0) {
@@ -140,7 +152,7 @@ print "</tbody>";
           </table>
           <?php
           } else{
-            $objs = select('distinct name, incentive', 'staff_salary', "category='Marketing'");
+            $objs = select('distinct id, name, incentive', 'staff_salary', "category='Marketing'");
             print "<div class='card-header'>
             <div class='row'>
             <div class='col-6'><h5>Staff</h5></div>
@@ -155,6 +167,7 @@ print "</tbody>";
             <th class='w100'>No</th>
             <th>Name</th>
             <th class='w150'>Incentive %</th>
+            <th class='w100'><span data-bs-toggle='modal' data-bs-target='#productFrommOdal' class='frht btn btn-sm btn-primary'><i class='fas fa-plus'></i> Staff</span></th>
             </tr>
             </thead>
             <tbody>";
@@ -164,6 +177,7 @@ print "</tbody>";
               print "<td>$i</td>";
               print "<td class='name'><a href='?s=$obj->name'><u>$obj->name</u></a></td>";
               print "<td class='incentive' data-name='$obj->name'>$obj->incentive</td>";
+              print "<td><a class='btn btn-primary btn-sm' data-id='$obj->id' data-name='$obj->name' data-incentive='$obj->incentive' onClick='setStaff(this)' data-bs-toggle='modal' data-bs-target='#productFrommOdal'><i class='fas fa-edit'></i></a> <a href='?del&id=$obj->id' class='protected-link btn btn-danger btn-sm'><i class='fas fa-trash'></i></a> </td>";
               print "</tr>";
               $i++;
             }
@@ -180,6 +194,7 @@ print "</tbody>";
   
         <div id="productFrommOdal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="productFrommOdalLabel" aria-hidden="true">
           <form class="forms-sample" method="post" enctype="multipart/form-data">
+            <input type='hidden' name='id' class='id'>
             <div class="modal-dialog" role="document">
               <div class="modal-content">
                 <div class="modal-header">
@@ -191,8 +206,15 @@ print "</tbody>";
                     <lable>Name</lable>
                       <input class='form-control' required name='name' id="name">
                   </div>
-                  <br>
-                  <div class='row'>
+                  <br><div class='row'>
+                    <div class='col-sm-3'>              
+                      <div class='form-group'>
+                        <lable>Incentive</lable>
+                        <input class='form-control' type="number" step="1" required name='incentive' id="incentive">
+                      </div>
+                    </div>
+                  </div>
+                  <!-- <div class='row'>
                     <div class='col-sm-3'>              
                       <div class='form-group'>
                         <lable>Basic Salary</lable>
@@ -204,12 +226,11 @@ print "</tbody>";
                         <lable>Days</lable>
                         <input class='form-control' type="number" step='1' name='days' id="days">
                       </div>
-                    </div>                    
-                    <div class='col-sm-6'>
+                    </div><div class='col-sm-6'>
                         <lable>Staff Photo</lable>
                       <input type='file' class='form-control' required  name='image' id="image">
                     </div>
-                  </div>
+                  </div> -->
                   <br>
                 </div>
                 <div class="modal-footer">
@@ -220,6 +241,19 @@ print "</tbody>";
             </div>
           </form>
         </div>    
+
+        <script type="text/javascript">
+          function setStaff(el){
+            const id = $(el).data('id');
+            const name = $(el).data('name');
+            const incentive = $(el).data('incentive');
+
+            console.log(id, name, incentive);
+            $(".id").val(id);
+            $("#name").val(name);
+            $("#incentive").val(incentive);
+          }
+        </script>
   <?php } ?>
 
   <form method="post" id='save_incentive'>

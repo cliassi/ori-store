@@ -1,0 +1,395 @@
+<?php
+session_start();
+$branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
+// ini_set('display_errors', '1');
+// ini_set('display_startup_errors', '1');
+// error_reporting(E_ALL);
+require_once("../env.php");
+require_once("../core/config.php");
+require_once("../core/f.inc.php");
+
+extract($_POST);
+if($order == 'false' && $pending == 'false' && $delivery == 'false' && $collection == 'false') exit;
+
+$filter = " WHERE ";
+$cities = preg_replace('/[^0-9,]/', '', $customers);
+$products = preg_replace('/[^0-9,]/', '', $products);
+
+if(nn($cities)){
+    $filter .= " city.id IN ($cities)";
+}
+
+if(nn($products)){
+    $filter .= ($filter != " WHERE " ? " AND " : " ")." p.product_category_id IN ($products)";
+}
+
+$filter .= ($filter != " WHERE " ? " AND " : " ").($pending == 'true' ? " IFNULL(ii.delivery_date,i.invoice_date) < curdate()" : " IFNULL(ii.delivery_date,i.invoice_date) = curdate()");
+$filter .= ($filter != " WHERE " ? " AND " : " ")." ii.quantity >= ii.delivered";
+
+if(uid() == 1){
+  $filter .= ($filter != " WHERE " ? " AND " : " ")." (c.branch_id = $branch_id OR c.branch_id IS NULL)";
+}
+
+$query = "SELECT distinct c.* FROM customer c 
+          INNER JOIN invoice i ON c.id=i.customer_id 
+          INNER JOIN invoice_item ii ON i.id=ii.invoice_id 
+          INNER JOIN product_variance pv ON pv.id=ii.product_variance_id
+          INNER JOIN product p ON p.id=pv.product_id
+          LEFT JOIN city ON city.name=c.city 
+          $filter";
+
+$customers = select($query);
+// print $query;
+
+?>
+<style>
+  .customer-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Optional spacing */
+  }
+
+  .customer-item {
+    padding: 10px;
+    margin: 5px;
+    width: max-content; /* Takes up width based on content */
+    white-space: nowrap; /* Prevent line breaks inside */
+    border: 1px solid #ccc;
+  }
+  input[type='number']{
+    width: 100%;
+    min-width: 70px;
+  }
+  a{
+    text-decoration: underline;
+  }
+  a.customer-link{
+    text-decoration: none !important;
+    color: #333 !important;
+}
+
+.hide-info .store-detail, .all-collected{
+    display: none;
+}
+.all-collected.show{
+    display: table-row;
+}
+</style>
+<form method='post'>
+<div class="customer-container">
+<?php
+$pending = $pending == "true";
+$delivery = $delivery == "true";
+$collection = $collection == "true";
+$pendingList = false; //$pendingList == "true";
+if($pendingList) $delivery = $pendingList;
+    while($customer = mysqli_fetch_object($customers)){
+        // vd($customer);
+        // print "<div>$customer->id</div>";
+        $con = "<div class='customer-item customer-$customer->id'>
+            <table class='table table-bordered toggle-store-info hide-info'>
+                <thead>
+                    <tr>";
+                if($delivery || $collection){
+                    $con .= "<th colspan='5'>TOTAL CONFIRMED ORDERED LIST <span style='float:right'><i class='fas fa-eye' onclick='toggleCollected()'></i></span></th>";
+                } else{
+                    $con .= "<th>1</th><th colspan='4'><a class='customer-link' href='customer/details/$customer->id'>$customer->company ($customer->city) - <strong style='font-size:large'>$customer->code</strong></a></th>";
+                }
+                $con .= "</tr>
+                </thead>
+                <tbody>";
+                    
+                    $cat = "";
+                    $filter = "i.customer_id=$customer->id ";
+                    if($pending){
+                        if($filter){
+                            $filter .= " AND ";
+                        }
+                        // var_dump($pending);
+                        //IFNULL(ii.delivery_date, i.invoice_date) 
+                        $filter .= " ii.delivered = 0 AND IFNULL(ii.delivery_date,i.invoice_date) < curdate()";
+                    } else{
+                        if($filter){
+                            $filter .= " AND ";
+                        }
+                        $filter .= "IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
+
+                    }
+                    if($delivery || $collection){
+                        $filter = "";
+                        $filter .= "IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
+                    }
+
+                    
+                    if(nn($cities)){
+                        if($filter){
+                            $filter .= " AND ";
+                        }
+                        $filter .= " city.id IN ($cities)";
+                    }
+
+                    
+                    if(nn($products)){
+                        if($filter){
+                            $filter .= " AND ";
+                        }
+                        $filter .= " p.product_category_id IN ($products)";
+                    }
+                    $stField = 'stock';
+                    // if($delivery) $stField = 'stockCurrent';
+                    // if($pendingList) $stField = 'stockPending';
+                    $pq = "SELECT $stField(pv.id) stock, i.customer_id, i.id, p.name, pc.name pc_name, ii.id iid, p.id pid, p.name, pv.id vid, pv.particulars, pv.min_stock, SUM(ii.quantity) quantity, 
+                        ii.delivered delivered, ii.price, ii.old_price, IFNULL(ii.delivery_date,i.invoice_date) dd FROM invoice i 
+                        INNER JOIN invoice_item ii ON i.id=ii.invoice_id
+                        INNER JOIN customer c ON c.id=i.customer_id
+                        LEFT JOIN city ON c.city=city.name
+                        INNER JOIN `product_variance` pv ON pv.id=ii.product_variance_id 
+                        INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id
+                        inner join product_category pc ON p.product_category_id=pc.id
+                        ".($filter ? "WHERE" : "")." $filter ";
+                    $tq = $pq . "GROUP BY pc.name, ii.product_variance_id"; 
+                    if($delivery == "true") { $pq .= "GROUP BY pc.name, ii.product_variance_id"; }
+                    else { $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id"; }
+                    // $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id";
+                    // if($customer->id == 3) print $pq;
+                    $items = select($pq);
+                    $ordered_qty = [];
+                    if($collection == "true"){
+                        $tqs = select($tq);
+                        while($q = mysqli_fetch_object($tqs)){
+                            $ordered_qty[$q->vid] = $q->quantity - $q->delivered;
+                        }
+                    }
+
+                    if($items->num_rows > 0) print $con;
+
+                    $ci = 1;
+                    $ic = 0;
+                    // vd($items);
+                    while($i = mysqli_fetch_object($items)){
+                        if($i->pc_name != $cat){
+                            print "<tr><th colspan='2'>$i->pc_name</th>";
+                            if($delivery){
+                                print "<th>Avail</th><th>Shortage</th><th>Ordered</th></tr>";
+                            } elseif($collection){
+                                print "<th>Invoice</th><th>Avail</th><th>Shortage</th><th><a href='javascript:fillAllCollectionQty()'>Ordered</a></th><th>Collected</th><th>Collection</th><th><i onClick='toggleInfo()' class='fas fa-eye'></i></th>";
+                                // print "<th>Return</th><th>Return</th><th>Damaged</th><th>Balance</th>";
+                                print "</tr>";
+                            } else{
+                                print "<th>Price</th><th>Collected</th><th>Select</th></tr>";
+                            }
+                            $cat = $i->pc_name;
+                        }
+                        $i->quantity = $i->quantity - $i->delivered;
+                        if($i->quantity > 0){
+                            $collected = 0;
+                            if($collection){
+                                $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
+                            }
+                            print "<tr class='".($i->quantity - $collected == 0 ? 'all-collected' : '')."'><td><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> <a href='#' id='invoice-item-date-$i->iid' data-dd='".df($i->dd)."' onClick='setDate(this, $i->iid)'>$ci</a></td>
+                            <td>$i->particulars X <a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$i->quantity</a></td>";
+                            if($delivery){
+                                $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
+                                print "<td class='text-center avail".($i->stock < $i->min_stock ? ' color-red' : '')."' title='$i->stock + $i->quantity:'>".($i->stock)."</td>";
+                                print "<td class='text-center shortage' title='$i->particulars'>".abs($i->stock > 0 ? 0 : $i->stock)."</td>";
+                                print "<td class='text-center ordered' title='Deliverd: $i->delivered'>$i->quantity</td>";
+                            } elseif($collection){
+                                $customer = R::load('customer', $i->customer_id);
+                                print "<td>INV".zerofill($i->id,5)."</td>";
+                                // print "<td class='text-center".($i->stock < $i->min_stock ? ' color-red' : '')."'>".($i->stock > 0 ? $i->stock + $i->quantity: 0)."</td>";
+                                print "<td class='text-center".($i->stock < $i->min_stock ? ' color-red' : '')."'>".($i->stock)."</td>";
+                                print "<td class='text-center' title='$i->particulars'>".abs($i->stock > 0 ? 0 : $i->stock)."</td>";
+                                print "<td class='text-center ordered-qty custom-tooltip' data-balance='".($i->quantity - $collected)."' title='$i->delivered'>".($i->quantity - $collected > 0 ? "<a href='javascript:fillCollectionQty(\"iid-$i->iid\", ".($i->quantity - $collected).")'>$i->quantity</a>":"$i->quantity")."</td>";
+                                print "<td class='text-center'>$collected</td>";
+                                print "<td class='text-center custom-tooltip' data-bs-toggle='tooltip'  title='$i->particulars, TOTAL COLLECTION {$ordered_qty[$i->vid]}'>
+                                <input type='number' id='iid-$i->iid' data-bs-toggle='tooltip' class='form-control' style='width:60px; padding: 0px 3px' name='variance[$i->iid]' max='".($i->quantity - $collected)."' min='0' ></td>"; //
+                                // print "<td class='text-center custom-tooltip' data-bs-toggle='tooltip' title='$customer->company ($customer->city) - $customer->code'><i class='fas fa-eye'></i></td>";
+                                print "<td class='store-detail'>$customer->company ($customer->city) - $customer->code</td>";
+                                // print "<td class='text-center'><i class='fas fa-undo'></i></th>";
+                                // print "<td class='text-center' title='$i->particulars'><input type='number' class='form-control' style='width:60px; padding: 0px 3px' name='variance[$i->vid]' min='0' max='".($i->quantity - $collected)."'></td>";
+                                // print "<td class='text-center' title='$i->particulars'><input type='number' class='form-control' style='width:60px; padding: 0px 3px' name='variance[$i->vid]' min='0' max='".($i->quantity - $collected)."'></td>";
+                                // print "<td class='text-center'>0</th>";
+                            } else{
+                                $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
+                                print "<td>";
+                                if($i->old_price){
+                                    print nf($i->price * $i->quantity);
+                                } else{
+                                    print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>".nf($i->price * $i->quantity)."</a>";
+                                }
+                                //print "</td><td>$collected</td><td>".( $i->quantity <= $collected ? "<input type='checkbox' name='iid[{$i->iid}]' value='$i->quantity'>" : "")."</td>";
+                                print "</td><td>$collected</td><td><input type='checkbox' name='iid[{$i->iid}]' value='$i->quantity' ".($i->quantity > $collected ? "disabled" : "")."></td>";
+                            }
+                            print "</tr>";
+                            $ic++;
+                        }
+                        $ci++;
+                    }
+                    if($ic == 0) print '<script>$(".customer-'.$customer->id.'").hide();</script>';
+                    // <tr><td>1</td><td>SeaMaster 1500ml X 12</td><td>180</td></tr>
+                    // <tr><td>2</td><td>100 Plus 250ml Ctn X 24</td><td>28</td></tr>
+                    // <tr><td>3</td><td>Coca Cola 250ml X 24</td><td>120</td></tr>
+                    // <tr><th colspan='3'>Fresh</th></tr>
+                    // <tr><td>4</td><td>Red Bull 250ml X 24</td><td>40</td></tr>
+                    // <tr><td>5</td><td>Pepsi 250ml X 24</td><td>26</td></tr>
+                    // <tr><td>6</td><td>100 Plus 250ml Ctn X 24</td><td>18</td></tr>
+                    // <tr><td>7</td><td>Coca Cola 250ml X 24</td><td>28</td></tr>
+                    // <tr><th colspan='3'>Frozen</th></tr>
+                    // <tr><td>8</td><td>Red Bull 250ml X 24</td><td>26</td></tr>
+                    // <tr><td>9</td><td>Pepsi 250ml X 24</td><td>18</td></tr>
+                    // <tr><td>10</td><td>100 Plus 250ml Ctn X 24</td><td>28</td></tr>
+                print "</tbody>
+            </table>
+        </div>";
+        if($delivery || $collection) break;
+    }
+?>
+</div>
+<div style='position: fixed; right: 20px; bottom: 20px; padding-left: 30px; padding-right: 30px'>
+    <table><tr>
+    <?php if($collection) print "<td><button class='btn btn-warning' type='submit' name='collect'>Collect</button></td>"; ?>
+    <td>
+<?php
+    if($order == 'true' || $collection == 'true' || $pending == 'true') {
+        print "<select class='supplier-select form-control' name='delivery_staff' style='width:150px' required>
+                        <option value=''>Please select</option>";
+
+                        $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
+                        while ($man = mysqli_fetch_object($objs)) {
+                          print "<option ";
+                          // if($man->name == $sm) print "selected";
+                          print ">$man->name</option>";
+                        }
+                    print "</select>";
+    }
+                            ?>
+                            </td>
+    <?php 
+    if($order == 'true' || $pending == 'true') {
+        print "<td><button class='btn btn-success' type='submit' name='deliver'>Deliver</button></td>"; 
+    }
+    ?>
+                    </tr></table>
+</div>
+</form>
+
+
+<?php
+
+// if (isset($_POST['deliver'])) {
+//     $post = $_POST;
+//     // dd($post);
+//     foreach ($post['iid'] as $key => $qty) {
+//         if($qty > 0){
+//             $ii = R::load("invoice_item", $key);
+//             $inv = R::load("invoice", $ii->invoice_id);
+//             update("invoice_item", "delivered=quantity, delivered_by=".uid().", delivered_at=NOW(),delivery_staff='$post[delivery_staff]'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
+//             insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$key, $qty, ".uid().",'$post[delivery_staff]'");
+//         }
+//     }
+// }
+
+if (isset($post->deliver) || isset($_POST['deliver'])) {
+    $post_data = isset($_POST['deliver']) ? $_POST : (array)$post;
+    // dd($post_data);
+    foreach ($post_data['iid'] as $key => $qty) {
+        if($qty > 0){
+            $ii = R::load("invoice_item", $key);
+            $inv = R::load("invoice", $ii->invoice_id);
+            update("invoice_item", "delivered=quantity, delivered_by=".uid().", delivered_at=NOW(),delivery_staff='{$post_data['delivery_staff']}'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
+            insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$key, $qty, ".uid().",'{$post_data['delivery_staff']}'");
+        }
+    }
+    
+    // If it's an AJAX request, return success message
+    if(isset($_POST['deliver']) && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        echo json_encode(['success' => true, 'message' => 'Delivery marked successfully']);
+        exit;
+    }
+}
+
+if (isset($_POST['collect'])) {
+    $post = $_POST;
+    $obj = R::dispense("stock_collect");
+    $obj->salesman_id = isset($post['salesman'])?$post['salesman']:0;
+    if(isset($post['collect'])){
+      $obj->delivery_staff = $post['delivery_staff'];
+      $obj->date = today();
+      $obj->created_by = uid();
+      // $obj->due_date = $post->due_date;
+      // $obj->delivery_date = $post->delivery_date;
+      // $obj->note = $post->note;
+  
+      $stored = false;
+  
+      foreach ($post['variance'] as $id => $qty) {
+        if($qty == 0) continue;
+        if(!$stored){ R::store($obj); $stored = true; }
+        $variance = R::load("product_variance", $id);
+        $product = R::load("product", $variance->product_id);
+        $ii = R::dispense("stock_collect_item");
+  
+        $ii->stock_collect_id = $obj->id;
+        $ii->product_id = $product->id;
+        $ii->product_variance_id = $variance->id;
+        $ii->quantity = $qty;
+        $ii->price = $variance->price;
+        $ii->cost = $variance->cost;
+        $ii->name = $product->name;
+        $ii->description = "$variance->particulars $variance->size x $variance->unit";
+        $ii->created_by = uid();
+  
+        R::store($ii);
+      }
+  
+      redir("?");
+    }
+  }
+  
+
+if(isset($_POST['update_delivery_date'])){
+    $post = $_POST;
+    $ii = R::load('invoice_item', $post['id']);    
+    $ii->delivery_date = $post['date'];
+    dd($ii);
+    R::store($ii);
+}
+
+if (isset($_POST['save'])) {
+    $post = $_POST;
+  $obj = R::dispense("stock_collect");
+  $obj->salesman_id = isset($post['salesman'])?$post['salesman']:0;
+  if(isset($post['save'])){
+    $obj->delivery_staff = $post['delivery_staff'];
+    $obj->date = today();
+    $obj->created_by = uid();
+    // $obj->due_date = $post->due_date;
+    // $obj->delivery_date = $post->delivery_date;
+    // $obj->note = $post->note;
+
+    $stored = false;
+
+    foreach ($post['variance'] as $id => $qty) {
+      if($qty == 0) continue;
+      if(!$stored){ R::store($obj); $stored = true; }
+      $variance = R::load("product_variance", $id);
+      $product = R::load("product", $variance->product_id);
+      $ii = R::dispense("stock_collect_item");
+
+      $ii->stock_collect_id = $obj->id;
+      $ii->product_id = $product->id;
+      $ii->product_variance_id = $variance->id;
+      $ii->quantity = $qty;
+      $ii->price = $variance->price;
+      $ii->cost = $variance->cost;
+      $ii->name = $product->name;
+      $ii->description = "$variance->particulars $variance->size x $variance->unit";
+      $ii->created_by = uid();
+
+      R::store($ii);
+    }
+
+    redir(ROOT."/delivery?s=$obj->delivery_staff");
+  }
+}
+?>

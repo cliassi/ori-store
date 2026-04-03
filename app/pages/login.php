@@ -7,6 +7,8 @@ if(isset($get->logout)){
   }
   $_SESSION[ROOT.'_loggedin'] = false;
   unset($_SESSION[ROOT.'_loggedin']);
+  unset($_SESSION['branch_id']);
+  unset($_SESSION['branch_name']);
   unset($_SESSION);
   redir(ROOT);
 }
@@ -100,7 +102,7 @@ function _checkLogin($username, $password, $remember) {
     if($user->num_rows){
       $u = mysqli_fetch_object($user);
       if($u->u_failed_attempt >= 3 && $u->u_status == 1){
-        update("sys_user", "u_status = 0", "`u_username` = '{$username}'");
+        // update("sys_user", "u_status = 0", "`u_username` = '{$username}'");
       } else{
         $failed_attempt = $u->u_failed_attempt + 1;
         update("sys_user", "u_failed_attempt=$failed_attempt", "`u_username` = '{$username}'");

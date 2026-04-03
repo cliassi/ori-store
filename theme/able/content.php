@@ -29,12 +29,15 @@
 				</ul>
 		  </div>
 		</section>
+		
 	</div>
 	<div class='col-2'>
-		<a data-bs-toggle='modal' data-bs-target='#orderModal'>
-	    <span class='cart' style="float: right; font-size: 3rem; margin-top: -15px;"><i class='fas fa-shopping-cart'></i></span>
-	  </a>
-  </div>
+		<a data-bs-toggle='modal' data-bs-target='#orderModal' style="position: absolute;
+    z-index: 999999;
+    right: 0px;">
+			<span class='cart' style="float: right; font-size: 3rem; margin-top: -15px;"><i class='fas fa-shopping-cart'></i></span>
+		</a>
+  	</div>
 </div>
 
 <div class='product-slider'>
@@ -76,6 +79,8 @@ foreach($products as $product){
 ?>
 </div>
 
+
+
 <form method='post' id='form-delete'>
 	<input type='hidden' id='id-to-delete' name='idToDelete'>
 </form>
@@ -85,8 +90,30 @@ foreach($products as $product){
 <form method='post' id='form-delete-3'>
 	<input type='hidden' id='id-to-delete-3' name='idToDelete3'>
 </form>
-<?php require_once 'app/pages/' . $page . '.php'; ?>
+<form method='post' id='form-delete-4'>
+	<input type='hidden' id='id-to-delete-4' name='idToDelete4'>
+</form>
+<div id="search-result-wrapper"></div>
+<div id="content-wrapper" style="padding-top: 5px; background-color: #fff;">
+	<div class='text-center mt-1 mb-2'>
+		<strong>
+			<?php
+			if(isset($_SESSION['branch_name'])){
+				$branches = R::find('branch');
+				print "<a href='/store/division_branch?tab=branches' style='background-color:rgb(14, 174, 223); padding: 5px 10px; font-weight: 700; color:#fff; border-radius: 5px;'>{$_SESSION['branch_name']}</a>";
+			} elseif($page != 'division_branch'){
+				redir("/store/division_branch?tab=branches");
+			} else{
+			}
+			?>
+		</strong>
+	</div>
+<?php 
 
+  $branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
+
+require_once 'app/pages/' . $page . '.php'; ?>
+</div>
 <script type="text/javascript">
 
 	var splide = new Splide( '.splide', {
@@ -137,12 +164,30 @@ foreach($products as $product){
 			$("#form-delete-3").submit();
 		}
 	}
+	function deleteConfirmation4(id){
+		if(confirm("Are you sure?")){
+			$("#id-to-delete-4").val(id);
+			$("#form-delete-4").submit();
+		}
+	}
 
 	$(".radio-label span").click(function(){
 		$(this).parent().find('input').trigger('click');
 	});
 
-	$(document).ready(function () {
+$(document).ready(function () {
+	<?php if(!isset($_SESSION['branch_id'])){ ?>
+		
+					Swal.fire({
+						title: 'Branch Not Selected',
+						text: 'Please select a branch to continue.',
+						icon: 'warning',
+						showCancelButton: true,
+						confirmButtonText: 'OK'
+					}).then((result) => {
+						
+					});
+	<?php }	?>
   $('.protected-link').on('click', function (e) {
 	    e.preventDefault(); // Prevent the default action of the link
 	    

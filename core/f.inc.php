@@ -1127,7 +1127,6 @@
 		return getFieldValue("purchase_supplier", "id", "s_user_id=".uid());
 	}
 	function uid(){
-		return 1;
 		return iss(APP.'_id', 0);
 	}
 	function aid(){

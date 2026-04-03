@@ -2,18 +2,18 @@
 if(METHOD == 'add'){
  
 } else{ 
-  if(isset($get->token)){
-    $token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
-    if($token){
-      R::trash($token);
-      if(isset($get->del) && isset($get->id)){
-        $st = R::load('stock_collect', $get->id);
-        del("stock_collect_item", "stock_collect_id=".($get->id + 0));
-        R::trash($st);
-        redir("?s=$get->s");
-      }
-    }
-  }
+  // if(isset($get->token)){
+  //   $token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
+  //   if($token){
+  //     R::trash($token);
+  //     if(isset($get->del) && isset($get->id)){
+  //       $st = R::load('stock_collect', $get->id);
+  //       del("stock_collect_item", "stock_collect_id=".($get->id + 0));
+  //       R::trash($st);
+  //       redir("?s=$get->s");
+  //     }
+  //   }
+  // }
   if(isset($post->incentive)){
     // vd($post);
     update("staff_salary", "incentive='$post->incentive'", "name='$post->name'");
@@ -29,15 +29,29 @@ if(METHOD == 'add'){
 
     R::store($incentive);
   }
+
+  if(isset($get->token)){
+    $token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
+    if($token){
+      R::trash($token);
+      if(isset($get->del) && isset($get->id)){
+        $st = R::load('staff_salary', $get->id);
+        R::trash($st);
+        redir("?");
+      }
+    }
+  }
+  
   if (isset($post->save)) {
     try {
       if(isset($post->id)){
-        $staff = R::load('staff', $post->id);
+        $staff = R::load('staff_salary', $post->id);
       } else{
-        $staff = R::dispense('staff');
+        $staff = R::dispense('staff_salary');
       }
-      $staff->name = $post->name;
-      $staff->basic = $post->basic;//$post->index;
+      $staff->name = trim($post->name);
+      $staff->category = 'Delivery Staff';
+      $staff->incentive = $post->incentive;//$post->index;
       R::store($staff);
 
       if (count($_FILES) > 0) {
@@ -168,25 +182,10 @@ if(METHOD == 'add'){
                   <?php
                     if(isset($get->s) && $get->s != 'all') print "<span id='selected-staff'>$get->s</span>";
                   ?>
-                  <span class='float-right frht'>
-                  <?php
-                    print "<select class='supplier-select w100' name='delivery_staff' required>
-                    <option value=''>Please select</option>";
-
-                    $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
-                    while ($man = mysqli_fetch_object($objs)) {
-                      print "<option ";
-                      // if($man->name == $sm) print "selected";
-                      print ">$man->name</option>";
-                    }
-                print "</select>";
-                  ?>
-                </span>
                 </th>
-                <th>Stock Collect</th>
-                <th>Stock Delivered</th>
-                <th>Stock Return & Damaged</th>
-                <th>Pending Return</th>
+                <th>Stock Returned</th>
+                <th>Incentive</th>
+                <!-- <th>Damaged</th> -->
               </tr>
             </thead>
             <tbody>
@@ -219,13 +218,16 @@ AND invoice_item.product_variance_id=ii.product_variance_id) delivered", "`stock
   print "<td>$i</td>";
   print "<td>".df($tran->date)."</td>";
   print "<td class='text-center'><div class='cta-container'><span class='ctas'>".($tran->src == 'invoice' ? 'INV' : 'STC').zerofill($tran->id, 5)."</span><div class='cta-menu'><a href='?s={$get->s}&del&id=$tran->id' class='protected-link'><i class='fas fa-trash-alt'></i></a></div></div></td>";
-  $particular = $collect = $delivered = $returened = $pending = $damaged = "";
+  $particular = $collect = $delivered = $incentive = $pending = $damaged = $returened = "";
   while ($item = mysqli_fetch_object($stock)) {
     $particular .= "<div class='order-item'>$item->name $item->description $item->size x $item->unit</div>";
-    $collect .= "<div class='order-item'>$item->quantity</div>";
-    $delivered .= "<div class='order-item'>$item->delivered</div>";
-    $returened .= "<div class='order-item'><input value='".($item->returned_quantity ? $item->returned_quantity : $item->quantity-$item->delivered)."' id='return-{$item->id}' class='w64'> <span class='damage-item' title='$item->damaged_cause'>".($item->damaged_quantity ? $item->damaged_quantity : '&nbsp;')."</span> <span class='pad-right-5'></span><a data-bs-toggle='modal' data-bs-target='#stockReturn' onClick='setId($item->id)' data-quantity class='btn btn-return btn-sm btn-".($item->returned_quantity==0?'warning':'success')."' data-id='$item->id'><i class='fas fa-people-carry'></i></a></div>";
-    $pending .= "<div class='order-item' title='$item->quantity-$item->returned_quantity-$item->delivered-$item->damaged_quantity'>".($item->quantity-$item->returned_quantity-$item->delivered-$item->damaged_quantity)."</div>";
+    // $collect .= "<div class='order-item'>$item->quantity</div>";
+    $returened .= "<div class='order-item'>".($item->quantity - $item->returned_quantity)."</div>";
+    $incentive .= "<div class='order-item'>0</div>";
+    // $returened .= "<div class='order-item'><input value='".($item->returned_quantity ? $item->returned_quantity : $item->quantity-$item->delivered)."' id='return-{$item->id}' class='w64'> <span class='damage-item' title='$item->damaged_cause'>".($item->damaged_quantity ? $item->damaged_quantity : '&nbsp;')."</span> <span class='pad-right-5'></span><a data-bs-toggle='modal' data-bs-target='#stockReturn' onClick='setId($item->id)' data-quantity class='btn btn-return btn-sm btn-".($item->returned_quantity==0?'warning':'success')."' data-id='$item->id'><i class='fas fa-people-carry'></i></a></div>";
+    // $returened .= "<div class='order-item'><input value='".($item->returned_quantity)."' id='return-{$item->id}' class='w64'> <span class='damage-item hidden' title='$item->damaged_cause'>".($item->damaged_quantity ? $item->damaged_quantity : '&nbsp;')."</span> <span class='pad-right-5'></span><a data-bs-toggle='modal' data-bs-target='#stockReturn' onClick='setId($item->id)' data-quantity class='btn btn-return btn-sm btn-".($item->returned_quantity==0?'warning':'success')."' data-id='$item->id'><i class='fas fa-people-carry'></i></a></div>";
+    // $pending .= "<div class='order-item' title='$item->damaged_cause'><b class='damage-item'>".($item->damaged_quantity)."</b></div>";
+    // $pending .= "<div class='order-item' title='$item->quantity-$item->returned_quantity-$item->delivered-$item->damaged_quantity'>".($item->quantity-$item->returned_quantity-$item->delivered-$item->damaged_quantity)."</div>";
     // print "<td class='text-center'><div class='order-item'>$tran->particulars2</div></td>";
     // print "<td class='text-center'>$tran->particulars3</td>";
     // print "<td class='text-right'>$tran->particulars4</td>";
@@ -233,10 +235,10 @@ AND invoice_item.product_variance_id=ii.product_variance_id) delivered", "`stock
   }
 
   print "<td>$particular</td>";
-  print "<td class='text-center'>$collect</td>";
-  print "<td class='text-center'>$delivered</td>";
-  print "<td class='text-right'>$returened</td>";
-  print "<td class='text-center'>$pending</td>";
+  // print "<td class='text-center'>$collect</td>";
+  print "<td class='text-center'>$returened</td>";
+  print "<td class='text-center'>$incentive</td>";
+  // print "<td class='text-center'>$pending</td>";
   sum('profit', $tran->profit);
   sum('incentive', $tran->profit * (5 / 100));
   sum('balance', $tran->profit * (5 / 100));
@@ -270,11 +272,11 @@ print "</tbody>";
           </table>
           <?php
           } else{
-            $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
+            $objs = select('distinct id, name, incentive', 'staff_salary', "category='Delivery Staff'");
             print "<div class='card-header'>
             <div class='row'>
             <div class='col-6'><h5>Staff</h5></div>
-            <div class='col-6 text-right'>
+            <div class='col-6 text-center'>
             </div>
             </div>
             <div class='card-body'>
@@ -285,6 +287,8 @@ print "</tbody>";
             <th class='w100'>No</th>
             <th>Name</th>
             <th class='w150'>Incentive %</th>
+                        <th class='w100'><span data-bs-toggle='modal' data-bs-target='#productFrommOdal' class='frht btn btn-sm btn-primary'><i class='fas fa-plus'></i> Staff</span></th>
+
             </tr>
             </thead>
             <tbody>";
@@ -293,7 +297,10 @@ print "</tbody>";
               print "<tr>";
               print "<td>$i</td>";
               print "<td class='name'><a href='?s=$obj->name'><u>$obj->name</u></a></td>";
+              // print "<td class='name'><u>$obj->name</u></a></td>";
               print "<td class='incentive' data-name='$obj->name'>$obj->incentive</td>";
+              print "<td><a class='btn btn-primary btn-sm' data-id='$obj->id' data-name='$obj->name' data-incentive='$obj->incentive' onClick='setStaff(this)' data-bs-toggle='modal' data-bs-target='#productFrommOdal'><i class='fas fa-edit'></i></a> <a href='?del&id=$obj->id' class='protected-link btn btn-danger btn-sm'><i class='fas fa-trash'></i></a> </td>";
+
               print "</tr>";
               $i++;
             }
@@ -333,7 +340,7 @@ print "</tbody>";
                     </div> 
                     <div class='col-sm-12'>              
                       <div class='form-group hidden' id="damaged-particulars">
-                        <lable>Paticulars</lable>
+                        <lable>Paticulars & Settlement</lable>
                         <textarea class='form-control' name='particulars'></textarea>
                       </div>
                     </div>     
@@ -348,6 +355,69 @@ print "</tbody>";
             </div>
           </form>
         </div>    
+
+        <div id="productFrommOdal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="productFrommOdalLabel" aria-hidden="true">
+          <form class="forms-sample" method="post" enctype="multipart/form-data">
+            <input type='hidden' name='id' class='id'>
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="productFrommOdalLabel">Add Staff <span></span></h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class='form-group'>
+                    <lable>Name</lable>
+                      <input class='form-control' required name='name' id="name">
+                  </div>
+                  <br><div class='row'>
+                    <div class='col-sm-3'>              
+                      <div class='form-group'>
+                        <lable>Incentive</lable>
+                        <input class='form-control' type="number" step="1" required name='incentive' id="incentive">
+                      </div>
+                    </div>
+                  </div>
+                  <!-- <div class='row'>
+                    <div class='col-sm-3'>              
+                      <div class='form-group'>
+                        <lable>Basic Salary</lable>
+                        <input class='form-control' type="number" step="1" required name='basic' id="size">
+                      </div>
+                    </div>
+                    <div class='col-sm-3'>              
+                      <div class='form-group'>
+                        <lable>Days</lable>
+                        <input class='form-control' type="number" step='1' name='days' id="days">
+                      </div>
+                    </div><div class='col-sm-6'>
+                        <lable>Staff Photo</lable>
+                      <input type='file' class='form-control' required  name='image' id="image">
+                    </div>
+                  </div> -->
+                  <br>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <button type="submit" name='save' class="btn btn-primary">Save changes</button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>    
+
+        <script type="text/javascript">
+          function setStaff(el){
+            const id = $(el).data('id');
+            const name = $(el).data('name');
+            const incentive = $(el).data('incentive');
+
+            console.log(id, name, incentive);
+            $(".id").val(id);
+            $("#name").val(name);
+            $("#incentive").val(incentive);
+          }
+        </script>
   <?php } ?>
 
   
@@ -374,7 +444,8 @@ print "</tbody>";
       const ret = $("#return-" + id).val();
       $("#stock_item_id").val(id);
       $("#returning-quantity").data('quantity', ret);
-      $("#returning-quantity").val(ret);
+      // $("#returning-quantity").val(ret);
+      $("#returning-quantity").val(0);
     }
 
     $("#damaged-quantity").keyup(function(){

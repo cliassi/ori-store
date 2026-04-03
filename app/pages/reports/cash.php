@@ -142,7 +142,7 @@ if(isset($post->save_carwash)){
 	$carwash = R::dispense("cw_sites");
 	$carwash->name = $post->name;
 	$carwash->entry_by = uid();
-
+	$carwash->branch_id = $branch_id;
 	R::store($carwash);
 }
 
@@ -150,6 +150,7 @@ if(isset($post->save)){
 	$object = R::dispense("cw_customer");
 	$function = 'add';
 	$post->company = $id;
+	$post->branch_id = $branch_id;
 	require_once("model/cw_customer.php");
 }
 
@@ -158,6 +159,7 @@ if(isset($post->save_cash)){
 	$deposit = R::dispense("cw_cash");
 	$deposit->date = isset($post->date)?$post->date:today();
 	$deposit->particulars = $post->particulars;
+	$deposit->branch_id = $branch_id;
 	$deposit->amount = $post->amount;
 	$deposit->company = $get->cw;
 	$deposit->entry_by = uid();
@@ -165,12 +167,38 @@ if(isset($post->save_cash)){
 	R::store($deposit);
 	redir("?");
 }
+
+if(isset($post->save_outlet)){
+	$cw_cash = R::dispense("cw_cash");
+	$cw_cash->date = isset($post->date3)?$post->date3:today();
+	$cw_cash->particulars = $post->particulars;
+	$cw_cash->amount = 0 - $post->amount;
+	$cw_cash->company = $get->cw;
+	$cw_cash->branch_id = $branch_id;
+	$cw_cash->entry_by = uid();
+	$cw_cash->entry_time = now();
+	R::store($cw_cash);
+
+	$cw_outlet = R::dispense("cw_outlet");
+	$cw_outlet->date = isset($post->date3)?$post->date3:today();
+	$cw_outlet->particulars = $post->particulars;
+	$cw_outlet->amount = $post->amount;
+	$cw_outlet->company = $get->cw;
+	$cw_outlet->branch_id = $branch_id;
+	$cw_outlet->entry_by = uid();
+	$cw_outlet->entry_time = now();
+	$cw_outlet->cash_id = $cw_cash->id;
+	R::store($cw_outlet);
+	redir("?");
+}
+
 if(isset($post->save_bank)){
 	$cw_cash = R::dispense("cw_cash");
 	$cw_cash->date = isset($post->date2)?$post->date2:today();
 	$cw_cash->particulars = $post->particulars;
 	$cw_cash->amount = 0 - $post->amount;
 	$cw_cash->company = $get->cw;
+	$cw_cash->branch_id = $branch_id;
 	$cw_cash->entry_by = uid();
 	$cw_cash->entry_time = now();
 	R::store($cw_cash);
@@ -180,6 +208,7 @@ if(isset($post->save_bank)){
 	$cw_bank->particulars = $post->particulars;
 	$cw_bank->amount = $post->amount;
 	$cw_bank->company = $get->cw;
+	$cw_bank->branch_id = $branch_id;
 	$cw_bank->entry_by = uid();
 	$cw_bank->entry_time = now();
 	$cw_bank->cash_id = $cw_cash->id;
@@ -193,6 +222,7 @@ if(isset($post->save_bank_deposit)){
 	$cw_bank->particulars = $post->particulars;
 	$cw_bank->amount = $post->amount;
 	$cw_bank->company = $get->cw;
+	$cw_bank->branch_id = $branch_id;
 	$cw_bank->entry_by = uid();
 	$cw_bank->entry_time = now();
 	R::store($cw_bank);
@@ -207,7 +237,7 @@ if(isset($post->withdraw)){
 	$withdraw->date = isset($post->date2)?(nn($post->date2)?$post->date2:today()):today();
 	$withdraw->amount = 0 - $post->amount;
 	$withdraw->company = $get->cw;
-	// $withdraw->account = $post->account;
+	$withdraw->branch_id = $branch_id;
 	$withdraw->entry_by = uid();
 	$withdraw->entry_time = now();
 	R::store($withdraw);
@@ -216,6 +246,42 @@ if(isset($post->withdraw)){
 
 	$d = isset($get->d)?$get->d:subDay(5);
 	$t = isset($get->t)?$get->t:today();
+
+
+	// dd([uid(), isset($get->approve) ,isset($get->id)]);
+if(uid()==1 && isset($get->approve) && isset($get->id)){
+	if(in_array($get->approve, ['payment_bank', 'payment_cash'])){
+		$get->approve = 'payment';
+	}
+	if(in_array($get->approve, ['expense_account_entry_bank', 'expense_account_entry_cash', 'account_entry_cash'])){
+		$get->approve = 'expense_account_entry';
+	}
+	$object = R::load($get->approve, $get->id);
+	$object->status = 'Approved';
+	// $object->trash = 1;
+	R::store($object);
+	redir("?d=$d&t=$t");
+}	
+if(uid()==1 && isset($post->approvem)){
+
+	foreach($post->approvem as $tv){
+		$type_id = explode("-", $tv);
+		$get->approve = $type_id[0];
+		$get->id = $type_id[1];
+		if(in_array($get->approve, ['payment_bank', 'payment_cash'])){
+			$get->approve = 'payment';
+		}
+		if(in_array($get->approve, ['expense_account_entry_bank', 'expense_account_entry_cash', 'account_entry_cash'])){
+			$get->approve = 'expense_account_entry';
+		}
+		$object = R::load($get->approve, $get->id);
+		$object->status = 'Approved';
+		// $object->trash = 1;
+		R::store($object);
+	}
+	redir("?d=$d&t=$t");
+}	
+
 
 if(isset($get->token)){
 	$token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
@@ -315,7 +381,7 @@ if(isset($get->copy) && $get->copy > 0){
 if(isset($get->cw)){
 	$company = R::load("cw_company", $get->cw); 
 	print "<h3><strong>$company->name</strong> Petty Cash Report</h3>";
-	$d = isset($get->d)?$get->d:firstDay();
+	$d = isset($get->d)?$get->d:addDay(-5);
 	$t = isset($get->t)?$get->t:today();
 	print "<div class='row'>";
 	print "<div class='col-md-5'>";
@@ -327,13 +393,14 @@ if(isset($get->cw)){
 	print "</form>";
 	print "</div>";
 	print "<div class='col-md-6'>";
-	if(isUserIn(['superadmin','amla','orange'])){
+	if(isUserIn(['superadmin','amla','orange', 'parvez'])){
 		print "<a data-bs-toggle='modal' data-bs-target='.withdraw' class='btn btn-primary'>Cash Withdraw</a>".space(5);
  	} 
-	if(isUserIn(['superadmin','amla','orange'])){
+	if(isUserIn(['superadmin','amla','orange', 'parvez'])){
 		print "<a data-bs-toggle='modal' data-bs-target='.cash' class='btn btn-primary'>Add Cash</a>".space(5);
 		// print "<a data-bs-toggle='modal' data-bs-target='.bankdeposit' class='btn btn-success'>Bank Deposit</a>".space(5);
-		print "<a data-bs-toggle='modal' data-bs-target='.bank' class='btn btn-secondary'>Petty Cash to Bank</a>";
+		print "<a data-bs-toggle='modal' data-bs-target='.outlet' class='btn btn-secondary'>Petty Cash to Outlet Account</a>";
+		// print "<a data-bs-toggle='modal' data-bs-target='.bank' class='btn btn-secondary'>Petty Cash to Bank</a>";
  	} 
 	print "</div>";
 	print "<div class='col-md-1'>";
@@ -343,36 +410,82 @@ if(isset($get->cw)){
 
 							
 
-	$collection = getSum("cw_payment", "amount", "date<'$d'");
-	$handover_cash = getSum("bd_handover", "amount", "amount>0 AND date<'$d'");
-	$handover_bank = getSum("bd_handover", "bank_amount", "bank_amount>0 AND date<'$d'");
-	$withdraw = getSum("cw_cash_withdraw", "amount", "date<'$d'");
-	// $expense_entry = getSum("expense_account_entry", "amount", "payment_method='Cash' AND tran_type='Debit' AND company=$company->id AND entry_time<'$d'");
-	$expense_entry = getSum("expense_account_entry", "amount", "tran_type='Debit' AND company=$company->id AND expense_date<'$d'");
+	$collection = getSum("cw_payment", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND date<'$d'");
+	$handover_cash = getSum("bd_handover", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND amount>0 AND date<'$d'");
+	$handover_bank = getSum("bd_handover", "bank_amount", "(branch_id = $branch_id OR branch_id IS NULL) AND bank_amount>0 AND date<'$d'");
+	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND date<'$d'");
+	// $withdraw2 = getSum('cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id
+			// $expense_entry = getSum("expense_account_entry", "amount", "payment_method='Cash' AND tran_type='Debit' AND company=$company->id AND entry_time<'$d'");
+	$expense_entry = getSum("expense_account_entry", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND tran_type='Debit' AND company=$company->id AND expense_date<'$d'");
 
-	$total = 0; //$handover_cash - $expense_entry;
+	$summary2 = mysqli_fetch_object(select("SELECT 
+    (SELECT IFNULL(SUM(amount),0)
+        FROM cw_cash
+        WHERE (branch_id = $branch_id OR branch_id IS NULL)
+          AND company = $company->id
+          AND `date` < '$d'
+    ) add_cash,
+
+    (SELECT IFNULL(SUM(amount),0)
+        FROM bd_handover
+        WHERE (branch_id = $branch_id OR branch_id IS NULL)
+          AND `date` < '$d'
+    ) cash_handover,
+
+    (SELECT IFNULL(SUM(amount),0)
+        FROM expense_account_entry
+        WHERE (branch_id = $branch_id OR branch_id IS NULL)
+          AND company = $company->id
+          AND payment_method = 'Cash'
+          AND tran_type = 'Debit'
+          AND expense_date < '$d'
+    ) cash_expense,
+
+    (SELECT IFNULL(SUM(amount),0)
+        FROM payment
+        WHERE (branch_id = $branch_id OR branch_id IS NULL)
+          AND payment_method = 'Cash'
+          AND `date` < '$d'
+    ) cash_payment,
+
+    (SELECT IFNULL(SUM(amount),0)
+        FROM cw_cash_withdraw
+        WHERE (branch_id = $branch_id OR branch_id IS NULL)
+          AND company = $company->id
+          AND `date` < '$d'
+    ) withdraw
+"));
+
+	$total = $summary2->cash_handover
+		+ $summary2->add_cash
+		- abs($summary2->withdraw)
+		- $summary2->cash_payment
+		- $summary2->cash_expense;
 
 	// print "$handover_cash - $withdraw - $cash_expenditure + $loan->total - $bank_deposit - $hotel_payment + $cash - $expense_entry - $hotel_expense";
-
+	//CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) 
+	//CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) 
 	$trans = select("SELECT * FROM (
-			SELECT '' se, 'bd_handover' source, id, amount, `date`, created_at entry_time, created_by entry_by, 'Bank & Cash Handover from Daily Collection' particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM bd_handover WHERE (amount>0 OR bank_amount > 0) AND date BETWEEN '$d' AND '$t'
+			SELECT '' se, 'bd_handover' source, id, amount, concat(`date`, ' 23:59:59') `date`, created_at entry_time, created_by entry_by, 'Bank & Cash Handover from Daily Collection' particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM bd_handover WHERE branch_id=$branch_id AND (amount>0 OR bank_amount > 0) AND date BETWEEN '$d' AND '$t'
 			UNION
-			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE  amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
+			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE branch_id=$branch_id AND amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.payment_method='Cash' AND e.tran_type='Debit' AND e.company=$company->id AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
+			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.payment_method='Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.payment_method<>'Cash' AND e.tran_type='Debit' AND e.company=$company->id AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
+			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.payment_method<>'Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
 			UNION
-			SELECT '' se, 'cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id
+			SELECT '' se, 'cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t') AND company=$company->id
 			UNION
-			SELECT '' se, 'cw_cash' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash WHERE (date BETWEEN '$d' AND '$t')  AND company=$company->id AND amount>0
+			SELECT '' se, 'cw_cash' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND company=$company->id AND amount>0
 			UNION
-			SELECT cash_id se, 'cw_bank' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_bank WHERE (date BETWEEN '$d' AND '$t')  AND company=$company->id
+			SELECT '' se, 'cw_outlet' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_outlet WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND company=$company->id
 			UNION
-			SELECT '' se, 'payment_cash' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE (date BETWEEN '$d' AND '$t')  AND payment_method='Cash'
+			SELECT cash_id se, 'cw_bank' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_bank WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND company=$company->id
 			UNION
-			SELECT '' se, 'payment_bank' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE (date BETWEEN '$d' AND '$t')  AND payment_method='Bank'
-		) t ORDER BY entry_time");
+			SELECT '' se, 'payment_cash' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Cash'
+			UNION
+			SELECT '' se, 'payment_bank' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Bank'
+		) t ORDER BY date");
 
 // print "SELECT 'hotel_statement_worker_payment' source, p.id, p.amount, p.date, p.entry_time, CONCAT('<u>', h.name, '</u> er staff <u>', w.name, '</u>, ', DATE_FORMAT(CONCAT(s.month,'-01'), '%b %Y'), ' maser salary ', p.particulars), IFNULL(p.approved_by, 'Pending') status, '' ref FROM `hotel_statement_worker_payment` p, `hotel_statement_worker` w, `hotel_statement` s, `hotel` h WHERE p.worker=w.id AND w.statement=s.id AND s.hotel=h.id AND p.date>'$hotel_start_date' AND (p.date BETWEEN '$d' AND '$t') AND (p.particulars LIKE 'Petty Cash theke%' OR p.particulars LIKE 'Me2 te%')";
 
@@ -386,7 +499,7 @@ print "<form method='post'>";
 		print "<th>Del</th>";
 	}
 	print "</tr>";
-	// print "<tr><th colspan='8'>Opening Balance</th><th>".nf($total)."</th><th colspan='2'></th></tr>";
+	print "<tr><th colspan='10'>Opening Balance</th><th>".nf($total)."</th><th colspan='2'></th></tr>";
 	$i = 1;
 	// vd($opening);
 	$userList = userList();
@@ -446,13 +559,13 @@ print "<form method='post'>";
 			$handover = R::load("bd_handover", $tr->id);
 			sum('bank', $handover->bank_amount);
 			sum('banko', $handover->bank_amount);
-			$r .= "<td class='right'>".nf($handover->bank_amount)."</td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td class='right'>".nf($handover->bank_amount)."</td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total += $tr->amount;
 		} elseif($tr->source == 'cw_cash'){
 			sum('cash', $tr->amount);
 			// if($tr->amount<0) sum('bank', 0 - $tr->amount);
 			if($tr->amount>0)
-			$r .= "<td class='right'></td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td class='right'></td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total += $tr->amount;
 		} elseif($tr->source == 'cw_bank'){
 			// if($tr->amount<0) sum('bank', 0 - $tr->amount);
@@ -464,15 +577,15 @@ print "<form method='post'>";
 			} else{
 				$r .= "<td></td>";
 			}
-			$r .= "<td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			sum('bank', $tr->amount);
 			sum('banko', $tr->amount);
 			// $total += $tr->amount;
 		} elseif($tr->source == 'payment_cash'){
-			$r .= "<td></td><td class='right'>".nf(0-$tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td></td><td class='right'>".nf(0-$tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= $tr->amount;
 		} elseif($tr->source == 'payment_bank'){
-			$r .= "<td class='right'>".nf(0-$tr->amount)."</td><td></td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td class='right'>".nf(0-$tr->amount)."</td><td></td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			// $total -= $tr->amount;
 
 			sum('bank', 0-$tr->amount);
@@ -480,22 +593,25 @@ print "<form method='post'>";
 		} elseif($tr->source == 'cw_payment'){
 			$r .= "<td></td><td class='right'>".nf($tr->amount)."</td><td></td><td></td><td></td><td class='center'></td>";
 			// $total += $tr->amount;
-		} elseif($tr->source == 'expense_account_entry'){
+		} elseif($tr->source == 'expense_account_entry' || $tr->source == 'cw_outlet'){
 			$r .= "<td></td><td></td>";
-			$r .= "<td class='right' style='color:#FF0000'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td class='right' style='color:#FF0000'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= $tr->amount;
+			if($tr->source == 'cw_outlet'){
+				sum('expense_account_entry', abs($tr->amount));
+			}
 		} elseif($tr->source == 'expense_account_entry_bank'){
 			$r .= "<td></td><td></td>";
-			$r .= "<td class='right' style='color:#FFAE42'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td class='right' style='color:#FFAE42'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			// $total -= $tr->amount;
 			sum('bank', 0 - $tr->amount);
 		} elseif($tr->source == 'cw_cash_withdraw'){
 			$r .= "<td></td>";
-			$r .= "<td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
-			$total -= $tr->amount;
+			$r .= "<td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$total -= abs($tr->amount);
 		} else{
 			$r .= "<td></td><td></td>";
-			$r .= "<td class='right'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
+			$r .= "<td class='right'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= $tr->amount;
 		}
 		if(strpos($tr->source, 'bank') !== FALSE){
@@ -536,7 +652,7 @@ print "<form method='post'>";
 		$i++;
 	}
 
-	print "<tr><th colspan='5'></th><th class='right'>".nf(sum('banko') - sum('banko'))."</th><th class='right'>".nf(sum('bd_handover'))."</th><th class='right'>".nf(sum('expense_account_entry') + sum('expense_account_entry_bank'))."</th><th class='right'>Balance</th><th class='right'>".nf(sum('bank'))."</th><th class='right'>".nf($total)."</th></tr>";
+	print "<tr><th colspan='5'></th><th class='right'>".nf(sum('banko') - sum('banko'))."</th><th class='right'>".nf(sum('bd_handover'))."</th><th class='right' title='expense_account_entry'>".nf(sum('expense_account_entry') + sum('expense_account_entry_bank'))."</th><th class='right'>Balance</th><th class='right'>".nf(sum('bank'))."</th><th class='right'>".nf($total)."</th></tr>";
 
 	if(uid() == 1){
 		print "<tr><td colspan='13' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";
@@ -787,7 +903,7 @@ closeForm();
 	        		 <!-- <div><input type='radio' name='r'>Madam er may bank  personal account theke petty cash a taka add cash kora hoyese Rm </div> -->
 	        		</div>
 	        		<br>
-	        		<textarea class='form-control' id='add_cash_particulars' name='particulars'>Rm : Cash Investment for</textarea>
+	        		<textarea class='form-control' id='add_cash_particulars' name='particulars'></textarea>
 	        	</th></tr>
 	        </table>
 	      </div>
@@ -801,8 +917,8 @@ closeForm();
 	</div>
 
 
-	<div class="modal fade bank" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
-	  <div class="modal-dialog modal-md" role="document">
+<div class="modal fade bank" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+	<div class="modal-dialog modal-md" role="document">
 	    <div class="modal-content">
 	      <div class="modal-header">
 	        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -830,7 +946,7 @@ closeForm();
 	    </div><!-- /.modal-content -->
 	  </div><!-- /.modal-dialog -->
 	</div>
-	</div>
+</div>
 
 <script type="text/javascript">
 	function setACPart(){
@@ -842,8 +958,41 @@ closeForm();
 	function setBDPart(){
 		$("#bd-particulars").val("Petty Cash Exchcange to Bank Account Rm " + $("#bd-amount").val());
 	}
+	function setOutletPart(){
+		$("#outlet-particulars").val("Petty Cash Exchcange to Outlet Account Rm " + $("#outlet-amount").val());
+	}
 </script>
 
+<div class="modal fade outlet" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">	  
+	<div class="modal-dialog modal-md" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+	        <h4 class="modal-title">Bank Deposit</h4>
+	      </div>
+	      <form method="post">
+	      <div class="modal-body">
+	        <table class="table table-bordered">
+	        	<tr><th>Date</th><th><?php print ds('date3'); ?></th></tr>
+	        	<tr><th>Amount</th><th><input typye='number' class='form-control' required name='amount' id="outlet-amount"  onkeyup="setOutletPart()" min="1" ></th></tr>
+	        	<tr><th>Particulars</th><th>
+	        		<div id="hints">
+	        		 <!-- <div><input type='radio' name='r'>Madam er may bank  personal account theke petty cash a taka add cash kora hoyese Rm </div> -->
+	        		</div>
+	        		<br>
+	        		<textarea class='form-control' id='outlet-particulars' name='particulars'>Petty Cash Exchcange to Outlet Account Rm </textarea>
+	        	</th></tr>
+	        </table>
+	      </div>
+	      <div class="modal-footer">
+	        <button class="btn btn-primary" type="submit" name="save_outlet">Save</button>
+	        <button type="button" data-bs-dismiss="modal" aria-label="Close" class="btn btn-default" data-bs-dismiss="modal">Close</button>
+	      </div>
+	    </form>
+	    </div><!-- /.modal-content -->
+	  </div><!-- /.modal-dialog -->
+	</div>
+</div>
 	<div class="modal fade bankdeposit" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
 	  <div class="modal-dialog modal-md" role="document">
 	    <div class="modal-content">
@@ -898,7 +1047,7 @@ closeForm();
 	        		 <div><input type='radio' name='r'>Madam er may bank  personal account theke petty cash a taka add cash kora hoyese Rm </div>
 	        		</div>
 	        		<br> -->
-	        		<textarea class='form-control' id='withdraw_particulars' required name='particulars'>Rm :  Cash Withdrawal for</textarea>
+	        		<textarea class='form-control' id='withdraw_particulars' required name='particulars'></textarea>
 	        	</th></tr>
 	        </table>
 	      </div>

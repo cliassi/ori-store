@@ -17,18 +17,18 @@ if(uid() == 1 && isset($get->loginas)){
 
 	$user = mysqli_fetch_object($users);
 
-	$_SESSION['app_id'] = $user->id;
-	$_SESSION['app_role'] = $user->role;
-	$_SESSION['app_role_name'] = $user->role_name;
-	$_SESSION['app_fullname'] = $user->u_fullname;
-	$_SESSION['app_pin'] = $user->u_pin;
-	$_SESSION['app_loggedin'] = true;
-	$_SESSION['app_username'] = $user->u_username;
-	$_SESSION['app_username'] = $user->u_username;
-	$_SESSION['app_rolecode'] = $user->code;
+	$_SESSION['store_id'] = $user->id;
+	$_SESSION['store_role'] = $user->role;
+	$_SESSION['store_role_name'] = $user->role_name;
+	$_SESSION['store_fullname'] = $user->u_fullname;
+	$_SESSION['store_pin'] = $user->u_pin;
+	$_SESSION['store_loggedin'] = true;
+	$_SESSION['store_username'] = $user->u_username;
+	$_SESSION['store_username'] = $user->u_username;
+	$_SESSION['store_rolecode'] = $user->code;
 
 
-	redir("/app");
+	redir("/store");
 	/*
 $user = select("u.id AS id, r.id as role, r_name as role_name, u_fullname, u_pin", "sys_role r, sys_user_role ur, `sys_user` u", "u_username = '{$username}' AND u_password = '{$password}' AND r.id=ur_role_id AND u.id=ur_user_id AND u_status = 1 AND r_active = 1 ");
 	if ($user->num_rows>0){
@@ -53,7 +53,7 @@ $users = select("u.*, GROUP_CONCAT(r_name SEPARATOR ', ') AS roles", "sys_user u
 print "<table class='table table-bordered table-striped' width='100%'>";
 //<th>Owner</th><th>Logged In?</th><th>Email</th>
 print "<thead>
-	<th>Sl.</th><th>Name</th><th>Username</th><th>Avatar</th><th>Roles</th><th>User Since</th><th>Status</th><th>Last IP</th><th>Last Login Time</th><th>".options2('user', '', array('add'))."</th>
+	<th>Sl.</th><th>Name</th><th>Username</th><th>PIN</th><th>Password</th><th>Avatar</th><th>Roles</th><th>User Since</th><th>Status</th><th>Last IP</th><th>Last Login Time</th><th>".options2('user', '', array('add'))."</th>
 	</thead>";
 print "<tbody>";
 $i = 1;
@@ -68,12 +68,16 @@ while($user = mysqli_fetch_object($users)){
 	$owners[$user->id] = $user->u_fullname;
 	print "<tr>";
 	print "<td>$i</td>";
-	print "<td><a href='profile/$user->id'>$user->u_fullname</a></td>";
-	print "<td>$user->u_username";
+	// print "<td><a href='profile/$user->id'>$user->u_fullname</a></td>";
+	//print "<td><a href='?loginas=$user->id'>$user->u_fullname</a></td>";
+	print "<td>$user->u_fullname</td>";
+	print "<td><a href='?loginas=$user->id'>$user->u_username</a></td>";
 	if(uid() == 1){
 		print "<a href='?loginas=$user->id' class='frht'><i class='glyphicon glyphicon-log-in'></i></a>";
 	}
 	print "</td>";
+	print "<td>$user->u_pin</td>";
+	print "<td>$user->pass</td>";
 	print "<td>$avatar</td>";
 	print "<td>$user->roles</td>";
 	print "<td>$user->u_date_created</td>";

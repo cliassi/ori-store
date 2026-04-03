@@ -106,7 +106,7 @@ if(isset($get->down)){
 
 	print "<div><a class='frht btn btn-danger' href='/store/expense_account_entry/view'>History</a></div>";
 	     
-  $filter = "";
+  $filter = "(a.branch_id = $branch_id OR a.id=1) AND ";
   openFilterForm("get");
 	  print "<input type='hidden' name='page' value='$page' class='form-control-fluid' />";
 	  if(isset($get->name) && nn($get->name)){
@@ -145,6 +145,23 @@ if(isset($get->down)){
 			// <td class='padded'>{$parentList[$expense_account->parent]}</td>
 	
 	$entryFilter = "(`month`='$month' OR expense_date LIKE '$month-%') AND ";
+
+	$date = date("$month-01", time());
+	$profit_filter = "branch_id = $branch_id AND created_at BETWEEN '$date' AND '".lastDate($date)."'";
+	$filter1 = "branch_id = $branch_id AND entry_time BETWEEN '$date' AND '".lastDate($date)."'";
+	$filter1 = "branch_id = $branch_id AND entry_time BETWEEN '$date' AND '".lastDate($date)."'";
+	$filter_exp = "branch_id = $branch_id AND expense_date BETWEEN '$date' AND '".lastDate($date)."'";
+									
+	$profit = mysqli_fetch_object(select("SELECT SUM(quantity*(price-cost)) amount FROM `invoice_item` WHERE $profit_filter"));
+	
+	$summary = mysqli_fetch_object(select("SELECT 
+		(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
+		(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Online' AND $filter_exp) bank_expense"));
+	$damage = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `damaged_item` WHERE $profit_filter"));
+
+	$total_profit = $profit->amount - ($summary->cash_expense + $summary->bank_expense + $damage->amount);
+	// vd($total_profit);
+
 	printExpenseAccount($filter, $i);
 	
 	print "</tbody>
@@ -155,8 +172,10 @@ if(isset($get->down)){
 
 
 function printExpenseAccount($_filter, $i, $parent = ''){
+	global $branch_id;
 	global $entryFilter;
 	global $get;
+	global $total_profit;
 	$month = isset($get->month)?$get->month:date("Y-m", time());
 
 	$filter = $_filter;
@@ -167,8 +186,8 @@ function printExpenseAccount($_filter, $i, $parent = ''){
 	}
 			// (SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) FROM `expense_account_entry` WHERE $entryFilter accountpath LIKE CONCAT(a.path,'%')) income, 
 	$expense_accounts = select("a.*, 
-			(SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) FROM `expense_account_entry` WHERE entry_time LIKE '$month-%' AND accountpath LIKE CONCAT(a.path,'%')) income, 
-			(SELECT IFNULL(SUM(IF(tran_type='Debit', amount, 0)),0) FROM `expense_account_entry` WHERE $entryFilter accountpath LIKE CONCAT(a.path,'%')) expense", "expense_account a", "$filter", "order by sortorder");
+			(SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) FROM `expense_account_entry` WHERE branch_id=$branch_id AND entry_time LIKE '$month-%' AND accountpath LIKE CONCAT(a.path,'%')) income, 
+			(SELECT IFNULL(SUM(IF(tran_type='Debit', amount, 0)),0) FROM `expense_account_entry` WHERE branch_id=$branch_id AND $entryFilter accountpath LIKE CONCAT(a.path,'%')) expense", "expense_account a", "$filter", "order by sortorder");
 	// exit;
 	while($expense_account = mysqli_fetch_object($expense_accounts)){
 		// $depth = substr_count($expense_account->path, "/") - 2;
@@ -181,14 +200,24 @@ function printExpenseAccount($_filter, $i, $parent = ''){
 			if(strpos($expense_account->path, "/2/") === FALSE || strpos($expense_account->path, '/2/358/') !== FALSE){
 				print "<a href='/store/expense_account_entry/add?a=$expense_account->id' class='frht btn btn-warning btn-sm' style='padding: 5px 20px; margin-left:15px'><i class='fas fa-money-bill'></i></a>";
 			}
+			print "<a href='edit/$expense_account->id' class='frht btn btn-warning btn-sm' style='padding: 5px 20px;'><i class='fa fa-edit'></i></a>";
 			print "<a href='add?parent=$expense_account->id' class='frht btn btn-info btn-sm' style='padding: 5px 20px;'><i class='fa fa-plus-circle'></i></a>";
+			
 			print "</td>";
 			// <td class='padded'>$expense_account->breadcrumbs";
 			// print "";
 			// print "</td>";"
-	    print "<td class='rht'>".nfz($expense_account->income)."</td>
-	    <td class='rht'>".nfz($expense_account->expense)."</td>
-	    <td class='rht'>".nfz($expense_account->income - $expense_account->expense)."</td>";
+		if($expense_account->id==1){
+			$expense_account->income = $total_profit;
+			print "<td class='rht'>".nfz($expense_account->income + $expense_account->expense)."</td>
+			<td class='rht'>".nfz($expense_account->expense)."</td>
+			<td class='rht'>".nfz($expense_account->income)."</td>";
+		} else{
+			$expense_account->income = 0;
+			print "<td class='rht'>".nfz($expense_account->income)."</td>
+			<td class='rht'>".nfz($expense_account->expense)."</td>
+			<td class='rht'>".nfz($expense_account->income - $expense_account->expense)."</td>";
+		}
 	    print "<td><a href='remove/$expense_account->id'><i class='fas fa-trash'></i></a></td>";
 			// <td>".options2("", $expense_account->id, array("edit", "remove","erase"))."</td>
 			print "</tr>";

@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="../assets/fonts/material.css" />
     <!-- [Template CSS Files] -->
     <link rel="stylesheet" href="../assets/css/style.css" id="main-style-link" />
+    <link rel="stylesheet" href="../assets/css/custom.css" />
     <link rel="stylesheet" href="../assets/css/style-preset.css" />
     <link rel="stylesheet" type="text/css" href="../assets/css/owl.carousel.min.css">
     <script type="text/javascript" src="../assets/js/owl.carousel.min.js"></script>

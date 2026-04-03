@@ -1,5 +1,6 @@
 <?php
-$object = R::dispense('expense_account');
+// REMOVE THIS LINE - object is already loaded from controller
+// $object = R::dispense('expense_account');
 
 if(isset($post->save)){
 
@@ -36,7 +37,7 @@ if(isset($post->save)){
 			$object->code = getNextCount("expense_account", "code", "parent IS NULL");
 		}
 	}
-	if(METHOD=="edit" && $post->parent) {
+	if(METHOD=="edit") {
 		$object->modify_by = uid();
 		$object->modify_time = now();
 		if(!nn($object->code)){
@@ -46,7 +47,9 @@ if(isset($post->save)){
 				$object->code = getNextCount("expense_account", "code", "parent IS NULL");
 			}
 		}
-		$object->path = $parent->path.$object->id."/";
+		if($post->parent){
+			$object->path = $parent->path.$object->id."/";
+		}
 	}
 
 	// dd($object->path);
@@ -84,7 +87,7 @@ if(isset($post->save)){
 }
 openForm();
 print "<table align='center'>
-	<tr><td colspan='5'><b>".str("Expense Account Details")."</b></td><tr>
+	<tr><td colspan='5'><b>".str(METHOD=="edit" ? "Edit Expense Account" : "Expense Account Details")."</b></td><tr>
 		<tr><td>".str("Parent")."</td><td><select name='parent' class='parent form-control selectpicker' data-live-search='true' ><option value=''>--SELECT--</option>".getAccountsWithChild($object->parent?$object->parent:(isset($get->parent)?$get->parent:''))."</select></td>
 		</tr>
 		</tr>

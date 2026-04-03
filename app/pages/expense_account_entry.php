@@ -11,7 +11,7 @@ switch (METHOD){
 	} break;
 	case "erase":{
 		if(isset($get->conf)){		
-			$object = R::load("expense_account_entry", $id);
+			$object = R::load("expense_account_entry", ID);
 			R::trash($object);
 			redir("../view");
 		} else{

@@ -14,8 +14,9 @@ if(isset($post->approve)){
 	$get->pm = isset($get->pm)?$get->pm: '';
 	     
   if(!isset($get->month)){
-  	$filter = "entry_time BETWEEN '$d' AND '$t 23:59:59'";
+  	$filter = "expense_date BETWEEN '$d' AND '$t 23:59:59'";
   }
+joinFilter($filter, "branch_id = $branch_id");
   openFilterForm("get");
   print "<input type='hidden' name='page' value='$page' class='form-control-fluid' />";
   if(isset($get->accountid) && nn($get->accountid)){
@@ -49,11 +50,11 @@ if(isset($post->approve)){
 	$nop = ceil($nor/$offset);
 
 	$start = ($page-1)*$offset;
-	$expense_account_entrys = select("a.*", "expense_account_entry a", "$filter", "LIMIT $start, $offset");
+	$expense_account_entrys = selectp("a.*", "expense_account_entry a", "$filter", "LIMIT $start, $offset");
   $accountidList = toA("expense_account");
     	
 	print "<hr>";
-	print "<table align='center' class='table table-responsive table-bordered table-striped'>
+	print "<table align='center' class='table table-responsive table-bordered table-striped' style='width:100%'>
 	<thead><tr><th>#</th><th>Date</th><th>".str("Account")."</th><th>".str("Particulars")."</th><th>".str("Remarks")."</th><th>".str("Entry Type")."</th><th>Credit</th><th>Debit</th><th>Payment Method</th><th>".str("Entry By")."</th><th>Status</th><th>".options2("", "", array("add"))."</th></tr></thead>
 	    <tbody>";
 
@@ -63,7 +64,7 @@ if(isset($post->approve)){
 			<td><a href='view/$expense_account_entry->id'>$i</a></td>
 			<td>".(nn($expense_account_entry->expense_date) ? dfh($expense_account_entry->expense_date).' ' : '')."</td>
 			<td>{$accountidList[$expense_account_entry->accountid]}</td>
-			<td>".stripslashes($expense_account_entry->particulars)."</td>
+			<td style='max-width: 500px; white-space: wrap;'>".stripslashes($expense_account_entry->particulars)."</td>
 			<td>".stripslashes($expense_account_entry->remarks)."</td>
 			<td>$expense_account_entry->entry_type</td>";
 		if($expense_account_entry->tran_type == 'Credit'){
@@ -91,7 +92,8 @@ if(isset($post->approve)){
 		}
 		print "<td>";
 		if(uid()==1){
-			print options2("", $expense_account_entry->id, array("edit", "remove","erase"));
+			print "<a href='edit/$expense_account_entry->id'><i class='fas fa-edit'></i></a>".space(3);
+			print "<a href='erase/$expense_account_entry->id'><i class='fas fa-trash'></i></a>";
 		} elseif(isUserIn(['orange'])){
 			if($expense_account_entry->status == 'Pending'){
 				print "<a href='edit/$expense_account_entry->id'>Edit</a>";
