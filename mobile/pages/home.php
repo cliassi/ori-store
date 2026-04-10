@@ -173,10 +173,10 @@ foreach ($products as $pg) {
         </div>
       </div>
       <!-- Slider Viewport -->
-      <div class="slider-viewport overflow-hidden relative">
-        <div class="slider-track flex gap-3 will-change-transform">
+      <div class="slider-viewport overflow-x-auto overflow-y-hidden relative px-4">
+        <div class="slider-track flex gap-3 will-change-transform pb-2">
           <?php foreach ($productGroup['variants'] as $product): ?>
-            <div class="slider-card border border-gray-200 rounded-md overflow-hidden product-item bg-white p-2"
+            <div class="slider-card border border-gray-200 rounded-md overflow-hidden product-item bg-white p-2 flex-shrink-0" style="width: 40%; min-width: 40%;"
               data-name="<?php echo strtolower($product['name']); ?>"
               data-category="<?php echo strtolower($productGroup['category_name']); ?>"
               data-size="<?php echo strtolower($product['size']); ?>">
@@ -299,9 +299,9 @@ foreach ($products as $pg) {
     display: none;
   }
 
-  /* Slider sizing: show ~3.5 items on small screens, 4 on >=480px */
+  /* Slider sizing: show ~2.5 items on all screens */
   .slider-card {
-    flex: 0 0 var(--item-width, 100%);
+    flex: 0 0 40% !important;
   }
 
   @media (max-width: 479px) {
@@ -312,7 +312,7 @@ foreach ($products as $pg) {
 
   @media (min-width: 480px) {
     .slider-card {
-      flex-basis: calc(100%/4);
+      flex-basis: 40% !important;
     }
   }
 
