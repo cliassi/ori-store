@@ -206,14 +206,25 @@ if (isset($post->deliver)) {
     $loggedStaffName = $isDeliveryStaff ? getFieldValue('staff_salary', 'name', "user_id=" . $uid) : '';
 
     if (isset($post->deliver)) {
+      // Default to logged-in staff if not provided
+      $deliveryStaffValue = isset($post->delivery_staff) && !empty($post->delivery_staff) ? trim($post->delivery_staff) : $loggedStaffName;
+      
       // dd($post);
-      foreach ($post->iid as $key => $qty) {
-        if ($qty > 0) {
-          $ii = R::load("invoice_item", $key);
-          $inv = R::load("invoice", $ii->invoice_id);
-          update("invoice_item", "delivered=quantity, delivered_by=" . uid() . ", delivered_at=NOW(),delivery_staff='$post->delivery_staff'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
-          insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$key, $qty, " . uid() . ",'$post->delivery_staff'");
-        }
+      foreach ($post->iid as $key => $val) {
+        $iid = (int)$key;
+        if ($iid <= 0) continue;
+        
+        $ii = R::load("invoice_item", $iid);
+        if (!$ii || !$ii->id) continue;
+        
+        // Calculate remaining quantity to deliver
+        $remainingQty = (float)$ii->quantity - (float)$ii->delivered;
+        if ($remainingQty <= 0) continue;
+        
+        $inv = R::load("invoice", $ii->invoice_id);
+        $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaffValue);
+        update("invoice_item", "delivered=quantity, delivered_by=" . uid() . ", delivered_at=NOW(),delivery_staff='$deliveryStaffSql'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
+        insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$iid, $remainingQty, " . uid() . ",'$deliveryStaffSql'");
       }
     }
 
@@ -221,7 +232,7 @@ if (isset($post->deliver)) {
       $obj = R::dispense("stock_collect");
       $obj->salesman_id = isset($post->salesman) ? $post->salesman : 0;
       if (isset($post->collect)) {
-        $obj->delivery_staff = $post->delivery_staff;
+        $obj->delivery_staff = isset($post->delivery_staff) && !empty($post->delivery_staff) ? trim($post->delivery_staff) : $loggedStaffName;
         $obj->date = today();
         $obj->created_by = uid();
         // $obj->due_date = $post->due_date;
@@ -400,7 +411,7 @@ if (isset($post->deliver)) {
     ?>
     <div id="dcollectActionBar" style="position: fixed; right: 5px; left: 0; bottom: 10px; text-align: center; background: #efefff; padding: 8px 10px; display: flex; align-items: center; gap: 8px; z-index: 9999; font-size: 0.75rem; justify-content: space-between;">
       <?php if ($isDeliveryStaff) { ?>
-        <select id="delivery_staff" class="form-select" name="delivery_staff" form="dcollectForm" required style="max-width: 120px; font-size:.75rem; display:none;">
+        <select id="delivery_staff" class="form-select" name="delivery_staff" form="dcollectForm" style="max-width: 120px; font-size:.75rem; display:none;">
           <option value="<?php echo htmlspecialchars($loggedStaffName); ?>" selected><?php echo htmlspecialchars($loggedStaffName); ?></option>
         </select>
       <?php } else { ?>
@@ -415,6 +426,7 @@ if (isset($post->deliver)) {
       <button id="btnCollect" class="btn btn-success" type="submit" name="deliver" value="1" form="dcollectForm" style="flex: 1; max-width: 110px; font-size:.75rem; margin-left:auto;">Deliver</button>
     </div>
 
+    <?php if (!$isDeliveryStaff) { ?>
     <div class="modal fade" id="modal-modify-quantity" role="dialog">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -440,6 +452,7 @@ if (isset($post->deliver)) {
         </div>
       </div>
     </div>
+    <?php } ?>
     <div class="modal fade" id="modal-modify-price" role="dialog">
       <div class="modal-dialog">
         <div class="modal-content">

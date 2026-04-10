@@ -247,7 +247,7 @@ while ($item = mysqli_fetch_object($trans)) {
     print "<td title='$item->sort_date'>".($i - $counter + 10)."</td>";
   }
   // print "<td>".df($item->sort_date).(date('Ymd', strtotime($item->date)) != date('Ymd', strtotime($item->created_at)) ? " (".df($item->date).")":"")."</td>";
-  print "<td>".df($item->sort_date)."".($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'>".df($item->dd)."</div>" : '')."</td>";
+  print "<td>".df($item->sort_date)."".(($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'><a href='javascript:void(0)' onclick='openDeliveryDateModal(" . $item->id . ", " . $item->id2 . ", \"" . $item->dd . "\")' style='color: #0066cc; cursor: pointer;'>" . df($item->dd) . "</a></div>" : ''))."</td>";
   if($item->src == 'invoice'){
     $delivered_by = "Select";
     if($item->delivered_by){
@@ -529,6 +529,33 @@ $remarks = select("*", "customer_remarks", "customer_id=$obj->id AND trash=0 AND
 ?>
 </form>
 
+<div class="modal fade" id="modal-change-delivery-date" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" autocomplete="off">
+        <input type="hidden" name="invoice_id" id="delivery_invoice_id">
+        <input type="hidden" name="invoice_item_id" id="delivery_invoice_item_id">
+        <div class="modal-header">
+          <h4 class="modal-title">Change Delivery Date</h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table>
+            <tr>
+              <td>Delivery Date</td>
+              <td nowrap><input type="date" id="delivery_date_input" name="delivery_date" class="form-control" required></td>
+            </tr>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" onclick="saveDeliveryDate()">Save</button>
+          <button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <form method="post" id="save_remarks_form" mehtod="post">
   <input type="hidden" name='remarks' id='remarks'>
   <input type="hidden" name='save_remarks' id='save_remarks'>
@@ -758,6 +785,34 @@ function redirectWithSelected2() {
   if(confirm("Are you sure you want to approve this collection?")){
     location.href = "?approved=" + id;
   }
+}
+
+function openDeliveryDateModal(invoiceId, invoiceItemId, currentDate) {
+  $("#delivery_invoice_id").val(invoiceId);
+  $("#delivery_invoice_item_id").val(invoiceItemId);
+  $("#delivery_date_input").val(currentDate);
+  $("#modal-change-delivery-date").modal('show');
+}
+
+function saveDeliveryDate() {
+  var invoiceItemId = $("#delivery_invoice_item_id").val();
+  var newDate = $("#delivery_date_input").val();
+  
+  if (!newDate) {
+    alert("Please select a date");
+    return;
+  }
+  
+  $.post("/store/ajax/update_invoice_item_date.php", {
+    invoice_item_id: invoiceItemId,
+    date: newDate,
+    update_date: 1
+  }, function(response) {
+    $("#modal-change-delivery-date").modal('hide');
+    location.reload();
+  }).fail(function() {
+    alert("Error updating delivery date");
+  });
 }
 
 </script>

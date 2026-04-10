@@ -402,6 +402,7 @@ if(isset($post->assign) && nn($post->delivery_staff)){
       <button id="btnDeliver" class="btn btn-success" type="submit" name="deliver" value="1" form="dcollectForm" style="flex: 1; max-width: 110px; font-size:.75rem;">Deliver</button>
     </div>
 
+    <?php if (!$isDeliveryStaff) { ?>
     <div class="modal fade" id="modal-modify-quantity" role="dialog">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -427,6 +428,7 @@ if(isset($post->assign) && nn($post->delivery_staff)){
         </div>
       </div>
     </div>
+    <?php } ?>
     <div class="modal fade" id="modal-modify-price" role="dialog">
       <div class="modal-dialog">
         <div class="modal-content">

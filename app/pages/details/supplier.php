@@ -230,7 +230,8 @@ print "
                 <th class='text-center'><a class='btn btn-success' href='../../order/add?supplier=" . ID . "'>Order</a></th>
                 <th class='text-center'><a class='btn btn-warning' href='../../payment/add?supplier=" . ID . "'>Payment</a></th>
                 <th class='text-center'><a class='btn btn-danger' href='../../refund/add?supplier=" . ID . "'>Refund</a></th>
-              </tr>
+                <th class='text-center'><button type='button' class='btn btn-primary' data-bs-toggle='modal' data-bs-target='#mapProductsModal'><i class='fa fa-link'></i> Map Main Products</button></th>
+ </tr>
             </thead>
             <tbody>";
 
@@ -730,3 +731,61 @@ while ($remark = mysqli_fetch_object($remarks)) {
 
 
 </script>
+
+<!-- Map Products Modal -->
+<div class="modal fade" id="mapProductsModal" tabindex="-1" aria-labelledby="mapProductsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mapProductsModalLabel">Map Products to Supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        <div class="modal-body">
+          <label class="form-label">Select Products</label>
+          <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+            <?php
+            $allProducts = select('id, name', 'product', '1 ORDER BY name');
+            $currentProducts = [];
+            $currentProductsRs = select('product_id', 'product_supplier', 'supplier_id = ' . (int)$obj->id);
+            while ($cp = mysqli_fetch_object($currentProductsRs)) {
+              $currentProducts[(int)$cp->product_id] = true;
+            }
+            while ($p = mysqli_fetch_object($allProducts)) {
+              $checked = isset($currentProducts[(int)$p->id]) ? 'checked' : '';
+              echo "<div class='form-check'>
+                <input class='form-check-input' type='checkbox' name='product_ids[]' value='{$p->id}' id='product_{$p->id}' $checked>
+                <label class='form-check-label' for='product_{$p->id}'>" . htmlspecialchars($p->name, ENT_QUOTES) . "</label>
+              </div>";
+            }
+            ?>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" name="map_products" value="1" class="btn btn-primary">Save Mappings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<?php
+// Handle product mapping POST
+if (isset($post->map_products) && isset($post->product_ids)) {
+  $productIds = array_map('intval', (array)$post->product_ids);
+  
+  // Delete existing mappings for this supplier
+  del('product_supplier', 'supplier_id = ' . (int)$obj->id);
+  
+  // Insert new mappings using direct SQL
+  foreach ($productIds as $pid) {
+    if ($pid > 0) {
+      $c->query("INSERT INTO product_supplier (product_id, supplier_id) VALUES ($pid, " . (int)$obj->id . ")");
+    }
+  }
+  
+  redir('?id=' . (int)$obj->id);
+  exit;
+}
+?>

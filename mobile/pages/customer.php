@@ -90,6 +90,8 @@ $objs = R::find('customer');
 </div>
 
 <!-- Customer Table -->
+ <br>
+ <br>
 <div class="max-w-sm mx-auto px-4 -mt-6">
     <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
@@ -102,7 +104,7 @@ $objs = R::find('customer');
                         <th class="px-2 py-2 text-left">Mobile</th>
                         <th class="px-2 py-2 text-left">Area</th>
                         <th class="px-2 py-2 text-center">Photo</th>
-                        <th class="px-2 py-2 text-center">Actions</th>
+                        <th class="px-2 py-2 text-center"><a href="?page=customer_add" class="text-blue-600 font-medium">Add New</a></th>
                     </tr>
                 </thead>
                 <tbody>

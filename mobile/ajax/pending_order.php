@@ -62,8 +62,7 @@ if (!function_exists('elapsedIntervalLabel')) {
 }
 
 extract($_POST);
-print "<!-- Debug POST: order=$order, customers=$customers, products=$products -->";
-if ($order == 'false') exit;
+print "<!-- Debug POST: customers=$customers, products=$products -->";
 
 // Get delivery staff filter (will be overridden if role is Delivery Staff)
 $deliveryStaff = isset($_POST['deliveryStaff']) ? trim($_POST['deliveryStaff']) : '';
@@ -91,35 +90,109 @@ if (nn($products)) {
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " p.product_category_id IN ($products)";
 }
 
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-25'";
+$filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) < curdate()";
+$filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) >= DATE_SUB(curdate(), INTERVAL 7 DAY)";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " NOT $collectedExpr ";
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NOT NULL AND ii.assigned_to IS NOT NULL AND ii.assigned_to != '')";
-
-// Add delivery staff filter if specified
-if (nn($deliveryStaff)) {
-  $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaff);
-  $filter .= ($filter != " WHERE " ? " AND " : " ") . " LOWER(TRIM(ii.assigned_to)) = LOWER(TRIM('$deliveryStaffSql'))";
-}
+$filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
 
 if ($_SESSION['UID'] == 1 && nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }
 
-$query = "SELECT distinct c.* FROM customer c 
-          INNER JOIN invoice i ON c.id=i.customer_id 
-          INNER JOIN invoice_item ii ON i.id=ii.invoice_id 
-          INNER JOIN product_variance pv ON pv.id=ii.product_variance_id
-          INNER JOIN product p ON p.id=pv.product_id
-          LEFT JOIN city ON city.name=c.city 
-          $filter";
+$itemQuery = "SELECT c.id cust_id, c.company, c.code, c.city, c.location, c.mobile,
+                     stock(pv.id) stock, i.id invoice_id, pc.name pc_name, ii.id iid, pv.id vid, pv.particulars, pv.min_stock, 
+                     ii.quantity quantity, ii.delivered delivered, ii.price, ii.old_price, 
+                     IFNULL(ii.delivery_date,i.invoice_date) dd
+              FROM invoice i 
+              INNER JOIN invoice_item ii ON i.id=ii.invoice_id
+              INNER JOIN customer c ON c.id=i.customer_id
+              LEFT JOIN city ON city.name=c.city
+              INNER JOIN product_variance pv ON pv.id=ii.product_variance_id 
+              INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id
+              INNER JOIN product_category pc ON p.product_category_id=pc.id
+              $filter
+              ORDER BY c.company, pc.name, ii.id";
 
-$customers = select($query);
-print "<!-- Debug Query: " . htmlspecialchars($query) . " -->";
+$items = select($itemQuery);
+// print "<div style='background:#f0f0f0; padding:10px; margin:10px; border:1px solid #ccc; font-size:11px; overflow-x:auto;'><strong>DEBUG QUERY:</strong><br><pre>" . htmlspecialchars($itemQuery) . "</pre></div>";
 
 ?>
+<form method='post'>
+  <div class="customer-container">
+    <?php
+    $currentCustomerId = null;
+    $customerSerial = 1;
+    $itemSerial = 1;
+    $cat = "";
+    
+    while ($item = mysqli_fetch_object($items)) {
+      // Check if we're switching to a new customer
+      if ($currentCustomerId !== $item->cust_id) {
+        // Close previous customer table if exists
+        if ($currentCustomerId !== null) {
+          echo "</tbody></table></div>";
+        }
+        
+        // Build customer location text
+        $locParts = [];
+        $locParts[] = $item->company;
+        if (nn($item->code)) $locParts[] = "Code: $item->code";
+        if (nn($item->city)) $locParts[] = "Area: $item->city";
+        if (nn($item->location)) $locParts[] = "Location: $item->location";
+        if (nn($item->mobile)) $locParts[] = "Mobile: $item->mobile";
+        $custLocText = htmlspecialchars(implode("\n", $locParts), ENT_QUOTES);
+        
+        // Print new customer header
+        echo "<div class='customer-item customer-$item->cust_id'>
+          <table class='table table-bordered'>
+            <thead>
+              <tr>
+                <th colspan='4' class='text-center'>
+                  <span id='cust-chevron-$item->cust_id' class='material-icons cust-toggle' data-cust='$item->cust_id' style='cursor:pointer; font-size:18px; vertical-align:middle;'>expand_more</span>
+                  <a class='customer-link' href='#' style='cursor:pointer'>$item->company ($item->city) - <strong>$item->code</strong></a>
+                  <span class='material-icons cust-loc-icon cust-loc-toggle' data-cust='$item->cust_id' data-loc='$custLocText'>chevron_right</span>
+                  <input type='checkbox' class='selected-customer' data-cust='$item->cust_id' name='selected_customer[]' value='$item->cust_id' style='float:right; margin-top:2px;'>
+                </th>
+              </tr>
+            </thead>
+            <tbody id='cust-body-$item->cust_id'>";
+        
+        $currentCustomerId = $item->cust_id;
+        $itemSerial = 1;
+        $cat = "";
+        $customerSerial++;
+      }
+      
+      // Print category header if category changed
+      if ($item->pc_name != $cat) {
+        echo "<tr><th colspan='4'>$item->pc_name</th></tr>";
+        $cat = $item->pc_name;
+      }
+      
+      // Calculate remaining quantity
+      $remainingQty = $item->quantity - $item->delivered;
+      if ($remainingQty <= 0) continue;
+      
+      // Print item row
+      $partAttr = htmlspecialchars($item->particulars, ENT_QUOTES);
+      echo "<tr data-vid='$item->vid' data-qty='$remainingQty' data-unit-price='$item->price' data-particulars='$partAttr'>
+        <td style='width:30px;'><input type='checkbox' name='iid[$item->iid]' value='$item->iid'> <a href='#' id='invoice-item-date-$item->iid' data-dd='" . df($item->dd) . "' onclick='setDate(this, $item->iid); return false;' style='text-decoration:none; color:#333; font-weight:bold; cursor:pointer;'>$itemSerial</a></td>
+        <td>$item->particulars</td>
+        <td style='text-align:center; width:60px;'>" . nf($item->price * $remainingQty) . "</td>
+        <td style='text-align:center; width:50px;'>$remainingQty</td>
+      </tr>";
+      $itemSerial++;
+    }
+    
+    // Close last customer table
+    if ($currentCustomerId !== null) {
+      echo "</tbody></table></div>";
+    }
+    ?>
+  </div>
+</form>
 <style>
   @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
@@ -273,219 +346,7 @@ print "<!-- Debug Query: " . htmlspecialchars($query) . " -->";
 <form method='post' id='dcollectForm'>
   <div class="customer-container">
     <?php
-    $customerSerial = 1;
-    while ($customer = mysqli_fetch_object($customers)) {
-      // Calculate order meta (Order Time and Pending Time)
-      $pendingOrderMeta = "";
-      $metaQuery = "SELECT created_at order_at, created_by, GREATEST(0, TIMESTAMPDIFF(MINUTE, created_at, NOW())) pending_minutes FROM invoice WHERE customer_id=$customer->id ORDER BY created_at DESC LIMIT 1";
-      $meta = mysqli_fetch_object(select($metaQuery));
-      if ($meta && nn($meta->order_at)) {
-        $orderTs = strtotime($meta->order_at);
-        $orderByName = '';
-        if (isset($meta->created_by) && (int)$meta->created_by > 0) {
-          $orderByName = getName('sys_user', (int)$meta->created_by, 'u_username');
-        }
-        if (!nn($orderByName) && isset($meta->created_by) && (int)$meta->created_by > 0) {
-          $orderByName = "User #" . (int)$meta->created_by;
-        }
-
-        $pendingMinutesTotal = isset($meta->pending_minutes) ? (int) $meta->pending_minutes : 0;
-        if ($pendingMinutesTotal < 0) $pendingMinutesTotal = 0;
-        $pendingHoursTotal = (int) floor($pendingMinutesTotal / 60);
-        $pendingMinutes = $pendingMinutesTotal % 60;
-        $pendingDays = (int) floor($pendingHoursTotal / 24);
-        $pendingHours = $pendingHoursTotal % 24;
-        $pendingLabel = ($pendingDays > 0 ? ($pendingDays . "d ") : "") . sprintf("%02d:%02d", $pendingHours, $pendingMinutes);
-
-        $pendingOrderMeta = "<div class='order-meta'>Order Time: " . date('h:i a', $orderTs) . (nn($orderByName) ? " <b>$orderByName</b>" : "") . "<br>Pending Time: " . $pendingLabel . "</div>";
-      }
-
-      // Build customer location text for modal, similar to ajax/order.php
-      $locParts = [];
-      $locParts[] = $customer->company;
-      if (isset($customer->code) && nn($customer->code)) $locParts[] = "Code: $customer->code";
-      if (isset($customer->city) && nn($customer->city)) $locParts[] = "Area: $customer->city";
-      if (isset($customer->location) && nn($customer->location)) $locParts[] = "Location: $customer->location";
-      if (isset($customer->phone) && nn($customer->phone)) $locParts[] = "Phone: $customer->phone";
-      if (isset($customer->mobile) && nn($customer->mobile)) $locParts[] = "Mobile: $customer->mobile";
-      $custLocText = htmlspecialchars(implode("\n", $locParts), ENT_QUOTES);
-
-      // vd($customer);
-      // print "<div>$customer->id</div>";
-      $con = "<div class='customer-item customer-$customer->id'>
-			<table class='table table-bordered toggle-store-info hide-info'>
-				<thead>
-					<tr>";
-$con .= "<th colspan='5' style='text-align:center; text-transform:uppercase'>
-        <span id='cust-chevron-$customer->id' class='material-icons cust-toggle' data-cust='$customer->id' style='cursor:pointer; font-size:18px; vertical-align:middle; margin-top:4px; float:left; margin-left:-12px; padding: 5px;'>expand_more</span><a class='customer-link' href='?page=customer_details&id=$customer->id' onclick='event.stopPropagation()' style='cursor:pointer'>$customer->company ($customer->city) - <strong style='font-size:large'>$customer->code</strong></a><span class='material-icons cust-loc-icon cust-loc-toggle' data-cust='$customer->id' data-loc='$custLocText' style='cursor:pointer; padding: 5px; position:absolute; font-size:18px; float: right; vertical-align:middle; user-select:none; color:#444; margin-left:8px;'>chevron_right</span>$pendingOrderMeta";
-        $con .= " \n        <span style='display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#eee; color:#333; font-weight:600; border:1px solid #ccc;'>$customerSerial</span>\n         <input type='checkbox' class='selected-customer' data-cust='$customer->id' name='selected_customer[]' value='$customer->id' style='float:right; margin-top:2px;'>";
-        $con .= "</th>";
-      $con .= "</tr>
-				</thead>
-				<tbody id='cust-body-$customer->id'>";
-
-      $cat = "";
-      $itemFilter = "i.customer_id=$customer->id ";
-      $itemFilter .= " AND ii.delivered < ii.quantity";
-      $itemFilter .= " AND IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
-      $itemFilter .= " AND IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-26'";
-      $itemFilter .= " AND (ii.assigned_at IS NOT NULL AND ii.assigned_to IS NOT NULL AND ii.assigned_to != '')";
-      $itemFilter .= " AND (ii.collected_at IS NULL AND NOT EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
-
-      if (nn($cities)) {
-        $itemFilter .= " AND city.id IN ($cities)";
-      }
-
-      if (nn($products)) {
-        $itemFilter .= " AND p.product_category_id IN ($products)";
-      }
-      if (function_exists('nn') && nn($deliveryStaff)) {
-        $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaff);
-        $itemFilter .= " AND LOWER(TRIM(ii.assigned_to)) = LOWER(TRIM('$deliveryStaffSql'))";
-      }
-      $stField = 'stock';
-      // if($delivery) $stField = 'stockCurrent';
-      // if($pendingList) $stField = 'stockPending';
-      $pq = "SELECT stock(pv.id) stock, i.customer_id, i.id, p.name, pc.name pc_name, ii.id iid, p.id pid, p.name, pv.id vid, pv.particulars, pv.min_stock, SUM(ii.quantity) quantity, 
-						ii.delivered delivered, ii.price, ii.old_price, IFNULL(ii.delivery_date,i.invoice_date) dd FROM invoice i 
-						INNER JOIN invoice_item ii ON i.id=ii.invoice_id
-						INNER JOIN customer c ON c.id=i.customer_id
-						LEFT JOIN city ON c.city=city.name
-						INNER JOIN `product_variance` pv ON pv.id=ii.product_variance_id 
-						INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id
-						INNER JOIN product_category pc ON p.product_category_id=pc.id
-						" . ($itemFilter ? "WHERE" : "") . " $itemFilter ";
-      $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id";
-      // $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id";
-      // if($customer->id == 3) print $pq;
-      $items = select($pq);
-
-      $printedCon = false;
-
-      $ci = 1;
-      $ic = 0;
-      // vd($items);
-      while ($i = mysqli_fetch_object($items)) {
-        $i->quantity = $i->quantity - $i->delivered;
-        if ($i->quantity <= 0) {
-          $ci++;
-          continue;
-        }
-
-        if (!$printedCon) {
-          print $con;
-          $printedCon = true;
-        }
-
-if ($i->pc_name != $cat) {
-          print "<tr><th colspan='2'>$i->pc_name</th>";
-          print "<th>Price</th><th class='order-qty-col'>Qty</th></tr>";
-          $cat = $i->pc_name;
-        }
-
-$collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
-        $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
-        print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> <a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a></div></td>
-							<td>$i->particulars (<a class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>$i->price</a>) </td>";
-$collected = $i->quantity;
-        print "<td>";
-        if ($i->old_price && false) {
-          print nf($i->price * $i->quantity);
-        } else {
-          print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . nf($i->price * $i->quantity) . "</a>";
-        }
-        print "</td><td class='text-center order-qty-col'><a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a></td>";
-        print "</tr>";
-        $ic++;
-
-        $ci++;
-      }
-      if ($printedCon) {
-        print "</tbody>
-					</table>";
-        
-        // Determine predominant assigned staff using the same filters as visible items
-        $currentAssignedStaff = '';
-        $hasMultipleAssignedStaff = false;
-
-        $asFilter = [];
-        $asFilter[] = "i.customer_id={$customer->id}";
-        $asFilter[] = "ii.delivered < ii.quantity";
-        $asFilter[] = "IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
-        // Mirror the mobile list lower bound used above
-        $asFilter[] = "IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-26'";
-        $asFilter[] = "(ii.assigned_at IS NOT NULL AND ii.assigned_to IS NOT NULL AND ii.assigned_to != '')";
-        $asFilter[] = "(ii.collected_at IS NULL AND NOT EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
-        if (function_exists('nn') && nn($cities)) {
-          $asFilter[] = "city.id IN ($cities)";
-        }
-        if (function_exists('nn') && nn($products)) {
-          $asFilter[] = "p.product_category_id IN ($products)";
-        }
-        if (function_exists('nn') && nn($deliveryStaff)) {
-          $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaff);
-          $asFilter[] = "LOWER(TRIM(ii.assigned_to)) = LOWER(TRIM('$deliveryStaffSql'))";
-        }
-
-        $asWhere = $asFilter ? ("WHERE " . implode(' AND ', $asFilter)) : '';
-        $assignedQuery = "SELECT ii.assigned_to, COUNT(*) cnt
-                         FROM invoice_item ii 
-                         INNER JOIN invoice i ON i.id=ii.invoice_id 
-                         INNER JOIN customer c ON c.id=i.customer_id
-                         LEFT JOIN city ON c.city=city.name
-                         INNER JOIN product_variance pv ON pv.id=ii.product_variance_id
-                         INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id
-                         $asWhere
-                         GROUP BY ii.assigned_to
-                         ORDER BY cnt DESC";
-        $assignedResult = select($assignedQuery);
-        if ($assignedResult) {
-          $first = mysqli_fetch_object($assignedResult);
-          if ($first && isset($first->assigned_to)) {
-            $currentAssignedStaff = $first->assigned_to;
-            $hasMultipleAssignedStaff = ($assignedResult->num_rows > 1);
-          }
-        }
-        
-        // Add delivery staff dropdown for reassignment (hidden for Delivery Staff role)
-        if ($rolename !== 'Delivery Staff') {
-          print "<div style='padding: 5px 8px; border-top: 1px solid #ddd; background-color: #f9f9f9;'>";
-          print "<label style='font-weight: bold; margin-right: 8px; font-size: 0.9rem;'>Assigned to:</label>";
-          print "<select class='form-control delivery-staff-reassign' data-customer-id='$customer->id' style='width: 180px; display: inline-block; padding: 3px 6px; font-size: 0.85rem;'>";
-          if ($hasMultipleAssignedStaff) {
-            print "<option value='' selected disabled>-- MULTIPLE --</option>";
-          } else {
-            print "<option value=''>Select delivery staff...</option>";
-          }
-          print "<option value='--UNASSIGN--' style='color: #dc3545; font-weight: bold;'>-- UNASSIGN --</option>";
-          
-          $staffObjs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
-          while ($staff = mysqli_fetch_object($staffObjs)) {
-            $selected = (!$hasMultipleAssignedStaff && $staff->name == $currentAssignedStaff) ? 'selected' : '';
-            print "<option value='" . htmlspecialchars($staff->name) . "' $selected>" . htmlspecialchars($staff->name) . "</option>";
-          }
-          
-          print "</select>";
-          print "</div>";
-        }
-        print "</div>";
-      }
-      if ($ic == 0) print '<script>$(".customer-' . $customer->id . '").hide();</script>';
-      // <tr><td>1</td><td>SeaMaster 1500ml X 12</td><td>180</td></tr>
-      // <tr><td>2</td><td>100 Plus 250ml Ctn X 24</td><td>28</td></tr>
-      // <tr><td>3</td><td>Coca Cola 250ml X 24</td><td>120</td></tr>
-      // <tr><th colspan='3'>Fresh</th></tr>
-      // <tr><td>4</td><td>Red Bull 250ml X 24</td><td>40</td></tr>
-      // <tr><td>5</td><td>Pepsi 250ml X 24</td><td>26</td></tr>
-      // <tr><td>6</td><td>100 Plus 250ml Ctn X 24</td><td>18</td></tr>
-      // <tr><td>7</td><td>Coca Cola 250ml X 24</td><td>28</td></tr>
-      // <tr><th colspan='3'>Frozen</th></tr>
-      // <tr><td>8</td><td>Red Bull 250ml X 24</td><td>26</td></tr>
-      // <tr><td>9</td><td>Pepsi 250ml X 24</td><td>18</td></tr>
-      // <tr><td>10</td><td>100 Plus 250ml Ctn X 24</td><td>28</td></tr>
-if (!$printedCon) continue;
-      $customerSerial++;
-    }
+    // Items are already processed in the loop above
     ?>
 
     <div id='consolidated-container' class='customer-item' style='display:none;'>

@@ -57,9 +57,16 @@ if (isset($post->collect)) {
   $obj = R::dispense("stock_collect");
   $obj->salesman_id = isset($post->salesman) ? $post->salesman : 0;
   if (isset($post->collect)) {
-    // Get delivery staff from the first selected item's assigned_to field
+    // Get delivery staff from POST or from the first selected item's assigned_to field, or default to logged-in staff
     $obj->delivery_staff = '';
-    if (isset($post->iid) && is_array($post->iid)) {
+    
+    // First, try to get from POST data
+    if (isset($post->delivery_staff) && !empty($post->delivery_staff)) {
+      $obj->delivery_staff = trim($post->delivery_staff);
+    }
+    
+    // If not in POST, try to get from the first selected item's assigned_to field
+    if (!nn($obj->delivery_staff) && isset($post->iid) && is_array($post->iid)) {
       $firstIid = (int) array_keys($post->iid)[0];
       if ($firstIid > 0) {
         $staffQuery = "SELECT assigned_to FROM invoice_item WHERE id=$firstIid AND assigned_to IS NOT NULL AND assigned_to != ''";
@@ -70,9 +77,14 @@ if (isset($post->collect)) {
       }
     }
     
+    // If still not set, default to logged-in staff name
     if (!nn($obj->delivery_staff)) {
-      // redir("?");
-      // exit;
+      $uid = isset($_SESSION['UID']) ? (int)$_SESSION['UID'] : 0;
+      $rid = getFieldValue('sys_user_role', 'ur_role_id', "ur_user_id=" . $uid);
+      $rolename = getFieldValue('sys_role', 'r_name', "id=" . $rid);
+      if ($rolename === 'Delivery Staff') {
+        $obj->delivery_staff = getFieldValue('staff_salary', 'name', "user_id=" . $uid);
+      }
     }
     $obj->date = today();
     $obj->created_by = uid();
@@ -354,13 +366,22 @@ if (isset($post->collect)) {
 
     if (isset($post->deliver)) {
       // dd($post);
-      foreach ($post->iid as $key => $qty) {
-        if ($qty > 0) {
-          $ii = R::load("invoice_item", $key);
-          $inv = R::load("invoice", $ii->invoice_id);
-          update("invoice_item", "delivered=quantity, delivered_by=" . uid() . ", delivered_at=NOW(),delivery_staff='$post->delivery_staff'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
-          insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$key, $qty, " . uid() . ",'$post->delivery_staff'");
-        }
+      foreach ($post->iid as $key => $val) {
+        $iid = (int)$key;
+        if ($iid <= 0) continue;
+        
+        $ii = R::load("invoice_item", $iid);
+        if (!$ii || !$ii->id) continue;
+        
+        // Calculate remaining quantity to deliver
+        $remainingQty = (float)$ii->quantity - (float)$ii->delivered;
+        if ($remainingQty <= 0) continue;
+        
+        $inv = R::load("invoice", $ii->invoice_id);
+        $deliveryStaffValue = isset($post->delivery_staff) && !empty($post->delivery_staff) ? trim($post->delivery_staff) : $loggedStaffName;
+        $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaffValue);
+        update("invoice_item", "delivered=quantity, delivered_by=" . uid() . ", delivered_at=NOW(),delivery_staff='$deliveryStaffSql'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
+        insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$iid, $remainingQty, " . uid() . ",'$deliveryStaffSql'");
       }
     }
 
@@ -559,7 +580,7 @@ if (isset($post->collect)) {
     font-size: 0.75rem;
     justify-content: space-between;">
       <?php if ($isDeliveryStaff) { ?>
-        <select id="delivery_staff" class="form-select" name="delivery_staff" form="dcollectForm" required style="max-width: 120px; font-size:.75rem; display:none;">
+        <select id="delivery_staff" class="form-select" name="delivery_staff" form="dcollectForm" style="max-width: 120px; font-size:.75rem; display:none;">
           <option value="<?php echo htmlspecialchars($loggedStaffName); ?>" selected><?php echo htmlspecialchars($loggedStaffName); ?></option>
         </select>
       <?php } else { ?>
@@ -570,10 +591,26 @@ if (isset($post->collect)) {
           } ?>
         </select>
       <?php } ?>
+      
+      <script>
+        (function() {
+          var form = document.getElementById('dcollectForm');
+          var deliveryStaffSelect = document.getElementById('delivery_staff');
+          if (form && deliveryStaffSelect) {
+            form.addEventListener('submit', function(e) {
+              if (!deliveryStaffSelect.value) {
+                e.preventDefault();
+                alert('Delivery staff must be selected');
+              }
+            });
+          }
+        })();
+      </script>
 
       <button id="btnCollect" class="btn btn-warning" type="submit" name="collect" value="1" form="dcollectForm" style="flex: 1; max-width: 110px; font-size:.75rem; margin-left:auto;">Collect</button>
     </div>
 
+    <?php if (!$isDeliveryStaff) { ?>
     <div class="modal fade" id="modal-modify-quantity" role="dialog">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -599,6 +636,7 @@ if (isset($post->collect)) {
         </div>
       </div>
     </div>
+    <?php } ?>
     <div class="modal fade" id="modal-modify-price" role="dialog">
       <div class="modal-dialog">
         <div class="modal-content">

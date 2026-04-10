@@ -67,7 +67,7 @@ if (nn($products)) {
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) < curdate()";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . (($delivery == 'true' || $collection == 'true') ? " $collectedExpr " : " NOT $collectedExpr ");
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
+// $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
 
 if (uid() == 1 && nn($branch_id)) {
   $branchId = (int) $branch_id;
@@ -336,7 +336,7 @@ $customers = select($query);
                 <tbody id='cust-body-$customer->id'>";
 
         $cat = "";
-        $filter = "i.customer_id=$customer->id AND ii.delivered < ii.quantity AND IFNULL(ii.delivery_date,i.invoice_date) < curdate() AND IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-25'";
+        $filter = "i.invoice_date > '2026-04-01' AND i.customer_id=$customer->id AND ii.delivered < ii.quantity AND IFNULL(ii.delivery_date,i.invoice_date) < curdate() AND IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-25'";
         if ($delivery || $collection) {
           $filter = "IFNULL(ii.delivery_date,i.invoice_date) < curdate()";
         }
@@ -354,10 +354,10 @@ $customers = select($query);
           }
           $filter .= " p.product_category_id IN ($products)";
         }
-        if ($filter) {
-          $filter .= " AND ";
-        }
-        $filter .= (($delivery || $collection) ? $collectedExpr : "NOT $collectedExpr");
+        // if ($filter) {
+        //   $filter .= " AND ";
+        // }
+        // $filter .= (($delivery || $collection) ? $collectedExpr : "NOT $collectedExpr");
         $filter .= " AND (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
         $stField = 'stock';
         // if($delivery) $stField = 'stockCurrent';

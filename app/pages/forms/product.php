@@ -33,11 +33,11 @@ if (isset($post->save)) {
             }
             R::store($obj);
         }
-        if(isset($post->suppliers)){
-          foreach ($post->suppliers as $key => $sid) {
-            insert("product_supplier", "product_id, supplier_id", "$obj->id,$sid");
-          }
-        }
+        // if(isset($post->suppliers)){
+        //   foreach ($post->suppliers as $key => $sid) {
+        //     insert("product_supplier", "product_id, supplier_id", "$obj->id,$sid");
+        //   }
+        // }
         print "<script>location.href = '".ROOT."/product'; </script>";
     } catch (\Throwable $th) {
         dump($th);
@@ -75,13 +75,13 @@ if (isset($post->save)) {
                       ];
 
                       print buildForm($formItems);
-                      $suppliers = R::find('supplier');
-                      print "<h3>Select suppliers</h3>";
-                      print "<div class='col-12'>";
-                      foreach ($suppliers as $key => $supplier) {
-                        print "<div class='inline-block'><input type='checkbox' name='suppliers[]' value='$supplier->id'> $supplier->company</div>".space(10);
-                      }
-                      print "</div>";
+                      // $suppliers = R::find('supplier');
+                      // print "<h3>Select suppliers</h3>";
+                      // print "<div class='col-12'>";
+                      // foreach ($suppliers as $key => $supplier) {
+                      //   print "<div class='inline-block'><input type='checkbox' name='suppliers[]' value='$supplier->id'> $supplier->company</div>".space(10);
+                      // }
+                      // print "</div>";
                     ?>
                   </div>
 

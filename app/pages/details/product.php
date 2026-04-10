@@ -6,6 +6,9 @@
   .hidden-variant {
     display: none;
   }
+  th{
+    text-align: center !important;
+  }
 
   .highlight-row {
     animation: highlight 2s ease-out;
@@ -104,7 +107,7 @@ if (isset($post->save)) {
     // $variance->size = $post->size;
     $variance->unit = $post->unit;
     $variance->frozen = $post->frozen;
-    $variance->wprice = $post->wprice;
+    $variance->wprice = $post->price;
     R::store($variance);
 
     if (count($_FILES) > 0) {
@@ -150,19 +153,19 @@ $contant = "";
                 $pc = R::load("product_category", $obj->product_category_id);
                 print "<tr id='product-$obj->id'>";
                 print "<th colspan='3'></th>";
-                print "<th>$i</th>";
-                print "<td class='text-right'>$obj->name</td>";
-                print "<td>Avl. Stock</td>";
-                print "<td>Min. Stock</td>";
-                print "<td>$pc->uom</td>";
-                print "<td>$pc->uom2</td>";
-                print "<td>Buy</td>";
-                print "<td>SST</td>";
-                print "<td>Cost</td>";
-                print "<td>Price</td>";
-                print "<td>W.Price</td>";
+                print "<th><span class='badge rounded-circle bg-primary' style='width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;'>$i</span></th>";
+                print "<th class='text-left'>$obj->name</th>";
+                print "<th>Avl. Stock</th>";
+                print "<th>Min. Stock</th>";
+                print "<th>$pc->uom</th>";
+                print "<th>$pc->uom2</th>";
+                print "<th>Buy</th>";
+                print "<th>SST</th>";
+                print "<th>Cost</th>";
+                print "<th>Price</th>";
+                // print "<td>W.Price</td>";
                 //print "<td><a type='button' class='btn btn-primary' onclick='setProduct($obj->id)' id='product-$obj->id' data-bs-toggle='modal' data-bs-target='#productFrommOdal'>Add Product</a> <a href='?del=$obj->id'><i class='fa fa-trash'></i></a></td>";
-                print "<td><a type='button' class='btn btn-primary' onclick='setProduct($obj->id)' id='product-$obj->id' data-bs-toggle='modal' data-bs-target='#productFrommOdal'>Add Product</a> <a href='javascript:deleteProductWithPin($obj->id)'><i class='fa fa-trash'></i></a></td>";
+                print "<td style='text-align:center'><a type='button' class='btn btn-primary' onclick='setProduct($obj->id)' id='product-$obj->id' data-bs-toggle='modal' data-bs-target='#productFrommOdal'>Add Product</a> <a href='javascript:deleteProductWithPin($obj->id)'><i class='fa fa-trash'></i></a></td>";
                 print "</tr>";
 
                 $variances = select("*, stock(id) stock", "product_variance", "product_id=$obj->id ORDER BY sort_order");
@@ -174,25 +177,25 @@ $contant = "";
                   $isHidden = ($vi > 10) ? 'hidden-variant' : '';
 
                   print "<tr id='var-$var->id'  class='variant-row $isHidden' data-product='$obj->id'>";
-                  print "<td>$vi</td>";
-                  print "<td>$vi</td>";
-                  print "<td class='text-center'> <img src='" . ROOT . "/{$var->image}' height='80px'> </td>";
+                  print "<td style='text-align:center'>$vi</td>";
+                  // print "<td>$vi</td>";
+                  print "<td class='text-center'><img src='" . ROOT . "/{$var->image}' height='80px' style='border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.15);'></td>";
                   // if($var->image_single){
                   //   print "<td><img src='".ROOT."/{$var->image_single}' height='80px'></td>";
                   // } else{
                   //   print "<td></td>";
                   // }
-                  print "<td id='particulars-$var->id' data-ori='$var->image_orientation' data-sort-order='$var->sort_order' data-frozen='$var->frozen' data-uom='$pc->uom' data-uom2='$pc->uom2' colspan='3'><a href='/store/report/stock/$var->id'>$var->particulars</a></td>";
-                  print "<td id='stock-$var->id' class='" . ($var->stock < $var->min_stock ? 'color-red' : '') . "'>$var->stock</td>";
-                  print "<td id='min_stock-$var->id'>$var->min_stock<t/d>";
-                  print "<td id='size-$var->id'>$var->size<t/d>";
-                  print "<td id='unit-$var->id'>$var->unit<t/d>";
-                  print "<td id='cost_before_tax-$var->id'>$var->cost_before_tax</td>";
-                  print "<td id='tax-$var->id'>$var->tax</td>";
-                  print "<td id='cost-$var->id'>$var->cost</td>";
-                  print "<td id='price-$var->id'>$var->price</td>";
-                  print "<td id='wprice-$var->id'>$var->wprice</td>";
-                  print "<td>";
+                  print "<td id='particulars-$var->id' data-ori='$var->image_orientation' data-sort-order='$var->sort_order' data-frozen='$var->frozen' data-uom='$pc->uom' data-uom2='$pc->uom2' colspan='3' class='text-center'><a href='/store/report/stock/$var->id'>$var->particulars</a></td>";
+                  print "<td id='stock-$var->id' class='text-center " . ($var->stock < $var->min_stock ? 'color-red' : '') . "'>$var->stock</td>";
+                  print "<td id='min_stock-$var->id' class='text-center'>$var->min_stock<t/d>";
+                  print "<td id='size-$var->id' class='text-center'>$var->size<t/d>";
+                  print "<td id='unit-$var->id' class='text-center'>$var->unit<t/d>";
+                  print "<td id='cost_before_tax-$var->id' class='text-right'>$var->cost_before_tax</td>";
+                  print "<td id='tax-$var->id' class='text-right'>$var->tax</td>";
+                  print "<td id='cost-$var->id' class='text-right'>$var->cost</td>";
+                  print "<td id='price-$var->id' class='text-right'>$var->price</td>";
+                  // print "<td id='wprice-$var->id'>$var->wprice</td>";
+                  print "<td style='text-align:center'>";
                   print $var->visible ? "<a href='?id=$var->id&v=0'><i class='fas fa-eye'></i></a>" : "<a href='?id=$var->id&v=1'><i class='fas fa-eye-slash'></i></a>" . space(2);
                   print "<a  onclick='setProductEdit($obj->id, $var->id)' id='product-$obj->id' data-bs-toggle='modal' data-bs-target='#productFrommOdal'> <i class='fa fa-edit'></i></a>" . space(2) . "
                             <a onclick='delProduct($var->id)'><i class='fa fa-trash'></i></a></td>";
@@ -328,10 +331,10 @@ $contant = "";
               </div>
             </div>
 
-            <div class='col-sm-2'>
+            <div class='col-sm-2 hidden'>
               <div class='form-group'>
                 <lable>W.Price</lable>
-                <input class='form-control' required type="number" step='any' name='wprice' id="wprice">
+                <input class='form-control' value='0' type="number" step='any' name='wprice' id="wprice">
               </div>
             </div>
             <div class='col-sm-3 hidden'>

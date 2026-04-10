@@ -247,11 +247,12 @@
         ) returned_qty
       FROM stock_collect sc
       INNER JOIN stock_collect_item sci ON sci.stock_collect_id=sc.id
-      LEFT JOIN product p ON p.id=sci.product_id
-      LEFT JOIN product_variance pv ON pv.id=sci.product_variance_id
-      INNER JOIN invoice i ON i.id = (SELECT ii.invoice_id FROM invoice_item ii WHERE ii.id = sci.invoice_item_id LIMIT 1)
-      LEFT JOIN customer c ON c.id = i.customer_id
-      WHERE sc.delivery_staff='$staffNameSql' AND sc.created_at > '2026-03-26' AND DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate'
+      INNER JOIN invoice_item ii ON ii.id=sci.invoice_item_id
+      LEFT JOIN product p ON p.id=ii.product_id
+      LEFT JOIN product_variance pv ON pv.id=ii.product_variance_id
+      INNER JOIN invoice i ON i.id=ii.invoice_id
+      LEFT JOIN customer c ON c.id=i.customer_id
+      WHERE sc.delivery_staff='$staffNameSql' AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')
       GROUP BY sc.id, DATE(IFNULL(sc.date, sc.created_at)), sci.product_id, sci.product_variance_id, IFNULL(sci.name, p.name), pv.particulars, c.code, c.id
       ORDER BY DATE(IFNULL(sc.date, sc.created_at)) ASC, IFNULL(sci.name, p.name) ASC";
     $collectRows = select($collectSql);
@@ -269,10 +270,10 @@
         iid.quantity as delivered_qty
         FROM invoice_item_delviery iid
         INNER JOIN invoice_item ii ON ii.id=iid.invoice_item_id
-        INNER JOIN stock_collect_item sci ON sci.invoice_item_id=ii.id
-        INNER JOIN stock_collect sc ON sc.id=sci.stock_collect_id
         INNER JOIN invoice i ON i.id=ii.invoice_id
-        WHERE sc.delivery_staff='$staffNameSql' AND sc.created_at > '2026-03-26' AND DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate'";
+        INNER JOIN stock_collect_item sci ON sci.invoice_item_id=ii.id
+        WHERE iid.delivery_staff='$staffNameSql' AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'
+        ORDER BY sci.stock_collect_id, ii.product_id, ii.product_variance_id, i.customer_id";
       
       $deliveryRows = select($deliverySql);
       if ($deliveryRows) {
@@ -444,7 +445,7 @@
                       </td>
                       <td class="text-gray-700" ><?= date('d M, Y', strtotime($row->collect_date)) ?></td>
                       <td class="">
-                        <a class="text-blue-600 font-medium" href="/store/customer/details/<?= (int) $row->customer_id ?>">
+                        <a class="text-blue-600 font-medium" href="?page=i&id=<?= (int) $row->customer_id ?>">
                           <?php 
                           $displayCode = $row->customer_code;
                           if (empty($displayCode)) {

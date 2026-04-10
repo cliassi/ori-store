@@ -1,14 +1,16 @@
 <?php
 $objs = select('distinct id, name, incentive', 'staff_salary', "category='Delivery Staff'");
 
-// Handle date range filtering
-$startDate = (isset($get->start_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $get->start_date))
-  ? $get->start_date
-  : date('Y-m-d'); // Default to 7 days ago
+// Handle date range filtering from dropdowns
+$startDay = isset($get->start_day) ? str_pad((int)$get->start_day, 2, '0', STR_PAD_LEFT) : date('d');
+$startMonth = isset($get->start_month) ? str_pad((int)$get->start_month, 2, '0', STR_PAD_LEFT) : date('m');
+$startYear = isset($get->start_year) ? (int)$get->start_year : date('Y');
+$startDate = "$startYear-$startMonth-$startDay";
 
-$endDate = (isset($get->end_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $get->end_date))
-  ? $get->end_date
-  : date('Y-m-d'); // Default to today
+$endDay = isset($get->end_day) ? str_pad((int)$get->end_day, 2, '0', STR_PAD_LEFT) : date('d');
+$endMonth = isset($get->end_month) ? str_pad((int)$get->end_month, 2, '0', STR_PAD_LEFT) : date('m');
+$endYear = isset($get->end_year) ? (int)$get->end_year : date('Y');
+$endDate = "$endYear-$endMonth-$endDay";
 
 // Ensure start date is not after end date
 if ($startDate > $endDate) {
@@ -129,36 +131,41 @@ if (isset($get->h)) {
   $collectRows = null;
   if ($staffNameSql !== '') {
     $collectSql = "SELECT 
-        sc.id stock_collect_id, i.id invoice_id,
-        MAX(sci.id) stock_collect_item_id,
-        DATE(IFNULL(sc.date, sc.created_at)) collect_date,
-        sci.product_id,
-        sci.product_variance_id,
-        IFNULL(sci.name, p.name) product_name,
-        pv.particulars product_particulars,
-        c.code customer_code,
-        c.id customer_id,
-        SUM(IFNULL(sci.quantity,0)) collected_qty,
+        sci.stock_collect_id,
+        sci.id AS stock_collect_item_id,
+        i.id AS invoice_id,
+        DATE(IFNULL(sc.date, sc.created_at)) AS collect_date,
+        ii.product_id,
+        ii.product_variance_id,
+        IFNULL(sci.name, p.name) AS product_name,
+        pv.particulars AS product_particulars,
+        c.code AS customer_code,
+        c.id AS customer_id,
+        sci.quantity AS collected_qty,
         0 as delivered_qty,
-        (
-          SELECT SUM(IFNULL(sri.quantity,0))
-          FROM stock_return sr
-          INNER JOIN stock_return_item sri ON sri.stock_return_id=sr.id
-          WHERE sr.stock_collect_id=sc.id
-            AND sri.product_id=sci.product_id
-            AND sri.product_variance_id=sci.product_variance_id
-            AND DATE(sr.created_at) BETWEEN '$startDate' AND '$endDate'
-        ) returned_qty
+        0 AS returned_qty
       FROM stock_collect sc
       INNER JOIN stock_collect_item sci ON sci.stock_collect_id=sc.id
-      LEFT JOIN product p ON p.id=sci.product_id
-      LEFT JOIN product_variance pv ON pv.id=sci.product_variance_id
-      INNER JOIN invoice i ON i.id = (SELECT ii.invoice_id FROM invoice_item ii WHERE ii.id = sci.invoice_item_id LIMIT 1)
-      LEFT JOIN customer c ON c.id = i.customer_id
-      WHERE sc.delivery_staff='$staffNameSql' AND (DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate') AND sc.created_at > '2026-03-26'
-      GROUP BY sc.id, DATE(IFNULL(sc.date, sc.created_at)), sci.product_id, sci.product_variance_id, IFNULL(sci.name, p.name), pv.particulars, c.code, c.id
+      INNER JOIN invoice_item ii ON ii.id=sci.invoice_item_id
+      LEFT JOIN product p ON p.id=ii.product_id
+      LEFT JOIN product_variance pv ON pv.id=ii.product_variance_id
+      INNER JOIN invoice i ON i.id=ii.invoice_id
+      LEFT JOIN customer c ON c.id=i.customer_id
+      WHERE sc.delivery_staff='$staffNameSql' AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')
       ORDER BY DATE(IFNULL(sc.date, sc.created_at)) ASC, IFNULL(sci.name, p.name) ASC";
     $collectRows = select($collectSql);
+    // echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Collect Query:</strong> " . htmlspecialchars($collectSql) . " <br><strong>Rows Found:</strong> " . ($collectRows ? mysqli_num_rows($collectRows) : 0) . "</div>";
+    
+    // Build collect data array from query results
+    $collectData = [];
+    if ($collectRows && mysqli_num_rows($collectRows) > 0) {
+      mysqli_data_seek($collectRows, 0);
+      while ($cRow = mysqli_fetch_object($collectRows)) {
+        $cKey = $cRow->stock_collect_id . '_' . $cRow->product_id . '_' . $cRow->product_variance_id . '_' . $cRow->customer_id;
+        $collectData[$cKey] = $cRow;
+      }
+      mysqli_data_seek($collectRows, 0);
+    }
     
     // Get delivery data separately to avoid multiplication
     if ($collectRows && mysqli_num_rows($collectRows) > 0) {
@@ -171,32 +178,19 @@ if (isset($get->h)) {
         iid.quantity as delivered_qty
         FROM invoice_item_delviery iid
         INNER JOIN invoice_item ii ON ii.id=iid.invoice_item_id
-        INNER JOIN stock_collect_item sci ON sci.invoice_item_id=ii.id
-        INNER JOIN stock_collect sc ON sc.id=sci.stock_collect_id
         INNER JOIN invoice i ON i.id=ii.invoice_id
-        WHERE sc.delivery_staff='$staffNameSql' AND DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate'";
-            $deliverySql = "SELECT 
-        sci.stock_collect_id,
-        ii.product_id,
-        ii.product_variance_id,
-        i.customer_id,
-        iid.quantity as delivered_qty
-        FROM invoice_item_delivery iid
-        INNER JOIN invoice_item ii ON ii.id=iid.invoice_item_id
         INNER JOIN stock_collect_item sci ON sci.invoice_item_id=ii.id
-        INNER JOIN stock_collect sc ON sc.id=sci.stock_collect_id
-        INNER JOIN invoice i ON i.id=ii.invoice_id
-        WHERE iid.delivery_staff='$staffNameSql' AND DATE(iid.delivered_at) BETWEEN '$startDate' AND '$endDate'";
-      // print $deliverySql;
+        WHERE iid.delivery_staff='$staffNameSql' AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'
+        ORDER BY sci.stock_collect_id, ii.product_id, ii.product_variance_id, i.customer_id";
       $deliveryRows = select($deliverySql);
+      // echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Delivery Query:</strong> " . htmlspecialchars($deliverySql) . " <br><strong>Rows Found:</strong> " . ($deliveryRows ? mysqli_num_rows($deliveryRows) : 0) . "</div>";
       if ($deliveryRows) {
         while ($dRow = mysqli_fetch_object($deliveryRows)) {
           $key = $dRow->stock_collect_id . '_' . $dRow->product_id . '_' . $dRow->product_variance_id . '_' . $dRow->customer_id;
-          if (!isset($deliveryData[$key])) {
-            $deliveryData[$key] = 0;
-          }
-          $deliveryData[$key] += (float)$dRow->delivered_qty;
+          // Set value directly instead of accumulating to avoid duplicates
+          $deliveryData[$key] = (float)$dRow->delivered_qty;
         }
+        // echo "<div style='background:#d1ecf1; padding:10px; margin:10px 0; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Delivery Data Array:</strong> <pre>" . htmlspecialchars(print_r($deliveryData, true)) . "</pre></div>";
       }
     }
   }
@@ -242,18 +236,82 @@ if (isset($get->h)) {
     }
   </style>
 
-  <div class="d-flex justify-content-center align-items-center" style="padding: 10px 50px 0;">
-    <form method="get" class="d-flex align-items-center gap-2">
-      <input type="hidden" name="h" value="<?= (int) $staffId ?>">
-      <label class="mb-0" for="start_date"><strong>From</strong></label>
-      <input type="date" id="start_date" name="start_date" class="form-control"
-        value="<?= htmlspecialchars($startDate) ?>">
-      <label class="mb-0" for="end_date"><strong>To</strong></label>
-      <input type="date" id="end_date" name="end_date" class="form-control"
-        value="<?= htmlspecialchars($endDate) ?>">
-      <button type="submit" class="btn btn-primary">Filter</button>
-      <a href="?h=<?= (int) $staffId ?>" class="btn btn-light">Reset</a>
-    </form>
+  <?php
+  // Calculate previous month (first day)
+  $currentMonthStart = strtotime($startYear . '-' . $startMonth . '-01');
+  $prevMonthStart = strtotime('-1 month', $currentMonthStart);
+  $prevMonthEnd = strtotime('last day of ' . date('Y-m-d', $prevMonthStart));
+  
+  // Calculate next month (first day to last day)
+  $nextMonthStart = strtotime('+1 month', $currentMonthStart);
+  $nextMonthEnd = strtotime('last day of ' . date('Y-m-d', $nextMonthStart));
+  ?>
+
+  <div style="width: 100%; padding: 10px 0;">
+    <div class="d-flex justify-content-center align-items-center" style="padding: 10px 50px 0;">
+      <form method="get" class="d-flex align-items-center gap-2" style="width: 100%; justify-content: space-between;">
+        <input type="hidden" name="h" value="<?= (int) $staffId ?>">
+        
+        <!-- Previous Button -->
+        <a href="?h=<?= (int) $staffId ?>&start_day=01&start_month=<?= date('m', $prevMonthStart) ?>&start_year=<?= date('Y', $prevMonthStart) ?>&end_day=<?= date('d', $prevMonthEnd) ?>&end_month=<?= date('m', $prevMonthEnd) ?>&end_year=<?= date('Y', $prevMonthEnd) ?>" class="btn btn-outline-secondary" style="white-space: nowrap; padding: 8px 16px; font-size: 14px; color: #333; border-color: #666;">← Prev</a>
+        
+        <div class="d-flex align-items-center gap-2">
+          <label class="mb-0" style="margin-right: 10px;"><strong>From</strong></label>
+          <?php
+          $startParts = explode('-', $startDate);
+          $startYear = isset($startParts[0]) ? $startParts[0] : date('Y');
+          $startMonth = isset($startParts[1]) ? $startParts[1] : date('m');
+          $startDay = isset($startParts[2]) ? $startParts[2] : date('d');
+          ?>
+          <select name="start_day" class="form-select" style="width: 80px;">
+            <?php for ($d = 1; $d <= 31; $d++): ?>
+              <option value="<?= str_pad($d, 2, '0', STR_PAD_LEFT) ?>" <?= $startDay == str_pad($d, 2, '0', STR_PAD_LEFT) ? 'selected' : '' ?>><?= str_pad($d, 2, '0', STR_PAD_LEFT) ?></option>
+            <?php endfor; ?>
+          </select>
+          <select name="start_month" class="form-select" style="width: 120px;">
+            <?php 
+            $months = ['01' => 'Jan', '02' => 'Feb', '03' => 'Mar', '04' => 'Apr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Aug', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dec'];
+            foreach ($months as $m => $name): ?>
+              <option value="<?= $m ?>" <?= $startMonth == $m ? 'selected' : '' ?>><?= $name ?></option>
+            <?php endforeach; ?>
+          </select>
+          <select name="start_year" class="form-select" style="width: 100px;">
+            <?php for ($y = 2020; $y <= date('Y') + 1; $y++): ?>
+              <option value="<?= $y ?>" <?= $startYear == $y ? 'selected' : '' ?>><?= $y ?></option>
+            <?php endfor; ?>
+          </select>
+          
+          <label class="mb-0" style="margin-left: 20px; margin-right: 10px;"><strong>To</strong></label>
+          <?php
+          $endParts = explode('-', $endDate);
+          $endYear = isset($endParts[0]) ? $endParts[0] : date('Y');
+          $endMonth = isset($endParts[1]) ? $endParts[1] : date('m');
+          $endDay = isset($endParts[2]) ? $endParts[2] : date('d');
+          ?>
+          <select name="end_day" class="form-select" style="width: 80px;">
+            <?php for ($d = 1; $d <= 31; $d++): ?>
+              <option value="<?= str_pad($d, 2, '0', STR_PAD_LEFT) ?>" <?= $endDay == str_pad($d, 2, '0', STR_PAD_LEFT) ? 'selected' : '' ?>><?= str_pad($d, 2, '0', STR_PAD_LEFT) ?></option>
+            <?php endfor; ?>
+          </select>
+          <select name="end_month" class="form-select" style="width: 120px;">
+            <?php foreach ($months as $m => $name): ?>
+              <option value="<?= $m ?>" <?= $endMonth == $m ? 'selected' : '' ?>><?= $name ?></option>
+            <?php endforeach; ?>
+          </select>
+          <select name="end_year" class="form-select" style="width: 100px;">
+            <?php for ($y = 2020; $y <= date('Y') + 1; $y++): ?>
+              <option value="<?= $y ?>" <?= $endYear == $y ? 'selected' : '' ?>><?= $y ?></option>
+            <?php endfor; ?>
+          </select>
+          
+          <button type="submit" class="btn btn-primary" style="margin-left: 20px;">Filter</button>
+          <a href="?h=<?= (int) $staffId ?>" class="btn btn-light">Reset</a>
+        </div>
+        
+        <!-- Next Button -->
+        <a href="?h=<?= (int) $staffId ?>&start_day=01&start_month=<?= date('m', $nextMonthStart) ?>&start_year=<?= date('Y', $nextMonthStart) ?>&end_day=<?= date('d', $nextMonthEnd) ?>&end_month=<?= date('m', $nextMonthEnd) ?>&end_year=<?= date('Y', $nextMonthEnd) ?>" class="btn btn-outline-secondary" style="white-space: nowrap; padding: 8px 16px; font-size: 14px; color: #333; border-color: #666;">Next →</a>
+      </form>
+    </div>
   </div>
 
   <div class="table-responsive" style="padding: 20px 50px;">
@@ -283,9 +341,53 @@ if (isset($get->h)) {
           $visibleRows = 0;
           $currentDate = '';
           $dateGroupIndex = 1;
+          $totalCollectQty = 0;
+          $totalDeliveryQty = 0;
+          $totalReturnQty = 0;
+          $totalBalanceQty = 0;
           
-          while ($row = mysqli_fetch_object($collectRows)):
+          // Get total collect and delivery per day
+          $dailyTotals = [];
+          if ($collectRows && mysqli_num_rows($collectRows) > 0) {
+            mysqli_data_seek($collectRows, 0);
+            while ($row = mysqli_fetch_object($collectRows)) {
+              $date = $row->collect_date;
+              if (!isset($dailyTotals[$date])) {
+                $dailyTotals[$date] = ['collect' => 0, 'delivery' => 0, 'return' => 0];
+              }
+              $dailyTotals[$date]['collect'] += (float)$row->collected_qty;
+              $dailyTotals[$date]['return'] += (float)(isset($row->returned_qty) ? $row->returned_qty : 0);
+            }
+            
+            // Add delivery totals per day
+            if ($deliveryRows) {
+              mysqli_data_seek($deliveryRows, 0);
+              while ($dRow = mysqli_fetch_object($deliveryRows)) {
+                $deliveryDate = date('Y-m-d');
+                if (!isset($dailyTotals[$deliveryDate])) {
+                  $dailyTotals[$deliveryDate] = ['collect' => 0, 'delivery' => 0, 'return' => 0];
+                }
+                $dailyTotals[$deliveryDate]['delivery'] += (float)$dRow->delivered_qty;
+              }
+            }
+          }
+          
+          // Reset pointer to display rows
+          if ($collectRows) {
+            mysqli_data_seek($collectRows, 0);
+          }
+          
+          // Iterate through collectData array instead of result set
+          foreach ($collectData as $cKey => $row):
             if ($row->collect_date < $startDate || $row->collect_date > $endDate) {
+              continue;
+            }
+            
+            // Skip rows where both collect and delivery are 0
+            $collectedQty = (float) $row->collected_qty;
+            $deliveryKey = $row->stock_collect_id . '_' . $row->product_id . '_' . $row->product_variance_id . '_' . $row->customer_id;
+            $deliveredQty = isset($deliveryData[$deliveryKey]) ? $deliveryData[$deliveryKey] : 0;
+            if ($collectedQty == 0 && $deliveredQty == 0) {
               continue;
             }
             
@@ -337,15 +439,29 @@ if (isset($get->h)) {
               $deliveredQty = isset($deliveryData[$deliveryKey]) ? $deliveryData[$deliveryKey] : 0;
               $returnedQty = (float) (isset($row->returned_qty) ? $row->returned_qty : 0);
               $balanceQty = $collectedQty - $deliveredQty - $returnedQty;
+              
+              // Accumulate totals
+              $totalCollectQty += $collectedQty;
+              $totalDeliveryQty += $deliveredQty;
+              $totalReturnQty += $returnedQty;
+              $totalBalanceQty += $balanceQty;
               ?>
               <td><?= $balanceQty != 0 ? nf2($balanceQty) : '' ?></td>
             </tr>
-          <?php endwhile; ?>
+          <?php endforeach; ?>
           <?php if ($visibleRows === 0): ?>
             <tr>
               <td colspan="8" class="text-center">No collection found for <?= htmlspecialchars($staffName) ?> between
                 <?= htmlspecialchars(df($startDate)) ?> and <?= htmlspecialchars(df($endDate)) ?>.
               </td>
+            </tr>
+          <?php else: ?>
+            <tr style="font-weight: bold; background-color: #f0f0f0;">
+              <td colspan="4">TOTAL</td>
+              <td style="background-color: #f2f2f2;"><?= nf2($totalCollectQty) ?></td>
+              <td style="background-color: #e6f2f2;"><?= nf2($totalDeliveryQty) ?></td>
+              <td style="background-color: #f2f2e6;"><?= nf2($totalReturnQty) ?></td>
+              <td><?= nf2($totalBalanceQty) ?></td>
             </tr>
           <?php endif; ?>
         <?php endif; ?>
@@ -440,13 +556,65 @@ if (isset($get->h)) {
 } else {
   ?>
   <div class="table-responsive" style="padding: 20px 50px;">
-    <form method="get" class="d-flex align-items-center gap-2" style="margin-bottom:10px;">
-      <label class="mb-0" for="start_date"><strong>From</strong></label>
-      <input type="date" id="start_date" name="start_date" class="form-control" value="<?= htmlspecialchars($startDate) ?>">
-      <label class="mb-0" for="end_date"><strong>To</strong></label>
-      <input type="date" id="end_date" name="end_date" class="form-control" value="<?= htmlspecialchars($endDate) ?>">
-      <button type="submit" class="btn btn-primary">Filter</button>
-      <a href="?" class="btn btn-light">Reset</a>
+    <form method="get" class="d-flex align-items-center gap-2" style="margin-bottom:10px; flex-wrap: wrap;">
+      <div>
+        <label class="mb-2" style="display: block;"><strong>From</strong></label>
+        <div class="d-flex gap-2">
+          <?php
+          $startParts = explode('-', $startDate);
+          $startYear = isset($startParts[0]) ? $startParts[0] : date('Y');
+          $startMonth = isset($startParts[1]) ? $startParts[1] : date('m');
+          $startDay = isset($startParts[2]) ? $startParts[2] : date('d');
+          ?>
+          <select name="start_day" class="form-select" style="width: 80px;">
+            <?php for ($d = 1; $d <= 31; $d++): ?>
+              <option value="<?= str_pad($d, 2, '0', STR_PAD_LEFT) ?>" <?= $startDay == str_pad($d, 2, '0', STR_PAD_LEFT) ? 'selected' : '' ?>><?= str_pad($d, 2, '0', STR_PAD_LEFT) ?></option>
+            <?php endfor; ?>
+          </select>
+          <select name="start_month" class="form-select" style="width: 120px;">
+            <?php 
+            $months = ['01' => 'Jan', '02' => 'Feb', '03' => 'Mar', '04' => 'Apr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Aug', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dec'];
+            foreach ($months as $m => $name): ?>
+              <option value="<?= $m ?>" <?= $startMonth == $m ? 'selected' : '' ?>><?= $name ?></option>
+            <?php endforeach; ?>
+          </select>
+          <select name="start_year" class="form-select" style="width: 100px;">
+            <?php for ($y = 2020; $y <= date('Y') + 1; $y++): ?>
+              <option value="<?= $y ?>" <?= $startYear == $y ? 'selected' : '' ?>><?= $y ?></option>
+            <?php endfor; ?>
+          </select>
+        </div>
+      </div>
+      
+      <div>
+        <label class="mb-2" style="display: block;"><strong>To</strong></label>
+        <div class="d-flex gap-2">
+          <?php
+          $endParts = explode('-', $endDate);
+          $endYear = isset($endParts[0]) ? $endParts[0] : date('Y');
+          $endMonth = isset($endParts[1]) ? $endParts[1] : date('m');
+          $endDay = isset($endParts[2]) ? $endParts[2] : date('d');
+          ?>
+          <select name="end_day" class="form-select" style="width: 80px;">
+            <?php for ($d = 1; $d <= 31; $d++): ?>
+              <option value="<?= str_pad($d, 2, '0', STR_PAD_LEFT) ?>" <?= $endDay == str_pad($d, 2, '0', STR_PAD_LEFT) ? 'selected' : '' ?>><?= str_pad($d, 2, '0', STR_PAD_LEFT) ?></option>
+            <?php endfor; ?>
+          </select>
+          <select name="end_month" class="form-select" style="width: 120px;">
+            <?php foreach ($months as $m => $name): ?>
+              <option value="<?= $m ?>" <?= $endMonth == $m ? 'selected' : '' ?>><?= $name ?></option>
+            <?php endforeach; ?>
+          </select>
+          <select name="end_year" class="form-select" style="width: 100px;">
+            <?php for ($y = 2020; $y <= date('Y') + 1; $y++): ?>
+              <option value="<?= $y ?>" <?= $endYear == $y ? 'selected' : '' ?>><?= $y ?></option>
+            <?php endfor; ?>
+          </select>
+        </div>
+      </div>
+      
+      <button type="submit" class="btn btn-primary" style="align-self: flex-end; margin-bottom: 0;">Filter</button>
+      <a href="?" class="btn btn-light" style="align-self: flex-end; margin-bottom: 0;">Reset</a>
     </form>
     <table class="table table-hover table-bordered">
       <thead>
@@ -455,7 +623,9 @@ if (isset($get->h)) {
         <th width="100">Balance</th>
       </thead>
       <tbody>
-        <?php while ($obj = mysqli_fetch_object($objs)): ?>
+        <?php 
+        $summaryTotalBalance = 0;
+        while ($obj = mysqli_fetch_object($objs)): ?>
           <?php
           $staffId = (int) $obj->id;
 $staffName = isset($obj->name) ? trim((string) $obj->name) : '';
@@ -465,80 +635,51 @@ $balanceQty = 0;
 
 if ($staffNameSql !== '') {
 
-  // 1) Get collected rows exactly like details view
-  $collectSql = "SELECT 
-      sc.id AS stock_collect_id,
-      sci.product_id,
-      sci.product_variance_id,
-      c.id AS customer_id,
-      SUM(IFNULL(sci.quantity,0)) AS collected_qty,
-      (
-        SELECT SUM(IFNULL(sri.quantity,0))
-        FROM stock_return sr
-        INNER JOIN stock_return_item sri ON sri.stock_return_id = sr.id
-        WHERE sr.stock_collect_id = sc.id
-          AND sri.product_id = sci.product_id
-          AND sri.product_variance_id = sci.product_variance_id
-          AND DATE(sr.created_at) BETWEEN '$startDate' AND '$endDate'
-      ) AS returned_qty
+  // 1) Get total collected quantity for the staff
+  $collectTotalSql = "SELECT SUM(IFNULL(sci.quantity, 0)) AS total_collected
     FROM stock_collect sc
     INNER JOIN stock_collect_item sci ON sci.stock_collect_id = sc.id
-    INNER JOIN invoice i ON i.id = (
-      SELECT ii.invoice_id
-      FROM invoice_item ii
-      WHERE ii.id = sci.invoice_item_id
-      LIMIT 1
-    )
-    LEFT JOIN customer c ON c.id = i.customer_id
     WHERE sc.delivery_staff = '$staffNameSql'
-      AND DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate'
-      AND sc.created_at > '2026-03-26'
-    GROUP BY
-      sc.id,
-      sci.product_id,
-      sci.product_variance_id,
-      c.id";
+      AND DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate'";
+  
+  $collectTotalResult = select($collectTotalSql);
+  $totalCollected = 0;
+  if ($collectTotalResult) {
+    $collectRow = mysqli_fetch_object($collectTotalResult);
+    $totalCollected = (float)($collectRow ? $collectRow->total_collected : 0);
+  }
 
-  $collectRows = select($collectSql);
-
-  // 2) Get delivery data exactly like details view
-  $deliveryData = [];
-  $deliverySql = "SELECT 
-      sci.stock_collect_id,
-      ii.product_id,
-      ii.product_variance_id,
-      i.customer_id,
-      iid.quantity AS delivered_qty
-    FROM invoice_item_delivery iid
-    INNER JOIN invoice_item ii ON ii.id = iid.invoice_item_id
-    INNER JOIN stock_collect_item sci ON sci.invoice_item_id = ii.id
-    INNER JOIN stock_collect sc ON sc.id = sci.stock_collect_id
-    INNER JOIN invoice i ON i.id = ii.invoice_id
+  // 2) Get total delivered quantity for the staff
+  $deliveryTotalSql = "SELECT SUM(IFNULL(iid.quantity, 0)) AS total_delivered
+    FROM invoice_item_delviery iid
     WHERE iid.delivery_staff = '$staffNameSql'
-      AND DATE(iid.delivered_at) BETWEEN '$startDate' AND '$endDate'";
-
-  $deliveryRows = select($deliverySql);
-  if ($deliveryRows) {
-    while ($dRow = mysqli_fetch_object($deliveryRows)) {
-      $key = $dRow->stock_collect_id . '_' . $dRow->product_id . '_' . $dRow->product_variance_id . '_' . $dRow->customer_id;
-      if (!isset($deliveryData[$key])) {
-        $deliveryData[$key] = 0;
-      }
-      $deliveryData[$key] += (float) $dRow->delivered_qty;
-    }
+      AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'";
+  
+  $deliveryTotalResult = select($deliveryTotalSql);
+  $totalDelivered = 0;
+  if ($deliveryTotalResult) {
+    $deliveryRow = mysqli_fetch_object($deliveryTotalResult);
+    $totalDelivered = (float)($deliveryRow ? $deliveryRow->total_delivered : 0);
   }
 
-  // 3) Sum balance exactly like details rows
-  if ($collectRows) {
-    while ($row = mysqli_fetch_object($collectRows)) {
-      $deliveryKey = $row->stock_collect_id . '_' . $row->product_id . '_' . $row->product_variance_id . '_' . $row->customer_id;
-      $collectedQty = (float) $row->collected_qty;
-      $deliveredQty = isset($deliveryData[$deliveryKey]) ? (float) $deliveryData[$deliveryKey] : 0;
-      $returnedQty = (float) ($row->returned_qty + 0);
-
-      $balanceQty += ($collectedQty - $deliveredQty - $returnedQty);
-    }
+  // 3) Get total returned quantity for the staff
+  $returnTotalSql = "SELECT SUM(IFNULL(sri.quantity, 0)) AS total_returned
+    FROM stock_return sr
+    INNER JOIN stock_return_item sri ON sri.stock_return_id = sr.id
+    INNER JOIN stock_collect sc ON sc.id = sr.stock_collect_id
+    WHERE sc.delivery_staff = '$staffNameSql'
+      AND DATE(sr.created_at) BETWEEN '$startDate' AND '$endDate'";
+  
+  $returnTotalResult = select($returnTotalSql);
+  $totalReturned = 0;
+  if ($returnTotalResult) {
+    $returnRow = mysqli_fetch_object($returnTotalResult);
+    $totalReturned = (float)($returnRow ? $returnRow->total_returned : 0);
   }
+
+  // 4) Calculate balance
+  $balanceQty = $totalCollected - $totalDelivered - $totalReturned;
+  $summaryTotalBalance += $balanceQty;
 }
           ?>
           <tr>
@@ -548,6 +689,12 @@ if ($staffNameSql !== '') {
           </tr>
         <?php endwhile; ?>
       </tbody>
+      <tfoot>
+        <tr style="font-weight: bold; background-color: #f0f0f0;">
+          <td colspan="2">TOTAL</td>
+          <td class='text-right'><?= nf2($summaryTotalBalance, 0) ?></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
   <?php

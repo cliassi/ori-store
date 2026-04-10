@@ -199,10 +199,11 @@ function buildForm($formItems = [], $_class='form-group')
         } elseif ($fi['type'] == 'image') {
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='text-center'>
-                    <label for='$key'>{$fi['label']}</label>
-                    <input id='$key' type='file' accept='image/*' name='$key'>";
+                    <label>{$fi['label']}</label><br>
+                    <button type='button' id='pickImageBtn' class='btn btn-outline-primary mb-3'>Choose Photo</button>
+                    <input id='$key' type='file' accept='image/*' name='$key' style='display:none;'>";
             if ($fi['value']) {
-                $form .= "<img src='" . ROOT . "/{$fi['value']}' height='200px'>";
+                $form .= "<br><img src='" . ROOT . "/{$fi['value']}' height='200px' style='margin-top:10px;'>";
             }
             $form .= "</div>
             </div>";
