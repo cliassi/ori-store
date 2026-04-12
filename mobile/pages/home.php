@@ -75,7 +75,7 @@
 // Helper function to check if image exists and return placeholder if not
 
 // Product categories data - ready for database integration
-$categories = select('*', 'product');
+$categories = select('*', 'product', '1=1 ORDER BY sort_order');
 // Product variants data - ready for database integration
 
 $variance = select('*', 'product_variance');
@@ -154,10 +154,10 @@ foreach ($products as $pg) {
     <div class="category-track flex gap-4 will-change-transform">
       <?php foreach ($categories as $category): ?>
         <div class="category-card flex-shrink-0 text-center cursor-pointer" style="width: calc(20.5% - 2.25px); min-width: calc(18.5% - 2.25px); flex: 0 0 calc(18.5% - 2.25px);" onclick="scrollToCategory('<?php echo strtolower(str_replace(' ', '-', $category['name'])); ?>')">
-          <div class="relative w-20 h-20 rounded-full border-2 border-brandBlue flex items-center justify-center bg-white shadow-sm">
-            <img src="<?php echo getImageOrPlaceholder($category['image'], $category['name']); ?>" alt="<?php echo htmlspecialchars($category['name']); ?>" class="w-18 h-18 rounded-full object-cover">
+          <div class="relative w-18 h-18 rounded-full flex items-center justify-center">
+            <img src="<?php echo getImageOrPlaceholder($category['image'], $category['name']); ?>" alt="<?php echo htmlspecialchars($category['name']); ?>" class="w-16 h-16 rounded-full object-cover">
           </div>
-          <p class="mt-2 text-sm font-semibold text-gray-800"><?php echo $category['name']; ?></p>
+          <p class="mt-1 text-gray-800" style="font-size: .67rem;"><?php echo $category['name']; ?></p>
         </div>
       <?php endforeach; ?>
     </div>
@@ -177,16 +177,20 @@ foreach ($products as $pg) {
         </div>
       </div>
       <!-- Slider Viewport -->
-      <div class="slider-viewport overflow-x-auto overflow-y-hidden relative -ml-4">
+      <div class="slider-viewport overflow-hidden relative -ml-4">
         <div class="slider-track flex gap-0 will-change-transform pb-2 pl-4 pr-4 -mx-6">
           <?php foreach ($productGroup['variants'] as $product): ?>
-            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(40%); min-width: calc(40%);"
+            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(36%); min-width: calc(36%);"
               data-name="<?php echo strtolower($product['name']); ?>"
               data-category="<?php echo strtolower($productGroup['category_name']); ?>"
               data-size="<?php echo strtolower($product['size']); ?>">
-              <!-- Floating Quantity Badge -->
+              <!-- Floating Quantity Badge (Right) -->
               <div class="absolute z-10" style="bottom: 4.5rem;right: 1rem;">
-                <div class="qty-badge bg-white text-green-500 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>" style="display: none;">0</div>
+                <div class="qty-badge bg-white text-black rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>" style="display: none;">0</div>
+              </div>
+              <!-- Close Button (Left) -->
+              <div class="absolute z-10 qty-close-btn" style="bottom: 4.5rem;left: 1rem; display: none;">
+                <div class="bg-white text-gray-500 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>">✕</div>
               </div>
               <!-- Hidden select for form submission -->
               <select class="cart-item hidden" data-product="<?php echo $product['id']; ?>" aria-label="Quantity">
@@ -196,7 +200,7 @@ foreach ($products as $pg) {
                 <option value="__custom__">Enter quantity...</option>
               </select>
               <!-- Image Area -->
-              <div class="p-1">
+              <div class="px-1.5 py-0.25">
                 <div class="bg-gradient-to-b from-blue-50 to-white flex items-end justify-center overflow-hidden" style="aspect-ratio: 1; border-radius: 15px; border: solid 1px #efefef;">
                   <?php
                   $imageSrc = getImageOrPlaceholder($product['image'], $product['name']);
@@ -826,6 +830,14 @@ foreach ($products as $pg) {
         badge.textContent = qty;
         badge.style.display = qty > 0 ? 'flex' : 'none';
       });
+      // Show/hide close button
+      const card = sel.closest('.product-item');
+      if (card) {
+        const closeBtn = card.querySelector('.qty-close-btn');
+        if (closeBtn) {
+          closeBtn.style.display = qty > 0 ? 'block' : 'none';
+        }
+      }
     }
 
     // Handle badge click to increment quantity
@@ -843,6 +855,19 @@ foreach ($products as $pg) {
           sel.appendChild(opt);
         }
         sel.value = String(qty);
+        updateAllBadges(productId, sel);
+      });
+    });
+
+    // Handle close button click to reset quantity to 0
+    document.querySelectorAll('.qty-close-btn').forEach(closeBtn => {
+      const closeIcon = closeBtn.querySelector('div');
+      closeIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const productId = closeIcon.getAttribute('data-product');
+        const sel = document.querySelector(`select.cart-item[data-product="${productId}"]`);
+        if (!sel) return;
+        sel.value = '0';
         updateAllBadges(productId, sel);
       });
     });
