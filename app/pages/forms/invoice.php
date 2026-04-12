@@ -14,7 +14,9 @@ if (METHOD == 'edit' && defined('ID')) {
   if (isset($post->save)) {
     $obj->salesman = $post->salesman;
     $salesman = R::findOne('staff_salary', 'name=?', [$post->salesman]);
-    $obj->incentive = $salesman->incentive;
+    if($salesman){
+      $obj->incentive = $salesman->incentive;
+    }
     // $obj->salesman_id = $post->salesman_id;
     $obj->invoice_date = isset($post->date) ? $post->date : today();
     // $obj->due_date = $post->due_date;
@@ -22,26 +24,58 @@ if (METHOD == 'edit' && defined('ID')) {
     // $obj->note = $post->note;
 
     R::store($obj);
-    if (METHOD == 'edit' && defined('ID')) {
-      del("invoice_item", "invoice_id=" . ID);
+    
+    // Get existing invoice items for this invoice
+    $existingItems = R::find("invoice_item", "invoice_id=?", [ID]);
+    $existingItemsMap = [];
+    foreach ($existingItems as $item) {
+      $existingItemsMap[$item->product_variance_id] = $item;
     }
+    
+    // Track which items are being updated
+    $updatedVarianceIds = [];
+    
     foreach ($post->product as $id => $qty) {
       $variance = R::load("product_variance", $id);
       $product = R::load("product", $variance->product_id);
-      $ii = R::dispense("invoice_item");
-
-      $ii->invoice_id = $obj->id;
-      $ii->product_id = $product->id;
-      $ii->product_variance_id = $variance->id;
-      // $ii->delivery_date = $obj->invoice_date;
-      $ii->quantity = $qty;
-      $ii->price = $variance->price;
-      $ii->cost = $variance->cost;
-      $ii->name = $product->name;
-      $ii->description = $variance->particulars;
-      $ii->created_by = nn($obj->created_by) ? $obj->created_by : uid();
-
+      $updatedVarianceIds[] = $id;
+      
+      // Get posted price if available, otherwise use variance price
+      $postedPrice = isset($post->price[$id]) ? (float) $post->price[$id] : $variance->price;
+      
+      // Check if item already exists
+      if (isset($existingItemsMap[$id])) {
+        // Update existing item
+        $ii = $existingItemsMap[$id];
+        $ii->quantity = $qty;
+        $ii->price = $postedPrice;
+        $ii->cost = $variance->cost;
+        $ii->name = $product->name;
+        $ii->description = $variance->particulars;
+        $ii->updated_by = uid();
+        $ii->updated_at = now();
+      } else {
+        // Create new item
+        $ii = R::dispense("invoice_item");
+        $ii->invoice_id = $obj->id;
+        $ii->product_id = $product->id;
+        $ii->product_variance_id = $variance->id;
+        $ii->quantity = $qty;
+        $ii->price = $postedPrice;
+        $ii->cost = $variance->cost;
+        $ii->name = $product->name;
+        $ii->description = $variance->particulars;
+        $ii->created_by = nn($obj->created_by) ? $obj->created_by : uid();
+      }
+      
       R::store($ii);
+    }
+    
+    // Delete items that are no longer in the product list
+    foreach ($existingItems as $item) {
+      if (!in_array($item->product_variance_id, $updatedVarianceIds)) {
+        R::trash($item);
+      }
     }
 
     redir(ROOT . "/customer/details/$post->customer_id");
@@ -246,13 +280,8 @@ if (METHOD == 'edit' && defined('ID')) {
 						  $variance->price = $cp[$variance->id];
 					  }
 						
-                      // $customer_product_variance = R::findOne("customer_product_variance", "customer_id=? AND product_variance_id=?", [$obj->customer_id, $variance->id]);
-                      // if ($customer_product_variance) {
-                      //   $price = $customer_product_variance->price;
-                      // } else {
-                      // $price = $variance->price;
-                      // }
-                      $price = $variance->price;
+                      // Load price from invoice_item (database) instead of variance
+                      $price = $item->price;
 
                       print "<tr>";
                       print "<td>$i</td>";

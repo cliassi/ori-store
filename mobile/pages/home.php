@@ -3,6 +3,10 @@
     border-color: #2563eb !important;
   }
 
+  .bg-gradient-to-b{
+    bottom: 3.5rem !important;
+    right: 1.2rem !important;
+  }
   .text-xsm {
     font-size: .7rem;
   }
@@ -161,56 +165,56 @@ foreach ($products as $pg) {
 </div>
 
 <!-- Product Variants Rows (horizontal sliders) -->
-<div class="space-y-6">
+<div class="space-y-2">
   <?php foreach ($products as $productGroup): ?>
     <div class="bg-white rounded-lg shadow-sm overflow-hidden product-section" id="<?php echo strtolower(str_replace(' ', '-', $productGroup['category_name'])); ?>" data-category="<?php echo strtolower($productGroup['category_name']); ?>">
       <!-- Category Header -->
       <div class="px-2 py-2 bg-white flex items-center justify-between">
         <h3 class="font-bold text-brandBlue text-base"><?php echo $productGroup['category_name']; ?></h3>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-0">
           <button class="slider-prev rounded-full w-8 h-8 border border-gray-300 text-gray-600 flex items-center justify-center hover:bg-gray-50" aria-label="Previous">‹</button>
           <button class="slider-next rounded-full w-8 h-8 border border-gray-300 text-gray-600 flex items-center justify-center hover:bg-gray-50" aria-label="Next">›</button>
         </div>
       </div>
       <!-- Slider Viewport -->
-      <div class="slider-viewport overflow-x-auto overflow-y-hidden relative px-4">
-        <div class="slider-track flex gap-3 will-change-transform pb-2">
+      <div class="slider-viewport overflow-x-auto overflow-y-hidden relative -ml-4">
+        <div class="slider-track flex gap-0 will-change-transform pb-2 pl-4 pr-4">
           <?php foreach ($productGroup['variants'] as $product): ?>
-            <div class="slider-card border border-gray-200 rounded-md overflow-hidden product-item bg-white p-2 flex-shrink-0" style="width: 40%; min-width: 40%;"
+            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(40% - 4px); min-width: calc(40% - 4px);"
               data-name="<?php echo strtolower($product['name']); ?>"
               data-category="<?php echo strtolower($productGroup['category_name']); ?>"
               data-size="<?php echo strtolower($product['size']); ?>">
-              <!-- Title Bar -->
-              <div class="px-2 pt-2">
-                <div class="flex items-start justify-between">
-                  <div class="text-[10px] text-gray-600">
-                    <select class="cart-item border border-gray-300 rounded-sm px-1 py-0 text-[10px] focus:outline-none focus:ring-2 focus:ring-blue-400" data-product="<?php echo $product['id']; ?>" aria-label="Quantity">
-                      <?php for ($counter = 0; $counter <= 10; $counter++): ?>
-                        <option value="<?php echo $counter; ?>"><?php echo ($counter > 0 ? '' : '') . $counter; ?></option>
-                      <?php endfor; ?>
-                      <option value="__custom__">Enter quantity...</option>
-                    </select>
-                  </div>
-                </div>
+              <!-- Floating Quantity Badge -->
+              <div class="absolute z-10" style="bottom: 4.5rem;right: 1rem;">
+                <div class="qty-badge bg-white text-green-500 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>" style="display: none;">0</div>
               </div>
+              <!-- Hidden select for form submission -->
+              <select class="cart-item hidden" data-product="<?php echo $product['id']; ?>" aria-label="Quantity">
+                <?php for ($counter = 0; $counter <= 10; $counter++): ?>
+                  <option value="<?php echo $counter; ?>"><?php echo $counter; ?></option>
+                <?php endfor; ?>
+                <option value="__custom__">Enter quantity...</option>
+              </select>
               <!-- Image Area -->
-              <div class="px-2 pt-2">
-                <div class="bg-gradient-to-b from-blue-50 to-white rounded-sm flex items-end justify-center overflow-hidden">
+              <div class="p-2">
+                <div class="bg-gradient-to-b from-blue-50 to-white flex items-end justify-center overflow-hidden" style="aspect-ratio: 1; border-radius: 10px; border: solid 1px #efefef;">
                   <?php
                   $imageSrc = getImageOrPlaceholder($product['image'], $product['name']);
                   if (file_exists($product['image'])):
                   ?>
-                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="h-full object-contain">
+                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="h-full object-contain rounded-md">
                   <?php else: ?>
-                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="object-contain opacity-80">
+                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="object-contain opacity-80 rounded-md">
                   <?php endif; ?>
                 </div>
               </div>
+              <!-- Product Name -->
+              <div class="text-left text-[10px] text-black px-2 py-2 pb-0 line-clamp-2" style="white-space: nowrap"><?php echo htmlspecialchars($product['name']); ?></div>
               <!-- Blue Footer with Category -->
-              <div class="text-center bg-brandBlue text-black text-xxl font-semibold"><?php echo $productGroup['category_name']; ?></div>
+              <!-- <div class="text-center bg-brandBlue text-black text-xxl font-semibold"><?php echo $productGroup['category_name']; ?></div> -->
               <!-- Bottom Row: price only (select moved to top) -->
-              <div class="flex items-center justify-center">
-                <div class="font-lexend text-[25px] font-extrabold text-red-600"><span class='text-xs'>RM</span> <?php echo number_format($product['price'], 2); ?></div>
+              <div class="flex items-center justify-center px-2">
+                <div class="font-lexend text-[16px] text-bold" style="color:red"><span class="text-[8px]">RM</span> <?php echo number_format($product['price'], 2); ?></div>
               </div>
             </div>
           <?php endforeach; ?>
@@ -318,6 +322,7 @@ foreach ($products as $pg) {
 
   .slider-track {
     transition: transform .35s ease;
+    margin-left: .4rem !important;
   }
 
   .slider-viewport {
@@ -814,8 +819,40 @@ foreach ($products as $pg) {
       sel.value = val;
     }
 
+    // Update all badges for a product
+    function updateAllBadges(productId, sel) {
+      const qty = parseInt(sel.value || '0', 10);
+      document.querySelectorAll(`.qty-badge[data-product="${productId}"]`).forEach(badge => {
+        badge.textContent = qty;
+        badge.style.display = qty > 0 ? 'flex' : 'none';
+      });
+    }
+
+    // Handle badge click to increment quantity
+    document.querySelectorAll('.qty-badge').forEach(badge => {
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const productId = badge.getAttribute('data-product');
+        const sel = document.querySelector(`select.cart-item[data-product="${productId}"]`);
+        if (!sel) return;
+        let qty = parseInt(sel.value || '0', 10) + 1;
+        if (qty > 10) {
+          const opt = document.createElement('option');
+          opt.value = String(qty);
+          opt.textContent = String(qty);
+          sel.appendChild(opt);
+        }
+        sel.value = String(qty);
+        updateAllBadges(productId, sel);
+      });
+    });
+
+    // Update badge when select changes
     document.querySelectorAll('select.cart-item').forEach(sel => {
+      const productId = sel.getAttribute('data-product');
+      
       sel.addEventListener('change', () => {
+        updateAllBadges(productId, sel);
         if (sel.value !== '__custom__') return;
         openQtyModal(sel);
       });
@@ -827,12 +864,16 @@ foreach ($products as $pg) {
         return;
       }
       applyQtyToSelect(qtyTargetSelect, qtyInputEl ? qtyInputEl.value : '0');
+      const productId = qtyTargetSelect.getAttribute('data-product');
+      updateAllBadges(productId, qtyTargetSelect);
       qtyTargetSelect = null;
       closeQtyModal();
     });
 
     qtyCancelBtn && qtyCancelBtn.addEventListener('click', () => {
       if (qtyTargetSelect) qtyTargetSelect.value = '0';
+      const productId = qtyTargetSelect.getAttribute('data-product');
+      updateAllBadges(productId, qtyTargetSelect);
       qtyTargetSelect = null;
       closeQtyModal();
     });
@@ -840,8 +881,8 @@ foreach ($products as $pg) {
     // Click card to increment quantity (mobile-friendly)
     document.querySelectorAll('.product-item').forEach(card => {
       card.addEventListener('click', (e) => {
-        // avoid increment when clicking directly on select to change value manually
-        if (e.target && (e.target.tagName === 'SELECT' || e.target.closest('select'))) return;
+        // avoid increment when clicking on badge or select
+        if (e.target && (e.target.tagName === 'SELECT' || e.target.closest('select') || e.target.closest('.qty-badge'))) return;
         const sel = card.querySelector('select.cart-item');
         if (!sel) return;
         let qty = parseInt(sel.value || '0', 10) + 1;
@@ -852,6 +893,8 @@ foreach ($products as $pg) {
           sel.appendChild(opt);
         }
         sel.value = String(qty);
+        const productId = sel.getAttribute('data-product');
+        updateAllBadges(productId, sel);
       });
     });
 
