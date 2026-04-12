@@ -168,8 +168,8 @@ if (isset($get->h)) {
     }
     
     // Get delivery data separately to avoid multiplication
+    $deliveryData = [];
     if ($collectRows && mysqli_num_rows($collectRows) > 0) {
-      $deliveryData = [];
       $deliverySql = "SELECT 
         sci.stock_collect_id,
         ii.product_id,
@@ -444,7 +444,6 @@ if (isset($get->h)) {
               $totalCollectQty += $collectedQty;
               $totalDeliveryQty += $deliveredQty;
               $totalReturnQty += $returnedQty;
-              $totalBalanceQty += $balanceQty;
               ?>
               <td><?= $balanceQty != 0 ? nf2($balanceQty) : '' ?></td>
             </tr>
@@ -456,18 +455,55 @@ if (isset($get->h)) {
               </td>
             </tr>
           <?php else: ?>
+            <?php
+            // Get summary totals using SQL SUM()
+            // Collect totals
+            $summaryCollectQuery = "SELECT SUM(sci.quantity) as total_collected
+              FROM stock_collect sc
+              INNER JOIN stock_collect_item sci ON sci.stock_collect_id=sc.id
+              WHERE sc.delivery_staff='$staffNameSql' AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
+            $collectResult = select($summaryCollectQuery);
+            $collectRow = $collectResult ? mysqli_fetch_object($collectResult) : null;
+            $sumCollect = $collectRow ? (float)$collectRow->total_collected : 0;
+            
+            // Delivery totals
+            $deliveryQuery = "SELECT COALESCE(SUM(iid.quantity), 0) as total_delivered
+              FROM invoice_item_delviery iid
+              WHERE iid.delivery_staff='$staffNameSql' AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'";
+            $deliveryResult = select($deliveryQuery);
+            $deliveryRow = $deliveryResult ? mysqli_fetch_object($deliveryResult) : null;
+            $sumDelivery = $deliveryRow ? (float)$deliveryRow->total_delivered : 0;
+            
+            // Return totals
+            $returnQuery = "SELECT COALESCE(SUM(sri.quantity), 0) as total_returned
+              FROM stock_return_item sri
+              INNER JOIN stock_collect_item sci ON sci.id=sri.stock_collect_item_id
+              INNER JOIN stock_collect sc ON sc.id=sci.stock_collect_id
+              WHERE sc.delivery_staff='$staffNameSql' AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
+            $returnResult = select($returnQuery);
+            $returnRow = $returnResult ? mysqli_fetch_object($returnResult) : null;
+            $sumReturn = $returnRow ? (float)$returnRow->total_returned : 0;
+            
+            $sumBalance = $sumCollect - $sumDelivery - $sumReturn;
+            ?>
             <tr style="font-weight: bold; background-color: #f0f0f0;">
               <td colspan="4">TOTAL</td>
-              <td style="background-color: #f2f2f2;"><?= nf2($totalCollectQty) ?></td>
-              <td style="background-color: #e6f2f2;"><?= nf2($totalDeliveryQty) ?></td>
-              <td style="background-color: #f2f2e6;"><?= nf2($totalReturnQty) ?></td>
-              <td><?= nf2($totalBalanceQty) ?></td>
+              <td style="background-color: #f2f2f2;"><?= nf2($sumCollect) ?></td>
+              <td style="background-color: #e6f2f2;"><?= nf2($sumDelivery) ?></td>
+              <td style="background-color: #f2f2e6;"><?= nf2($sumReturn) ?></td>
+              <td><?= nf2($sumBalance) ?></td>
             </tr>
           <?php endif; ?>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
+  
+  <?php
+  // Print debug info after table
+  echo "<div style='background:#fff3cd; padding:10px; margin:10px 50px; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Summary Collect Query:</strong><br><pre>" . htmlspecialchars($summaryCollectQuery) . "</pre><strong>Staff Name SQL:</strong> " . htmlspecialchars($staffNameSql) . "<br><strong>Date Range:</strong> $startDate to $endDate</div>";
+  echo "<div style='background:#d1ecf1; padding:10px; margin:10px 50px; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Summary Collect Result:</strong> " . ($collectRow ? $collectRow->total_collected : 'NULL') . "</div>";
+  ?>
 
   <div class="modal fade" id="cnrReturnModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -640,13 +676,21 @@ if ($staffNameSql !== '') {
     FROM stock_collect sc
     INNER JOIN stock_collect_item sci ON sci.stock_collect_id = sc.id
     WHERE sc.delivery_staff = '$staffNameSql'
-      AND DATE(sc.created_at) BETWEEN '$startDate' AND '$endDate'";
+      AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
+  
+  // Debug: Print query for first staff member
+  if ($staffId == 68) {
+    echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Summary Collect Query for Abadul:</strong><br><pre>" . htmlspecialchars($collectTotalSql) . "</pre></div>";
+  }
   
   $collectTotalResult = select($collectTotalSql);
   $totalCollected = 0;
   if ($collectTotalResult) {
     $collectRow = mysqli_fetch_object($collectTotalResult);
     $totalCollected = (float)($collectRow ? $collectRow->total_collected : 0);
+    if ($staffId == 68) {
+      echo "<div style='background:#d1ecf1; padding:10px; margin:10px 0; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Collect Result:</strong> " . $totalCollected . "</div>";
+    }
   }
 
   // 2) Get total delivered quantity for the staff
@@ -664,11 +708,11 @@ if ($staffNameSql !== '') {
 
   // 3) Get total returned quantity for the staff
   $returnTotalSql = "SELECT SUM(IFNULL(sri.quantity, 0)) AS total_returned
-    FROM stock_return sr
-    INNER JOIN stock_return_item sri ON sri.stock_return_id = sr.id
-    INNER JOIN stock_collect sc ON sc.id = sr.stock_collect_id
+    FROM stock_return_item sri
+    INNER JOIN stock_collect_item sci ON sci.id = sri.stock_collect_item_id
+    INNER JOIN stock_collect sc ON sc.id = sci.stock_collect_id
     WHERE sc.delivery_staff = '$staffNameSql'
-      AND DATE(sr.created_at) BETWEEN '$startDate' AND '$endDate'";
+      AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
   
   $returnTotalResult = select($returnTotalSql);
   $totalReturned = 0;

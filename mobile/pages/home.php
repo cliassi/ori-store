@@ -151,9 +151,9 @@ foreach ($products as $pg) {
   </div>
   <!-- Category Slider Viewport -->
   <div class="category-viewport overflow-hidden px-1 relative">
-    <div class="category-track flex gap-3 will-change-transform">
+    <div class="category-track flex gap-4 will-change-transform">
       <?php foreach ($categories as $category): ?>
-        <div class="category-card flex-shrink-0 text-center cursor-pointer" onclick="scrollToCategory('<?php echo strtolower(str_replace(' ', '-', $category['name'])); ?>')">
+        <div class="category-card flex-shrink-0 text-center cursor-pointer" style="width: calc(20.5% - 2.25px); min-width: calc(18.5% - 2.25px); flex: 0 0 calc(18.5% - 2.25px);" onclick="scrollToCategory('<?php echo strtolower(str_replace(' ', '-', $category['name'])); ?>')">
           <div class="relative w-20 h-20 rounded-full border-2 border-brandBlue flex items-center justify-center bg-white shadow-sm">
             <img src="<?php echo getImageOrPlaceholder($category['image'], $category['name']); ?>" alt="<?php echo htmlspecialchars($category['name']); ?>" class="w-18 h-18 rounded-full object-cover">
           </div>
@@ -169,7 +169,7 @@ foreach ($products as $pg) {
   <?php foreach ($products as $productGroup): ?>
     <div class="bg-white rounded-lg shadow-sm overflow-hidden product-section" id="<?php echo strtolower(str_replace(' ', '-', $productGroup['category_name'])); ?>" data-category="<?php echo strtolower($productGroup['category_name']); ?>">
       <!-- Category Header -->
-      <div class="px-2 py-2 bg-white flex items-center justify-between">
+      <div class="px-2 bg-white flex items-center justify-between">
         <h3 class="font-bold text-brandBlue text-base"><?php echo $productGroup['category_name']; ?></h3>
         <div class="flex items-center gap-0">
           <button class="slider-prev rounded-full w-8 h-8 border border-gray-300 text-gray-600 flex items-center justify-center hover:bg-gray-50" aria-label="Previous">‹</button>
@@ -178,9 +178,9 @@ foreach ($products as $pg) {
       </div>
       <!-- Slider Viewport -->
       <div class="slider-viewport overflow-x-auto overflow-y-hidden relative -ml-4">
-        <div class="slider-track flex gap-0 will-change-transform pb-2 pl-4 pr-4">
+        <div class="slider-track flex gap-0 will-change-transform pb-2 pl-4 pr-4 -mx-6">
           <?php foreach ($productGroup['variants'] as $product): ?>
-            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(40% - 4px); min-width: calc(40% - 4px);"
+            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(40%); min-width: calc(40%);"
               data-name="<?php echo strtolower($product['name']); ?>"
               data-category="<?php echo strtolower($productGroup['category_name']); ?>"
               data-size="<?php echo strtolower($product['size']); ?>">
@@ -196,8 +196,8 @@ foreach ($products as $pg) {
                 <option value="__custom__">Enter quantity...</option>
               </select>
               <!-- Image Area -->
-              <div class="p-2">
-                <div class="bg-gradient-to-b from-blue-50 to-white flex items-end justify-center overflow-hidden" style="aspect-ratio: 1; border-radius: 10px; border: solid 1px #efefef;">
+              <div class="p-1">
+                <div class="bg-gradient-to-b from-blue-50 to-white flex items-end justify-center overflow-hidden" style="aspect-ratio: 1; border-radius: 15px; border: solid 1px #efefef;">
                   <?php
                   $imageSrc = getImageOrPlaceholder($product['image'], $product['name']);
                   if (file_exists($product['image'])):
