@@ -160,7 +160,7 @@ $menus = [
       'report/stockin'=>'Stock In',
       'report/stockout'=>'Stock Out',
       'report/stock'=>'Stock Report',
-      'order/add'=>'Low-Stock',
+      'lowstock'=>'Low-Stock',
     ]
   ],
   [

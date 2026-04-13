@@ -280,6 +280,13 @@ if (isset($post->save)) {
   </div>
 </form>
 
+<div class="col-12 mb-3">
+  <button type="button" class="btn btn-light" onclick="window.history.back();" style="font-size:1rem">
+    ← Back
+  </button>
+</div>
+
+
 <div id="removeRowModal" class="hidden fixed inset-0 z-50 items-center justify-center">
   <div class="absolute inset-0 bg-black/50"></div>
   <div class="relative bg-white w-11/12 max-w-sm rounded-lg shadow-lg p-4">

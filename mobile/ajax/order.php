@@ -44,7 +44,7 @@ if (function_exists('nn')) {
   }
 }
 
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
+$filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-26'";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
@@ -291,7 +291,7 @@ $customers = select($query);
       $cat = "";
       $itemFilter = "i.customer_id=$customer->id ";
       $itemFilter .= " AND ii.delivered < ii.quantity";
-      $itemFilter .= " AND IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
+      $itemFilter .= " AND IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
       $itemFilter .= " AND IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-26'";
       $itemFilter .= " AND (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
       $itemFilter .= " AND (ii.collected_at IS NULL AND NOT EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
