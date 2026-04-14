@@ -47,7 +47,8 @@ if (isset($post->save)) {
         $obj->amount = $post->amount;
         $obj->payment_method = $post->payment_method;
         $obj->description = $post->description;
-
+        $obj->created_by = $_SESSION['UID'];
+        
         R::store($obj);
 
         if (count($_FILES) > 0) {

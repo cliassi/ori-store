@@ -1,7 +1,7 @@
 <?php
-// --- ID Detection: Accept from $_GET['id'] only ---
-if (!defined('ID') && isset($_GET['id']) && is_numeric($_GET['id'])) {
-    define('ID', (int)$_GET['id']);
+// --- ID Detection: Accept from $get->id only ---
+if (!defined('ID') && isset($get->id) && is_numeric($get->id)) {
+    define('ID', (int)$get->id);
 }
 
 // --- Placeholder/Fallback for userList() ---
@@ -25,9 +25,9 @@ function sanitizeDate($date_str) {
   return false; // Returns false if invalid
 }
 
-// --- Get & sanitize dates from $_GET (Reads raw input) ---
-$from_date_input = isset($_GET['from_date']) ? $_GET['from_date'] : '';
-$to_date_input = isset($_GET['to_date']) ? $_GET['to_date'] : '';
+// --- Get & sanitize dates from $get (Reads raw input) ---
+$from_date_input = isset($get->from_date) ? $get->from_date : '';
+$to_date_input = isset($get->to_date) ? $get->to_date : '';
 
 if (defined('ID')) {
     
@@ -190,7 +190,8 @@ form.mb-3 {
     flex-wrap: wrap;
 }
 .sticky-table-container {
-    max-height: 350px;
+    /* max-height: 350px; */
+    height: calc(100vh - 300px);
     overflow-x: auto;
     overflow-y: auto;
     border: 1px solid #e9ecef;
@@ -227,6 +228,15 @@ form.mb-3 {
 }
 .sticky-table-container tbody tr:hover {
     background-color: #f9f9f9;
+}
+.sticky-table-container tbody tr.table-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background-color: #f8f9fa;
+    font-weight: bold;
+    border-top: 2px solid #dee2e6;
+    border-bottom: 1px solid #dee2e6;
 }
 .sticky-table-container img {
     border-radius: 4px;
@@ -334,10 +344,46 @@ form.mb-3 {
                value="<?php echo htmlspecialchars($form_to_date); ?>" 
                style="font-size: 0.85rem; padding: 5px 8px; width: auto;" required>
         
-        <button type="submit" class="btn btn-primary" style="font-size: 0.85rem; padding: 5px 15px;">Filter</button>
+        <label for="product_variance" style="margin: 0; font-size: 0.85rem; white-space: nowrap;">Product Variance:</label>
+        <select class="form-control" name="product_variance" 
+                style="font-size: 0.85rem; padding: 5px 8px; width: auto;">
+            <option value="">All Variants</option>
+            <?php
+            if (defined('ID')) {
+                $variants = R::find('product_variance', '1=1 ORDER BY particulars');
+            } else {
+                $variants = R::find('product_variance', 'ORDER BY particulars');
+            }
+            foreach ($variants as $variant) {
+                $selected = (isset($get->product_variance) && $get->product_variance == $variant->id) ? 'selected' : '';
+                echo "<option value='" . $variant->id . "' $selected>" . htmlspecialchars($variant->particulars) . "</option>";
+            }
+            ?>
+        </select>
         
-        <!-- <a href="<?php echo $_SERVER['PHP_SELF']; ?>?id=<?php echo ID; ?>" 
-           class="btn btn-secondary" style="font-size: 0.85rem; padding: 5px 15px;">Reset</a> -->
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-left: 20px; border-left: 1px solid #ddd; padding-left: 20px;">
+            <?php
+            // Determine if form was submitted by checking if from_date is in URL
+            $form_submitted = isset($get->from_date);
+            ?>
+            <label style="margin: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" name="show_purchase" value="1" <?php echo (!$form_submitted || isset($get->show_purchase)) ? 'checked' : ''; ?> style="cursor: pointer;">
+                <span style="background-color: #d4edda; padding: 2px 8px; border-radius: 3px; font-weight: 500;">Purchase</span>
+            </label>
+            <label style="margin: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" name="show_collection" value="1" <?php echo (!$form_submitted || isset($get->show_collection)) ? 'checked' : ''; ?> style="cursor: pointer;">
+                <span style="background-color: #cce5ff; padding: 2px 8px; border-radius: 3px; font-weight: 500;">Collection</span>
+            </label>
+            <label style="margin: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" name="show_return" value="1" <?php echo (!$form_submitted || isset($get->show_return)) ? 'checked' : ''; ?> style="cursor: pointer;">
+                <span style="background-color: #fff3cd; padding: 2px 8px; border-radius: 3px; font-weight: 500;">Return</span>
+            </label>
+            <label style="margin: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" name="show_damage" value="1" <?php echo (!$form_submitted || isset($get->show_damage)) ? 'checked' : ''; ?> style="cursor: pointer;">
+                <span style="background-color: #f8d7da; padding: 2px 8px; border-radius: 3px; font-weight: 500;">Damage</span>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="font-size: 0.85rem; padding: 5px 15px;">Filter</button>
     </form>
 <?php endif; ?>
 
@@ -444,7 +490,32 @@ form.mb-3 {
                                     if ($items === false) {
                                         echo "<tr><td colspan='12'><div class='alert alert-danger'>SQL Query Failed. Please check the database and table names.</div></td></tr>";
                                     } else {
+                                        $total_order = 0;
+                                        $total_return = 0;
+                                        $total_damage = 0;
+                                        $total_collection = 0;
+                                        
                                         while ($var = mysqli_fetch_object($items)) {
+                                            // Check product_variance filter (ID from URL or dropdown)
+                                            $product_variance_filter = isset($get->product_variance) && $get->product_variance != '' ? $get->product_variance : (defined('ID') && ID > 0 ? ID : null);
+                                            if ($product_variance_filter !== null) {
+                                                if ($var->id != $product_variance_filter) continue;
+                                            }
+                                            
+                                            // Check if this row should be displayed based on checkboxes
+                                            // If form was submitted, only show if checkbox is checked (isset means it was checked)
+                                            // If form wasn't submitted, show all
+                                            $show_purchase = !$form_submitted || isset($get->show_purchase);
+                                            $show_collection = !$form_submitted || isset($get->show_collection);
+                                            $show_return = !$form_submitted || isset($get->show_return);
+                                            $show_damage = !$form_submitted || isset($get->show_damage);
+                                            
+                                            // Skip row if it doesn't match filter
+                                            if ($var->src == 'order' && !$show_purchase) continue;
+                                            if ($var->src == 'collection' && !$show_collection) continue;
+                                            if ($var->src == 'ret' && !$show_return) continue;
+                                            if ($var->src == 'damage' && !$show_damage) continue;
+                                            
                                             echo "<tr id='var-' title='$var->src'>";
                                             echo "<td>$i</td>";
                                             echo "<td>" . date("d M y", strtotime($var->date)) . "</td>";
@@ -470,21 +541,34 @@ form.mb-3 {
 
                                             if ($var->src == 'order') {
                                                 $bal += $var->quantity;
+                                                $total_order += $var->quantity;
                                                 echo "<td class='text-center bg-purchase'>$var->quantity</td><td></td><td></td><td></td>";
                                             } elseif ($var->src == 'ret') {
                                                 $bal += $var->quantity;
+                                                $total_return += $var->quantity;
                                                 echo "<td></td><td></td><td class='text-center bg-return'><span class='qty-cell-inline'>{$var->quantity}{$movementDeleteBtn}</span></td><td></td>";
                                             } elseif ($var->src == 'damage') {
                                                 $balp += $var->quantity;
+                                                $total_damage += $var->quantity;
                                                 echo "<td></td><td></td><td></td><td class='text-center bg-damage'><span class='qty-cell-inline'>{$var->quantity}{$movementDeleteBtn}</span></td>";
                                             } elseif ($var->src == 'collection') {
                                                 $bal -= $var->quantity;
+                                                $total_collection += $var->quantity;
                                                 echo "<td></td><td class='text-center bg-collection'><span class='qty-cell-inline'>" . abs($var->quantity) . "{$movementDeleteBtn}</span></td><td></td><td></td>";
                                             }
                                             echo "<td class='text-center stock-balance'>" . ($balp > 0 ? "<span style='color:grey'>(- $balp pcs)</span> " : "") . "$bal</td>";
                                             echo "</tr>";
                                             $i++;
                                         }
+                                        // Add footer with totals
+                                        echo "<tr class='table-footer'>";
+                                        echo "<td colspan='7'>TOTAL</td>";
+                                        echo "<td class='text-center bg-purchase'>" . $total_order . "</td>";
+                                        echo "<td class='text-center bg-collection'>" . $total_collection . "</td>";
+                                        echo "<td class='text-center bg-return'>" . $total_return . "</td>";
+                                        echo "<td class='text-center bg-damage'>" . $total_damage . "</td>";
+                                        echo "<td class='text-center stock-balance'>" . ($balp > 0 ? "<span style='color:grey'>(- $balp pcs)</span> " : "") . "$bal</td>";
+                                        echo "</tr>";
                                     }
                                 } else {
                                     // Main product list (no date filter needed)

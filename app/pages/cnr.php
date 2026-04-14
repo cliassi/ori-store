@@ -500,9 +500,11 @@ if (isset($get->h)) {
   </div>
   
   <?php
-  // Print debug info after table
-  echo "<div style='background:#fff3cd; padding:10px; margin:10px 50px; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Summary Collect Query:</strong><br><pre>" . htmlspecialchars($summaryCollectQuery) . "</pre><strong>Staff Name SQL:</strong> " . htmlspecialchars($staffNameSql) . "<br><strong>Date Range:</strong> $startDate to $endDate</div>";
-  echo "<div style='background:#d1ecf1; padding:10px; margin:10px 50px; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Summary Collect Result:</strong> " . ($collectRow ? $collectRow->total_collected : 'NULL') . "</div>";
+  // Print debug info after table (only if variables are defined)
+  // if (isset($summaryCollectQuery) && isset($collectRow)) {
+  //   echo "<div style='background:#fff3cd; padding:10px; margin:10px 50px; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Summary Collect Query:</strong><br><pre>" . htmlspecialchars($summaryCollectQuery) . "</pre><strong>Staff Name SQL:</strong> " . htmlspecialchars($staffNameSql) . "<br><strong>Date Range:</strong> $startDate to $endDate</div>";
+  //   echo "<div style='background:#d1ecf1; padding:10px; margin:10px 50px; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Summary Collect Result:</strong> " . ($collectRow ? $collectRow->total_collected : 'NULL') . "</div>";
+  // }
   ?>
 
   <div class="modal fade" id="cnrReturnModal" tabindex="-1" aria-hidden="true">
@@ -680,7 +682,7 @@ if ($staffNameSql !== '') {
   
   // Debug: Print query for first staff member
   if ($staffId == 68) {
-    echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Summary Collect Query for Abadul:</strong><br><pre>" . htmlspecialchars($collectTotalSql) . "</pre></div>";
+    // echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Summary Collect Query for Abadul:</strong><br><pre>" . htmlspecialchars($collectTotalSql) . "</pre></div>";
   }
   
   $collectTotalResult = select($collectTotalSql);
@@ -689,7 +691,7 @@ if ($staffNameSql !== '') {
     $collectRow = mysqli_fetch_object($collectTotalResult);
     $totalCollected = (float)($collectRow ? $collectRow->total_collected : 0);
     if ($staffId == 68) {
-      echo "<div style='background:#d1ecf1; padding:10px; margin:10px 0; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Collect Result:</strong> " . $totalCollected . "</div>";
+      // echo "<div style='background:#d1ecf1; padding:10px; margin:10px 0; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Collect Result:</strong> " . $totalCollected . "</div>";
     }
   }
 

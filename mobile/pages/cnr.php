@@ -321,34 +321,50 @@
 
             $balanceQty = 0;
             if ($staffNameSqlRow !== '') {
-              $sumSql = "SELECT
-                    (SELECT IFNULL(SUM(sci.quantity),0)
-                     FROM stock_collect sc
-                     INNER JOIN stock_collect_item sci ON sci.stock_collect_id=sc.id
-                     WHERE sc.delivery_staff='$staffNameSqlRow' AND DATE(sc.created_at) = CURDATE()) collected_qty,
-                    (SELECT IFNULL(SUM(delivery_qty),0)
-                     FROM (
-                       SELECT DISTINCT iid.id, iid.quantity as delivery_qty
-                       FROM stock_collect sc
-                       INNER JOIN stock_collect_item sci ON sci.stock_collect_id=sc.id
-                       INNER JOIN invoice_item_delviery iid ON iid.invoice_item_id=sci.invoice_item_id
-                       WHERE sc.delivery_staff='$staffNameSqlRow' AND DATE(sc.created_at) = CURDATE()
-                     ) unique_deliveries) delivered_qty,
-                    (SELECT IFNULL(SUM(sri.quantity),0)
-                     FROM stock_return sr
-                     INNER JOIN stock_return_item sri ON sri.stock_return_id=sr.id
-                     INNER JOIN stock_collect sc ON sc.id=sr.stock_collect_id
-                     WHERE sc.delivery_staff='$staffNameSqlRow' AND sr.salesman_id=$staffIdRow AND DATE(sr.created_at) = CURDATE()) returned_qty";
-              $sumRs = select($sumSql);
-              if ($sumRs) {
-                $sumObj = mysqli_fetch_object($sumRs);
-                if ($sumObj) {
-                  $collectedQty = (float) $sumObj->collected_qty;
-                  $deliveredQty = (float) $sumObj->delivered_qty;
-                  $returnedQty = (float) $sumObj->returned_qty;
-                  $balanceQty = $collectedQty - $deliveredQty - $returnedQty;
-                }
+              // 1) Get total collected quantity for the staff
+              $collectTotalSql = "SELECT SUM(IFNULL(sci.quantity, 0)) AS total_collected
+                FROM stock_collect sc
+                INNER JOIN stock_collect_item sci ON sci.stock_collect_id = sc.id
+                WHERE sc.delivery_staff = '$staffNameSqlRow'
+                  AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
+              
+              $collectTotalResult = select($collectTotalSql);
+              $collectedQty = 0;
+              if ($collectTotalResult) {
+                $collectRow = mysqli_fetch_object($collectTotalResult);
+                $collectedQty = (float)($collectRow ? $collectRow->total_collected : 0);
               }
+              
+              // 2) Get total delivered quantity for the staff
+              $deliveryTotalSql = "SELECT SUM(IFNULL(iid.quantity, 0)) AS total_delivered
+                FROM invoice_item_delviery iid
+                WHERE iid.delivery_staff = '$staffNameSqlRow'
+                  AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'";
+              
+              $deliveryTotalResult = select($deliveryTotalSql);
+              $deliveredQty = 0;
+              if ($deliveryTotalResult) {
+                $deliveryRow = mysqli_fetch_object($deliveryTotalResult);
+                $deliveredQty = (float)($deliveryRow ? $deliveryRow->total_delivered : 0);
+              }
+              
+              // 3) Get total returned quantity for the staff
+              $returnTotalSql = "SELECT SUM(IFNULL(sri.quantity, 0)) AS total_returned
+                FROM stock_return_item sri
+                INNER JOIN stock_collect_item sci ON sci.id = sri.stock_collect_item_id
+                INNER JOIN stock_collect sc ON sc.id = sci.stock_collect_id
+                WHERE sc.delivery_staff = '$staffNameSqlRow'
+                  AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
+              
+              $returnTotalResult = select($returnTotalSql);
+              $returnedQty = 0;
+              if ($returnTotalResult) {
+                $returnRow = mysqli_fetch_object($returnTotalResult);
+                $returnedQty = (float)($returnRow ? $returnRow->total_returned : 0);
+              }
+              
+              // 4) Calculate balance
+              $balanceQty = $collectedQty - $deliveredQty - $returnedQty;
             }
 
             if (!is_numeric($balanceQty)) {

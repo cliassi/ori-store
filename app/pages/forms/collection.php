@@ -15,6 +15,7 @@ if (isset($post->save)) {
     $obj->payment_date = (isset($post->payment_date) && nn($post->payment_date)) ? date('Y-m-d', strtotime($post->payment_date)) : $obj->date;
     $obj->amount = $post->amount;
     $obj->payment_method = $post->payment_method;
+    $obj->created_by = uid();
     $desc = trim((string) $post->description);
     // Prevent duplicate legacy date prefixes in particulars.
     $desc = preg_replace('/^\s*\d{1,2}\s+[A-Za-z]{3},\s+\d{4}\s+/', '', $desc);

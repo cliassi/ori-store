@@ -154,15 +154,21 @@ $menus = [
     ]
   ],
   [
-    'name'=>'Warehouse',
+    'name'=>'Low-Stock',
     'children'=>[
-      // 'report/warehouse'=>'Warehouse',
-      'report/stockin'=>'Stock In',
-      'report/stockout'=>'Stock Out',
-      'report/stock'=>'Stock Report',
-      'lowstock'=>'Low-Stock',
+      'lowstock'=>'Low-Stock'
     ]
   ],
+  // [
+  //   'name'=>'Warehouse',
+  //   'children'=>[
+  //     // 'report/warehouse'=>'Warehouse',
+  //     'report/stockin'=>'Stock In',
+  //     'report/stockout'=>'Stock Out',
+  //     'report/stock'=>'Stock Report',
+  //     'lowstock'=>'Low-Stock',
+  //   ]
+  // ],
   [
     'name'=>'User',
     'children'=>[
@@ -228,21 +234,31 @@ foreach ($menus as $key => $menu) {
       }
     }
   } else{
-    $menu_content .= "<li class='pc-item item-$key'>
-    <label>{$menu['name']}</label>
-    <svg class='pc-icon'>
-    <use xlink:href='#custom-presentation-chart'></use>
-    </svg>
-    </li><li class='pc-item'>
-    <a href='".ROOT."' class='pc-link'>
-    <span class='pc-micon'>
-    <svg class='pc-icon'>
-    <use xlink:href='#custom-story'></use>
-    </svg>
-    </span>
-    <span class='pc-mtext'></span>
-    </a>
-    </li>";
+    // Handle menu items without children - check if it's a direct link or label
+    reset($menu);
+    $link = key($menu);
+    $label = current($menu);
+    if($link !== 'name' && $link !== 'children' && !is_null($link)){
+      // Direct link format: ['link'=>'Label']
+      $menu_content .= "<li class='pc-item pc-caption item-$link'>
+      <a href='".ROOT."/$link' class='pc-link'>
+      <span class='pc-micon'>
+      <svg class='pc-icon'>
+      <use xlink:href='#custom-story'></use>
+      </svg>
+      </span>
+      <span class='pc-mtext'>$label</span>
+      </a>
+      </li>";
+    } else{
+      // Fallback for items with 'name' key but no children
+      $menu_content .= "<li class='pc-item pc-caption item-$key'>
+      <label>{$menu['name']}</label>
+      <svg class='pc-icon'>
+      <use xlink:href='#custom-presentation-chart'></use>
+      </svg>
+      </li>";
+    }
   }
 }
 print "<ul class='pc-navbar'>$menu_content</ul>";

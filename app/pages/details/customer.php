@@ -306,7 +306,7 @@ while ($item = mysqli_fetch_object($trans)) {
 
     
     print "</td>";
-    print "<td class='text-center'>".( $users[$item->created_by])."</td>";
+    print "<td class='text-center'>".($users[$item->created_by])."</td>";
   // } elseif(strrpos($item->particulars, 'bank account') !== FALSE){
   //   print "<td>$item->particulars</td>";
     
@@ -331,10 +331,12 @@ while ($item = mysqli_fetch_object($trans)) {
     $displayDate = (nn($actualPaymentDate) && strtotime($actualPaymentDate)) ? date('d M, Y', strtotime($actualPaymentDate)) : '';
     $particularText = trim($displayDate . " " . $particularText);
     print "<td> $particularText</td>";
+    // print "<td class='text-center'>".($users[$item->created_by])."</td>";
   } else{
     print "<td> $item->particulars</td>";
+    // print "<td class='text-center'>".($users[$item->created_by])."</td>";
   }
-  print "<td></td>";
+  // print "<td></td>";
 }
 
 
@@ -366,6 +368,7 @@ while ($item = mysqli_fetch_object($trans)) {
     sum('balance',$item->amount);
     sum('debit',$item->amount);
   } else{
+    print "<td class='text-center'>".($users[$item->created_by])."</td>";
     print "<td></td>";
     print "<td></td>";
     print "<td></td>";

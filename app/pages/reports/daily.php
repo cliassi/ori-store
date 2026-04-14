@@ -192,6 +192,7 @@ if ($canPickPast) {
 
 $com = isset($get->company) ? $get->company : '';
 $ec = isset($get->expense_category) ? $get->expense_category : '';
+$createdBy = isset($get->sys_user) ? $get->sys_user : '';
 
 if (!isset($get->collection) && !isset($get->expense) && !isset($get->handover)) {
   $_collection = $_handover = $_expense = true;
@@ -210,8 +211,9 @@ print "<input type='checkbox' name='collection' value='1' " . ($_collection ? "c
 print "<input type='checkbox' name='expense' value='1' " . ($_expense ? "checked" : '') . "> Expense" . space(2);
 print "<input type='checkbox' name='handover' value='1' " . ($_handover ? "checked" : '') . "> Handover " . space(8);
 print "Date " . dp('d', $d, !$canPickPast ? prevDay() : false) . " - " . dp('t', $t, !$canPickPast ? prevDay() : false);
-print "Company " . sop2("company", $com, ["class" => 'w150', "extra" => "ORDER BY seq", 'optional' => true]);
-print "Expense Category " . sop2("expense_category", $ec, ["filter" => "hidden=0", "class" => 'w150', "extra" => "ORDER BY name", 'dataField' => "CONCAT(name,' - ', type)", 'optional' => true]);
+// print "Company " . sop2("company", $com, ["class" => 'w150', "extra" => "ORDER BY seq", 'optional' => true]);
+print "Entry By " . sop2("sys_user", $createdBy, ["class" => 'w150', "extra" => "ORDER BY u_username", 'optional' => true, 'dataField' => 'u_username']);
+// print "Expense Category " . sop2("expense_category", $ec, ["filter" => "hidden=0", "class" => 'w150', "extra" => "ORDER BY name", 'dataField' => "CONCAT(name,' - ', type)", 'optional' => true]);
 closeFilterForm();
 $companies = toA("company");
 $userList = userList();
@@ -279,7 +281,13 @@ $userList = userList();
   // if((isset($get->d)?(isset($get->collection)?true:false):true) && !$ec){
   if ($_collection) {
     ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
-    $official_receipts = select("o.*, w.contact name, w.company, w.id wid", "collection o, customer w", "(w.branch_id = $branch_id OR w.branch_id IS NULL) AND o.customer_id=w.id AND o.deleted_by IS NULL AND (o.created_at BETWEEN '$d 00:00:00' AND '$t 23:59:59')");
+    $createdByFilter = nn($createdBy) ? "AND o.created_by = " . (int)$createdBy : "";
+    $whereClause = "(w.branch_id = $branch_id OR w.branch_id IS NULL) AND o.customer_id=w.id AND o.deleted_by IS NULL AND (o.created_at BETWEEN '$d 00:00:00' AND '$t 23:59:59') $createdByFilter";
+    // Debug: print the query
+    // print "<pre>DEBUG createdBy: " . var_export($createdBy, true) . "</pre>";
+    // print "<pre>DEBUG filter: $createdByFilter</pre>";
+    // print "<pre>DEBUG: $whereClause</pre>";
+    $official_receipts = select("o.*, w.contact name, w.company, w.id wid", "collection o, customer w", $whereClause);
     while ($official_receipt = mysqli_fetch_object($official_receipts)) {
       $avatar = getName("sys_user", $official_receipt->created_by, 'u_avatar');
       if (file_exists("uploads/user/avatar/$avatar") && nn($avatar)) {

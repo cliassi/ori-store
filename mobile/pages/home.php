@@ -180,16 +180,13 @@ foreach ($products as $pg) {
       <div class="relative -ml-4" style='overflow: auto'>
         <div class="slider-track flex gap-0 will-change-transform pb-2 pl-4 pr-4 -mx-6">
           <?php foreach ($productGroup['variants'] as $product): ?>
-            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(36%); min-width: calc(36%);"
-              data-name="<?php echo strtolower($product['name']); ?>"
-              data-category="<?php echo strtolower($productGroup['category_name']); ?>"
-              data-size="<?php echo strtolower($product['size']); ?>">
+            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(36%); min-width: calc(36%);" data-name="<?php echo strtolower($product['name']); ?>" data-category="<?php echo strtolower($productGroup['category_name']); ?>" data-size="<?php echo strtolower($product['size']); ?>">
               <!-- Floating Quantity Badge (Right) -->
-              <div class="absolute z-10" style="bottom: 4.5rem;right: 1rem;">
+              <div class="absolute z-10" style="top: 0.5rem;right: 0.8rem;">
                 <div class="qty-badge bg-white text-black rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>" style="display: none;">0</div>
               </div>
               <!-- Close Button (Left) -->
-              <div class="absolute z-10 qty-close-btn" style="bottom: 4.5rem;left: 1rem; display: none;">
+              <div class="absolute z-10 qty-close-btn" style="top: 0.5rem;left: 0.8rem; display: none;">
                 <div class="bg-white text-gray-500 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>">✕</div>
               </div>
               <!-- Hidden select for form submission -->
@@ -728,51 +725,11 @@ foreach ($products as $pg) {
       initCategorySlider();
       initSliders();
       initInvoiceFlow();
-      // Restore quantities from localStorage after initializing invoice flow
-      setTimeout(() => {
-        const proceedBtn = document.getElementById('proceedToInvoice');
-        if (proceedBtn && proceedBtn.parentElement) {
-          // Access the restoreQuantitiesFromLocalStorage from initInvoiceFlow scope
-          // We'll call it via a global function instead
-          restoreAllQuantitiesFromStorage();
-        }
-      }, 100);
     });
   } else {
     initCategorySlider();
     initSliders();
     initInvoiceFlow();
-    setTimeout(() => {
-      restoreAllQuantitiesFromStorage();
-    }, 100);
-  }
-
-  // Global function to restore quantities from localStorage
-  function restoreAllQuantitiesFromStorage() {
-    document.querySelectorAll('select.cart-item').forEach(sel => {
-      const productId = sel.getAttribute('data-product');
-      const storageKey = 'cart_qty_' + productId;
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const qty = parseInt(stored, 10);
-        if (qty > 0) {
-          sel.value = String(qty);
-          // Update badges
-          document.querySelectorAll(`.qty-badge[data-product="${productId}"]`).forEach(badge => {
-            badge.textContent = qty;
-            badge.style.display = 'flex';
-          });
-          // Show close button
-          const card = sel.closest('.product-item');
-          if (card) {
-            const closeBtn = card.querySelector('.qty-close-btn');
-            if (closeBtn) {
-              closeBtn.style.display = 'block';
-            }
-          }
-        }
-      }
-    });
   }
 
   // Order collection and submission
@@ -878,37 +835,6 @@ foreach ($products as $pg) {
           closeBtn.style.display = qty > 0 ? 'block' : 'none';
         }
       }
-      // Save to localStorage
-      saveQtyToLocalStorage(productId, qty);
-    }
-
-    // Save quantity to localStorage
-    function saveQtyToLocalStorage(productId, qty) {
-      const storageKey = 'cart_qty_' + productId;
-      if (qty > 0) {
-        localStorage.setItem(storageKey, String(qty));
-      } else {
-        localStorage.removeItem(storageKey);
-      }
-    }
-
-    // Load quantity from localStorage
-    function loadQtyFromLocalStorage(productId) {
-      const storageKey = 'cart_qty_' + productId;
-      const stored = localStorage.getItem(storageKey);
-      return stored ? parseInt(stored, 10) : 0;
-    }
-
-    // Restore all quantities from localStorage on page load
-    function restoreQuantitiesFromLocalStorage() {
-      document.querySelectorAll('select.cart-item').forEach(sel => {
-        const productId = sel.getAttribute('data-product');
-        const qty = loadQtyFromLocalStorage(productId);
-        if (qty > 0) {
-          sel.value = String(qty);
-          updateAllBadges(productId, sel);
-        }
-      });
     }
 
     // Handle badge click to increment quantity

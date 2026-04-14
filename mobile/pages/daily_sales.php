@@ -42,6 +42,23 @@
         .modal th{background-color: rgba(120,250,70, .1) !important;}
         .modal th span{font-weight: 700;}
     </style>
+    <script>
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function setAmount(amount) {
+            document.querySelector('input[name="amount"]').value = amount;
+        }
+    </script>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -150,10 +167,11 @@ if($_collection){
             <input type="hidden" name="page" value="daily_sales">
             <input type="hidden" name="pm" value="<?php echo $pm; ?>">
             <div class="flex gap-2 text-sm">
-                <input type="date" name="d" value="<?php echo $d; ?>" class="flex-1 px-2 py-1 rounded text-gray-800">
+                <input type="date" name="d" value="<?php echo $d; ?>" class="flex-1 px-2 py-1 rounded text-gray-800" style="width: 110px" >
                 <span class="text-white">to</span>
-                <input type="date" name="t" value="<?php echo $t; ?>" class="flex-1 px-2 py-1 rounded text-gray-800">
+                <input type="date" name="t" value="<?php echo $t; ?>" class="flex-1 px-2 py-1 rounded text-gray-800" style="width: 110px" >
                 <button type="submit" class="bg-white text-primary px-3 py-1 rounded font-semibold">Filter</button>
+                
             </div>
         </form>
         
@@ -253,62 +271,89 @@ if($_collection){
     </div>
 </div>
 
-<!-- Collection Form -->
+<!-- Collect Button -->
 <?php if(isUserIn(['apple', 'superadmin', 'orange'])): ?>
-<div class="max-w-sm mx-auto px-4 mt-4">
-    <div class="bg-white rounded-2xl shadow-sm p-4">
-        <form method="post" class="space-y-3">
-            <div class="text-center font-semibold text-gray-800 mb-3">Collection Summary</div>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Cash Amount</label>
-                    <input type="number" name="amount" value="<?php echo $credit; ?>" step="0.05" required class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Bank Amount</label>
-                    <input type="number" name="bank_amount" value="<?php echo $credit_b; ?>" step="0.05" required class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-            </div>
-            
-            <?php if(isUserIn([])): ?>
-            <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Date</label>
-                <input type="date" name="date" value="<?php echo today(); ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <?php endif; ?>
-            
-            <div class="text-center">
-                <button type="submit" name="collect_cash" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold text-sm">Collect</button>
-            </div>
-        </form>
-    </div>
+<div class="max-w-sm mx-auto px-4 mt-4 text-center">
+    <button type="button" onclick="openModal('collectionModal')" class="bg-blue-600 text-white px-6 py-2 rounded font-semibold text-sm hover:bg-blue-700 transition-colors">Collect</button>
 </div>
 <?php endif; ?>
 
-<script>
-// Modal functions
-function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    modal.classList.add('show');
-    modal.style.display = 'flex';
-    document.body.classList.add('modal-open');
-}
+<!-- Collection Modal -->
+<div id="collectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target === this) closeModal('collectionModal')">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4">
+        <div class="bg-primary text-white p-4 flex justify-between items-center rounded-t-lg">
+            <h5 class="font-bold text-lg">New Collection</h5>
+            <button type="button" class="text-white text-2xl font-bold hover:text-gray-200" onclick="closeModal('collectionModal')">&times;</button>
+        </div>
+        <div class="p-4">
+                <form method="post" enctype="multipart/form-data" id="collectionForm">
+                    <div class="space-y-4">
+                        <!-- Customer -->
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Customer</label>
+                            <select name="customer_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" required>
+                                <option value="">Select Customer</option>
+                                <?php
+                                $customers = R::find('customer', 'ORDER BY company');
+                                foreach ($customers as $cust) {
+                                    echo "<option value='" . $cust->id . "'>" . htmlspecialchars($cust->company) . "</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
 
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    modal.classList.remove('show');
-    modal.style.display = 'none';
-    document.body.classList.remove('modal-open');
-}
+                        <!-- Entry Date -->
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Entry Date</label>
+                            <input type="date" name="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
 
-// Close modal when clicking outside
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('modal')) {
-        closeModal(e.target.id);
-    }
-});
-</script>
+                        <!-- Payment Date -->
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Payment Date</label>
+                            <input type="date" name="payment_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+
+                        <!-- Amount -->
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Amount</label>
+                            <input type="number" name="amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" step="0.01" required>
+                        </div>
+
+                        <!-- Quick Amount Buttons -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" class="bg-gray-200 text-gray-800 py-2 rounded font-semibold text-sm" onclick="setAmount(100)">100</button>
+                            <button type="button" class="bg-gray-200 text-gray-800 py-2 rounded font-semibold text-sm" onclick="setAmount(500)">500</button>
+                            <button type="button" class="bg-gray-200 text-gray-800 py-2 rounded font-semibold text-sm" onclick="setAmount(1000)">1000</button>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Payment Method</label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center">
+                                    <input type="radio" name="payment_method" value="Cash" class="mr-2" required> Cash
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="payment_method" value="Bank" class="mr-2"> Bank
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Particulars -->
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Particulars</label>
+                            <textarea name="description" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" rows="3" required></textarea>
+                        </div>
+                    </div>
+                </form>
+        </div>
+        <div class="p-4 flex gap-2 justify-end border-t border-gray-200 rounded-b-lg bg-gray-50">
+            <button type="button" class="bg-gray-300 text-gray-800 px-4 py-2 rounded font-semibold hover:bg-gray-400 transition-colors" onclick="closeModal('collectionModal')">Cancel</button>
+            <button type="submit" form="collectionForm" name="save" class="bg-primary text-white px-4 py-2 rounded font-semibold hover:bg-primaryDark transition-colors">Save Collection</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

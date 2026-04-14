@@ -358,7 +358,7 @@ $customers = select($query);
         //   $filter .= " AND ";
         // }
         // $filter .= (($delivery || $collection) ? $collectedExpr : "NOT $collectedExpr");
-        $filter .= " AND (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
+        //$filter .= " AND (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
         $stField = 'stock';
         // if($delivery) $stField = 'stockCurrent';
         // if($pendingList) $stField = 'stockPending';
@@ -378,7 +378,7 @@ $customers = select($query);
           $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id";
         }
         // $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id";
-        // if($customer->id == 3) print $pq;
+        // if($customer->id == 124) print $pq;
         $items = select($pq);
         $ordered_qty = [];
         if ($collection == "true") {

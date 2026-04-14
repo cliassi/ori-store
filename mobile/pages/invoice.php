@@ -62,6 +62,18 @@ if (isset($post->save)) {
     }
   }
 
+  // Clear all cart_qty localStorage variables after successful save
+  echo "<script>
+    // Remove all cart_qty_* keys from localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('cart_qty_')) {
+        localStorage.removeItem(key);
+        i--; // Adjust index since we removed an item
+      }
+    }
+  </script>";
+  
   // Redirect to customer details like the reference implementation
   if (isset($post->customer_id)) {
     redir("?page=customer_details&id={$post->customer_id}");

@@ -94,7 +94,7 @@ $filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.invoice_date) >= DATE_SUB(curdate(), INTERVAL 7 DAY)";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " NOT $collectedExpr ";
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
+// $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
 
 if ($_SESSION['UID'] == 1 && nn($branch_id)) {
   $branchId = (int) $branch_id;

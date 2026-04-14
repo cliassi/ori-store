@@ -132,7 +132,7 @@ if (isset($post->save)) {
 
 }
 
-$objs = R::find('product', 'id > 0 ORDER BY sort_order');
+$objs = R::find('product', 'id > 0 and visible=1 ORDER BY sort_order');
 $contant = "";
 ?>
 <div class="row">

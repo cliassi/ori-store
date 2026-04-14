@@ -7,6 +7,13 @@ if(METHOD == 'add'){
   require 'details/supplier.php';
 } else{ 
 
+  if(isset($get->v)) {
+    $supplier = R::load("supplier", $get->id);
+    $supplier->active = (int)$get->v;
+    R::store($supplier);
+    redir("?");
+  }
+
   if(isset($get->token)){
     $token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
     if($token){
@@ -55,6 +62,7 @@ if(METHOD == 'add'){
                       <tr>
                         <th>Sl.</th>
                         <?php foreach ($fields as $key => $value) if(isset($value['label'])) print "<th>{$value['label']}</th>"; ?>
+                        <th>Status</th>
                         <th><a href="<?php print $page; ?>/add"><i class='fa fa-file'></i> Add</a></th>
                       </tr>
                     </thead>
@@ -96,6 +104,9 @@ if(METHOD == 'add'){
                               }
                             }
                           }
+                          print "<td style='text-align:center'>";
+                          print $obj->active ? "<a href='?id=$obj->id&v=0'><i class='fas fa-eye'></i></a>" : "<a href='?id=$obj->id&v=1'><i class='fas fa-eye-slash'></i></a>";
+                          print "</td>";
                           print "</tr>";
                         }
                       ?>

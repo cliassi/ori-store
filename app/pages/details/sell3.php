@@ -183,7 +183,7 @@
 			 $cp = toA("customer_product_variance", "product_variance_id", "price", "customer_id = '$get->c'");
 		 }
           foreach($products as $product){
-            $variances = R::find("product_variance", "product_id=? AND deleted_by IS NULL ORDER BY sort_order", [$product->id]);
+            $variances = R::find("product_variance", "product_id=? AND visible=1 AND deleted_by IS NULL ORDER BY sort_order", [$product->id]);
             $i = 1;
             print "<div class='outer-wrapper'><div class='products-wrapper' id='product-$product->id'>";
             foreach ($variances as $key => $var) {
