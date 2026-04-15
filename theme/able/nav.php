@@ -104,6 +104,19 @@ $menus = [
       */
     ]
   ],  
+  [
+    'name'=>'Product',
+    'children'=>[
+      'product'=>'Main Product', 
+      'product/details#product-0'=>'Product +', 
+      'product/details#product-1'=>'Pricing',
+      // 'Product'=>'Product Aging Report',
+      'report/stock'=>'Product Stock Report',
+      'order/damage'=>'Damage/Loss',
+      'report/damage'=>'Damage/Loss Report',
+      'Packing'=>'Packing',
+    ],
+  ],
   [  
     'name'=>'Employee',
     'children'=>[
@@ -120,19 +133,6 @@ $menus = [
       'lorry' => 'Lorry',
       // 'Approve'=>'Approve',
     ]
-  ],
-  [
-    'name'=>'Product',
-    'children'=>[
-      'product'=>'Main Product', 
-      'product/details#product-0'=>'Product +', 
-      'product/details#product-1'=>'Pricing',
-      // 'Product'=>'Product Aging Report',
-      'report/stock'=>'Product Stock Report',
-      'order/damage'=>'Damage/Loss',
-      'report/damage'=>'Damage/Loss Report',
-      'Packing'=>'Packing',
-    ],
   ],
   // [
   //   'name'=>'Supplier',
