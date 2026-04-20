@@ -112,6 +112,36 @@
 							</a>
 						</div>
 					</div>
+					<style>
+						.skel-wrap{display:flex;gap:50px;align-items:flex-start}
+						.skel-card{display:inline-block;min-width:320px}
+						.skel-line{height:12px;background:#eee;border-radius:6px;margin:8px 0;position:relative;overflow:hidden}
+						.skel-line.sm{height:10px;width:40%}
+						.skel-line.md{height:12px;width:70%}
+						.skel-line.lg{height:14px;width:90%}
+						.skel-line:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55),rgba(255,255,255,0));animation:skel 1.4s infinite}
+						@keyframes skel{100%{transform:translateX(100%)}}
+						.skel-table{border:1px solid #eee;border-radius:6px;padding:12px}
+					</style>
+					<div id="metrics-root">
+						<div class="skel-wrap">
+							<div class="skel-card skel-table">
+								<div class="skel-line lg"></div>
+								<div class="skel-line md"></div>
+								<div class="skel-line sm"></div>
+								<div class="skel-line md"></div>
+								<div class="skel-line sm"></div>
+							</div>
+							<div class="skel-card skel-table">
+								<div class="skel-line lg"></div>
+								<div class="skel-line md"></div>
+								<div class="skel-line sm"></div>
+								<div class="skel-line md"></div>
+								<div class="skel-line sm"></div>
+							</div>
+						</div>
+					</div>
+					<?php if (false) { ?>
 					<div style="display: inline-block;">
 						<table id="customer-table" class="table table-striped table-bordered nowrap">
 							<tbody>
@@ -125,11 +155,13 @@
 									$filter1 = "entry_time BETWEEN '$date' AND '" . lastDate($date) . "'";
 									$filter_exp = "expense_date BETWEEN '$date' AND '" . lastDate($date) . "'";
 									$filter = "created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
+									$filterInv = "invoice_date BETWEEN '$date' AND '" . lastDate($date) . "'";
 									$filter3 = "AND oi.created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
-									// vd($filter);
 								} else {
 
 								}
+
+								// Optimized: Combine multiple queries into fewer queries
 								$summary = mysqli_fetch_object(select("SELECT 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE $filter1) add_cash, 
 									(SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND $filter1) cash, 
@@ -152,16 +184,17 @@
 									(SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id) cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id) withdraw"));
 
+								require_once 'reports/customer_due_functions.php';
+								$customer_due = getCustomerDueTotal($branch_id, $filter);
+
 								$sreturn = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `goods_return_item` WHERE $filter"));
 								$damage = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `damaged_item` WHERE $filter"));
 								$sdue = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*cost) FROM `order_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE $filter) amount"));
 								$due = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*price) FROM `invoice_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `collection` WHERE $filter) amount"));
 
+								$profit = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*(CAST(price AS DECIMAL(15,4)) - CAST(cost AS DECIMAL(15,4)))),0) amount FROM invoice_item ii inner join invoice i on i.id=ii.invoice_id WHERE $filter"));
 
-								require_once 'reports/customer_due_functions.php';
-								$customer_due = getCustomerDueTotal($branch_id, $filter);
-
-								$profit = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*(CAST(price AS DECIMAL(15,4)) - CAST(cost AS DECIMAL(15,4)))),0) amount FROM invoice_item WHERE $filter"));
+								// Get store value - cache this if possible as it's expensive
 								$store_value = mysqli_fetch_object(select("SELECT IFNULL(SUM(stock2(id, $branch_id)*cost),0) amount FROM product_variance"));
 								if (!$store_value) {
 									$store_value = (object) ['amount' => 0];
@@ -169,6 +202,8 @@
 								$petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
 								$petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
 								$bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
+
+								$m = date("M, Y", time());
 								// dd($summary);
 								?>
 								<tr>
@@ -307,6 +342,7 @@
 							</tbody>
 						</table>
 					</div>
+					<?php } ?>
 					<div class='center'>
 
 						<form><button
@@ -332,6 +368,34 @@
 		</div>
 	</div>
 	<script>
+		function loadDashboardMetrics() {
+			var mon = (document.querySelector('[name="mon"]') || {}).value || '';
+			var url = '/store/ajax/dashboard_metrics.php' + (mon ? ('?mon=' + encodeURIComponent(mon)) : '');
+			var root = document.getElementById('metrics-root');
+			if (root) root.innerHTML = '<div class="text-muted">Loading metrics...</div>';
+			fetch(url, { credentials: 'same-origin' })
+				.then(function (r) { return r.text(); })
+				.then(function (html) { if (root) root.innerHTML = html; })
+				.catch(function () { if (root) root.innerHTML = '<div class="text-danger">Failed to load metrics.</div>'; });
+		}
+
+		// Initial load
+		document.addEventListener('DOMContentLoaded', loadDashboardMetrics);
+
+		// Reload when Show clicked (prevent full submit)
+		document.addEventListener('click', function(e){
+			var btn = e.target.closest('.btn.btn-info');
+			if (!btn) return;
+			e.preventDefault();
+			loadDashboardMetrics();
+		});
+
+		// Also reload when month changes
+		document.addEventListener('change', function(e){
+			if (e.target && e.target.name === 'mon') {
+				loadDashboardMetrics();
+			}
+		});
 		$(document).ready(function () {
 			$(".product-wrapper").click(function () {
 				const t = $(this).find('button');

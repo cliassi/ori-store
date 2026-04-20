@@ -10,25 +10,44 @@ switch (METHOD){
 		require("view/$controller.php");
 	} break;
 	case "erase":{
-		if(isset($get->conf)){		
-			$object = R::load("expense_account_entry", ID);
-			R::trash($object);
-			redir("../view");
-		} else{
-			?>
-			<script type="text/javascript">
-				if(confirm("Are you sure you want to completly remove this Expense Account Entry?")){
-					location.href = "?conf";
-				} else{
-					location.href = "../view";	
-				}
-			</script>
-			<?php
+		if(uid() != 1){
+			http_response_code(403);
+			die("You do not have permission to delete expense entries!");
 		}
+		if(isset($get->conf)){
+			$deleteId = defined('ID') ? (int)ID : 0;
+			if(!isset($get->pin) || $get->pin != upin()){
+				?>
+				<script type="text/javascript">
+					if(typeof Swal !== "undefined"){
+						Swal.fire({icon: "error", title: "Wrong PIN", text: "Invalid admin PIN."}).then(function(){
+							location.href = "../view";
+						});
+					} else{
+						alert("Wrong PIN entered!");
+						location.href = "../view";
+					}
+				</script>
+				<?php
+				break;
+			}
+			if($deleteId > 0){
+				$object = R::load("expense_account_entry", $deleteId);
+				if((int)$object->id > 0){
+					R::trash($object);
+				}
+			}
+			redir("../view");
+		}
+		redir("../view");
 
 	} break;
 	case "edit":
 	case "add":{
+		if(METHOD == "edit" && !(uid() == 1 || isUserIn(['lemon']))){
+			http_response_code(403);
+			die("You do not have permission to edit expense entries!");
+		}
 		if(isset($post->save)){
 			require_once("model/$controller.php");
 			$parent = 1;

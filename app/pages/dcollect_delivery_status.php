@@ -1,5 +1,38 @@
 <?php
-if (isset($post->deliver)) {
+// vd($post);
+// Handle Return to Order first (before deliver) ONLY when button clicked
+if (isset($post->return_to_order) && isset($post->return_to_order_ids) && !empty($post->return_to_order_ids)) {
+  $invoiceItemIds = explode(',', (string)$post->return_to_order_ids);
+
+  foreach ($invoiceItemIds as $iid) {
+    $iid = (int)$iid;
+    if ($iid <= 0) continue;
+    
+    // Remove stock collect entries for this invoice item
+    $stockCollects = R::find('stock_collect_item', 'invoice_item_id = ?', [$iid]);
+    foreach ($stockCollects as $sci) {
+      R::trash($sci);
+    }
+    
+    // Clear assigned_to for the invoice item
+    $ii = R::load('invoice_item', $iid);
+    if ($ii && $ii->id) {
+      $ii->assigned_to = null;
+      $ii->collected_by = null;
+      $ii->collected_at = null;
+      $ii->assigned_at = null;
+      $ii->assigned_by = null;
+      $ii->delivery_staff = null;
+      R::store($ii);
+    }
+  }
+  
+  redir("?");
+  exit;
+}
+
+// Handle Deliver
+elseif (isset($post->deliver)) {
   $deliveryStaff = isset($post->delivery_staff) ? trim((string)$post->delivery_staff) : '';
   if (!nn($deliveryStaff)) {
     redir("?");
@@ -220,6 +253,10 @@ if (isset($post->deliver)) {
 
 <!-- Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- SweetAlert2 CSS and JS -->
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
 <!-- Modal -->
 <div class="modal fade" id="dateModal" tabindex="-1" aria-labelledby="dateModalLabel" aria-hidden="true">
@@ -470,5 +507,26 @@ if (isset($post->deliver)) {
   // Add event listener for delivery staff filter
   $("#delivery-staff-filter").change(function() {
     load(); // Call load function directly instead of triggering all checkboxes
+  });
+  
+  // Handle Return to Order button with SweetAlert confirmation
+  $(document).on('click', 'button[name="return_to_order"]', function(e) {
+    e.preventDefault();
+    
+    Swal.fire({
+      title: 'Return to Order?',
+      text: 'This will remove stock collection and clear assigned delivery staff. Are you sure?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ffc107',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, Return',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Submit the form
+        $(this).closest('form').submit();
+      }
+    });
   });
 </script>

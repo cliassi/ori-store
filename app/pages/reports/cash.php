@@ -138,6 +138,85 @@ $get->cw=1;
 if(isset($get->company))
 $id = $get->company;
 
+if(isset($post->cash_edit_save)){
+	$cashRedirectD = isset($get->d) ? (string)$get->d : '';
+	$cashRedirectT = isset($get->t) ? (string)$get->t : '';
+	$cashRedirectUrl = ($cashRedirectD !== '' && $cashRedirectT !== '') ? ('?d=' . urlencode($cashRedirectD) . '&t=' . urlencode($cashRedirectT)) : '?';
+	
+	$editSource = isset($post->cash_edit_source) ? (string)$post->cash_edit_source : '';
+	$editId = isset($post->cash_edit_id) ? (int)$post->cash_edit_id : 0;
+	$editDate = isset($post->cash_edit_date) ? (string)$post->cash_edit_date : '';
+	$editParticulars = isset($post->cash_edit_particulars) ? (string)$post->cash_edit_particulars : '';
+	$editAmount = isset($post->cash_edit_amount) ? (float)$post->cash_edit_amount : 0;
+	
+	$canEditCash = uid() == 1 || isUserIn(['superadmin', 'amla', 'orange']);
+	if(!$canEditCash) {
+		redir($cashRedirectUrl);
+		exit;
+	}
+	
+	if($editId > 0 && !empty($editSource)) {
+		if(in_array($editSource, ['cw_cash', 'cw_bank', 'cw_cash_withdraw'], true)) {
+			$bean = R::load($editSource, $editId);
+			if($bean && $bean->id) {
+				if(!empty($editDate)) {
+					$bean->date = $editDate;
+				}
+				if(!empty($editParticulars)) {
+					$bean->particulars = $editParticulars;
+				}
+				if($editAmount > 0) {
+					$bean->amount = $editAmount;
+				}
+				R::store($bean);
+			}
+		} elseif(in_array($editSource, ['expense_account_entry', 'expense_account_entry_bank'], true)) {
+			$bean = R::load('expense_account_entry', $editId);
+			if($bean && $bean->id) {
+				if(!empty($editDate)) {
+					$bean->expense_date = $editDate;
+				}
+				if(!empty($editParticulars)) {
+					$bean->particulars = $editParticulars;
+				}
+				if($editAmount > 0) {
+					$bean->amount = $editAmount;
+				}
+				R::store($bean);
+			}
+		} elseif(in_array($editSource, ['payment_cash', 'payment_bank'], true)) {
+			$bean = R::load('payment', $editId);
+			if($bean && $bean->id) {
+				if(!empty($editDate)) {
+					$bean->date = $editDate;
+				}
+				if(!empty($editParticulars)) {
+					$bean->description = $editParticulars;
+				}
+				if($editAmount > 0) {
+					$bean->amount = -abs($editAmount);
+				}
+				if(isset($post->cash_edit_payment_method) && in_array($post->cash_edit_payment_method, ['Cash', 'Bank'], true)) {
+					$bean->payment_method = $post->cash_edit_payment_method;
+				}
+				R::store($bean);
+			}
+		} elseif($editSource === 'bd_handover') {
+			$bean = R::load('bd_handover', $editId);
+			if($bean && $bean->id) {
+				if(!empty($editDate)) {
+					$bean->date = $editDate;
+				}
+				if($editAmount > 0) {
+					$bean->amount = $editAmount;
+				}
+				R::store($bean);
+			}
+		}
+	}
+	redir($cashRedirectUrl);
+}
+
 if(isset($post->save_carwash)){
 	$carwash = R::dispense("cw_sites");
 	$carwash->name = $post->name;
@@ -392,7 +471,7 @@ if(isset($get->cw)){
 	print "Date ".dp2("d", $d)." - ".dp2("t", $t)." <button class='btn btn-primary'>Filter</button>";
 	print "</form>";
 	print "</div>";
-	print "<div class='col-md-6'>";
+	print "<div class='col-md-5'>";
 	if(isUserIn(['superadmin','amla','orange', 'parvez'])){
 		print "<a data-bs-toggle='modal' data-bs-target='.withdraw' class='btn btn-primary'>Cash Withdraw</a>".space(5);
  	} 
@@ -403,8 +482,9 @@ if(isset($get->cw)){
 		// print "<a data-bs-toggle='modal' data-bs-target='.bank' class='btn btn-secondary'>Petty Cash to Bank</a>";
  	} 
 	print "</div>";
-	print "<div class='col-md-1'>";
-	print "<a class='btn btn-sm btn-danger' style='float:right; font-size: 1.5rem;' href='/store/expense_account/carwash?company=$get->cw'>Expense</a>";
+	print "<div class='col-md-2'>";
+	print "<a class='btn btn-sm btn-danger' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=1&t=capex'>Capex</a>" . space(5);
+	print "<a class='btn btn-sm btn-warning' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=3&t=opex'>Opex</a>";
 	print "</div>";
 	print "</div>";
 
@@ -494,7 +574,7 @@ print "<form method='post'>";
 	// print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Cash In</th><th class='w120'></th><th>Cash Out</th><th class='w120'></th><th>Balance</th><th></th>";
 
 	//<th><a href='add_cash'>Add Cash</a><br><a href='widthdraw'>Cash Withdraw</a></th><th>Invested Capital</th>
-	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th class='w120'>Bank Sales</th><th>Cash Sales</th><th>Expenses</th><th>Approval</th><th>Bank Balance</th><th>Cash Balance</th>";
+	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Type</th><th class='w120'>Bank Sales</th><th>Cash Sales</th><th>Expenses</th><th>Approval</th><th>Bank Balance</th><th>Cash Balance</th>";
 	if(uid() == 1){
 		print "<th>Del</th>";
 	}
@@ -553,22 +633,46 @@ print "<form method='post'>";
 			$r .= "<td></td>";
 		}
 		$r .= "<td title='$tr->source'><small>".$userList[$tr->entry_by]."</small></td>";
-		// if($tr->amount > 0)
-		sum($tr->source, $tr->amount);
-		if($tr->source == 'bd_handover'){
+	
+	// Determine type text
+	$typeText = '';
+	if(in_array($tr->source, ['expense_account_entry', 'expense_account_entry_bank'])) {
+		$expenseEntry = R::load('expense_account_entry', $tr->id);
+		if($expenseEntry && $expenseEntry->id) {
+			$opexOrCapex = isset($expenseEntry->opex_or_capex) ? strtolower(trim($expenseEntry->opex_or_capex)) : 'capex';
+			if($opexOrCapex === 'opex') {
+				$typeText = 'Opex';
+			} else {
+				$typeText = 'Capex';
+			}
+		} else {
+			$typeText = 'Capex';
+		}
+	} elseif($tr->source == 'bd_handover') {
+		$typeText = 'Handover';
+	} elseif($tr->source == 'payment_cash') {
+		$typeText = 'Payment';
+	} elseif($tr->source == 'payment_bank') {
+		$typeText = 'Payment';
+	}
+	$r .= "<td>".$typeText."</td>";
+	
+	// if($tr->amount > 0)
+	sum($tr->source, $tr->amount);
+	if($tr->source == 'bd_handover'){
 			$handover = R::load("bd_handover", $tr->id);
 			sum('bank', $handover->bank_amount);
 			sum('banko', $handover->bank_amount);
 			$r .= "<td class='right'>".nf($handover->bank_amount)."</td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total += $tr->amount;
-		} elseif($tr->source == 'cw_cash'){
+	} elseif($tr->source == 'cw_cash'){
 			sum('cash', $tr->amount);
 			// if($tr->amount<0) sum('bank', 0 - $tr->amount);
 			if($tr->amount>0)
 			$r .= "<td class='right'></td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total += $tr->amount;
-		} elseif($tr->source == 'cw_bank'){
-			// if($tr->amount<0) sum('bank', 0 - $tr->amount);
+	} elseif($tr->source == 'cw_bank'){
+		// if($tr->amount<0) sum('bank', 0 - $tr->amount);
 			$r .= "<td class='right'>".nf($tr->amount)."</td>";
 			if($tr->se){
 				$r .= "<td class='right'>".nf(0-$tr->amount)."</td>";
@@ -646,7 +750,7 @@ print "<form method='post'>";
 		}
 		*/
 		if(uid() == 1){
-				$r .= "<td><a class='protected-link' href='?d=$d&t=$t&del=$tr->source&id=$tr->id' target='_blank'><i class='fa fa-trash'></i></a></td>";
+			$r .= "<td><a href='#' class='edit-transaction' data-source='$tr->source' data-id='$tr->id' data-bs-toggle='modal' data-bs-target='#editModal'><i class='fa fa-edit' style='color: #0066cc; margin-right: 10px;'></i></a><a class='protected-link' href='?d=$d&t=$t&del=$tr->source&id=$tr->id' target='_blank'><i class='fa fa-trash'></i></a></td>";
 		}
 		print "<tr class='$tr->source'><td title='".($tr->source == 'expense_account_entry' ? $tr->se : $tr->source)."'>$i</td>$r</tr>";
 		$i++;
@@ -1060,6 +1164,29 @@ closeForm();
 	  </div><!-- /.modal-dialog -->
 	</div>
 
+<div class="modal fade" id="editModal" role="dialog">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" autocomplete="off" id="editForm">
+        <input type="hidden" name="cash_edit_save" value="1">
+        <input type="hidden" name="cash_edit_source" id="cash_edit_source">
+        <input type="hidden" name="cash_edit_id" id="cash_edit_id">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalTitle">Edit Transaction</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="editTable"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Update</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script type="text/javascript">
 	$("select.cars").change(function(){
 		// var car = $("select.cars");
@@ -1085,5 +1212,123 @@ closeForm();
 			$("#td-model").html(data);
 			// $("#td-model").find("select").selectpicker();
 		});
+	}
+
+	$(document).on('click', '.edit-transaction', function(e){
+		e.preventDefault();
+		const source = $(this).data('source');
+		const id = $(this).data('id');
+		const $row = $(this).closest('tr');
+		
+		// Extract date from row (2nd column)
+		const dateText = $row.find('td:eq(1)').text().trim();
+		// Extract particulars from row (3rd column)
+		const particularsText = $row.find('td:eq(2)').text().trim();
+		
+		$('#cash_edit_source').val(source);
+		$('#cash_edit_id').val(id);
+		
+		// Fetch transaction data from database
+		$.post('/store/ajax/get_cash_transaction.php', {
+			source: source,
+			id: id
+		}, function(response) {
+			if(response && response.success) {
+				populateEditModal(source, response.data, dateText, particularsText);
+			} else {
+				populateEditModal(source, {}, dateText, particularsText);
+			}
+		}, 'json').fail(function() {
+			populateEditModal(source, {}, dateText, particularsText);
+		});
+		
+		return false;
+	});
+	
+	function populateEditModal(source, data, dateText, particularsText) {
+		let html = '';
+		let title = '';
+		const amount = data && data.amount ? parseFloat(data.amount) : 0;
+		const date = data && data.date ? data.date : dateText;
+		const particulars = data && data.particulars ? data.particulars : particularsText;
+		
+		switch(source) {
+			case 'cw_cash':
+				title = 'Add Cash';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Particulars</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
+				break;
+			case 'cw_cash_withdraw':
+				title = 'Cash Withdraw';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + Math.abs(amount) + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Particulars</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
+				break;
+			case 'cw_bank':
+				title = 'Bank Deposit';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Particulars</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
+				break;
+			case 'cw_outlet':
+				title = 'Outlet Account Transfer';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Particulars</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
+				break;
+			case 'expense_account_entry':
+		case 'expense_account_entry_bank':
+				title = 'Expense Entry';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Particulars</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
+				break;
+			case 'payment_cash':
+		case 'payment_bank':
+				title = 'Payment';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Payment Method</label><div class="form-check">';
+				html += '<input class="form-check-input" type="radio" name="cash_edit_payment_method" value="Cash" id="pm_cash" ' + (source === 'payment_cash' ? 'checked' : '') + '>';
+				html += '<label class="form-check-label" for="pm_cash">Cash</label></div>';
+				html += '<div class="form-check">';
+				html += '<input class="form-check-input" type="radio" name="cash_edit_payment_method" value="Bank" id="pm_bank" ' + (source === 'payment_bank' ? 'checked' : '') + '>';
+				html += '<label class="form-check-label" for="pm_bank">Bank</label></div></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + Math.abs(amount) + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
+				break;
+			case 'bd_handover':
+				title = 'Bank & Cash Handover';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Cash Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				break;
+		}
+		
+		$('#editModalTitle').text('Edit ' + title);
+		$('#editTable').html(html);
+		
+		// Attach event listeners for payment method changes
+		if(source === 'payment_cash' || source === 'payment_bank') {
+			$('input[name="cash_edit_payment_method"]').on('change', function() {
+				setParticulars();
+			});
+		}
+	}
+	
+	function setParticulars() {
+		const paymentMethod = $('input[name="cash_edit_payment_method"]:checked').val();
+		const particulars = $('textarea[name="cash_edit_particulars"]').val();
+		
+		if(paymentMethod === 'Bank') {
+			// Auto-set to bank if not already set
+			if(!particulars.toLowerCase().includes('bank')) {
+				$('textarea[name="cash_edit_particulars"]').val('Bank transfer - ' + particulars);
+			}
+		} else if(paymentMethod === 'Cash') {
+			// Remove bank prefix if it exists
+			if(particulars.toLowerCase().includes('bank transfer')) {
+				$('textarea[name="cash_edit_particulars"]').val(particulars.replace(/Bank transfer - /i, ''));
+			}
+		}
 	}
 </script>

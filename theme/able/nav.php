@@ -115,6 +115,7 @@ $menus = [
       'order/damage'=>'Damage/Loss',
       'report/damage'=>'Damage/Loss Report',
       'Packing'=>'Packing',
+      'product_category'=>'Product Category',
     ],
   ],
   [  
@@ -147,12 +148,12 @@ $menus = [
     'name'=>'Acc',
     'children'=> $accs
   ],
-  [
-    'name'=>'Expense',
-    'children'=>[
-      'expense_account/carwash?company=1'=>'Expense', 
-    ]
-  ],
+  // [
+  //   'name'=>'Expense',
+  //   'children'=>[
+  //     'expense_account/carwash?company=1'=>'Expense', 
+  //   ]
+  // ],
   [
     'name'=>'Low-Stock',
     'children'=>[
@@ -262,9 +263,17 @@ foreach ($menus as $key => $menu) {
   }
 }
 print "<ul class='pc-navbar'>$menu_content</ul>";
+$branches = R::find('branch', '1=1 ORDER BY name');
 ?>
 <span><input type='text' name='key' id='search-key' class='form-control' placeholder="Search..." style="width: 135px; display: inline-block;"></span>
-</div></div>
+<select id='branch-selector' class='form-control' style='width: 150px; display: inline-block; margin-left: 5px;'>
+  <option value=''>Switch Branch</option>
+  <?php foreach ($branches as $branch): ?>
+    <option value='<?php echo $branch->id; ?>' <?php echo (isset($_SESSION['branch_id']) && $_SESSION['branch_id'] == $branch->id) ? 'selected' : ''; ?>><?php echo htmlspecialchars($branch->name); ?></option>
+  <?php endforeach; ?>
+</select>
+</div>
+</div>
 
 
 <script type="text/javascript">
@@ -279,6 +288,24 @@ print "<ul class='pc-navbar'>$menu_content</ul>";
     } else{
       $("#content-wrapper").show();
       $("#search-result-wrapper").html('');
+    }
+  });
+
+  $("#branch-selector").change(function(){
+    const branchId = $(this).val();
+    if(branchId) {
+      $.ajax({
+        type: 'POST',
+        url: '/store/ajax/switch_branch.php',
+        data: { branch_id: branchId },
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        dataType: 'json',
+        success: function(response) {
+          if(response.success) {
+            window.location.reload();
+          }
+        }
+      });
     }
   });
 </script>

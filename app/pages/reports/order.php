@@ -226,6 +226,9 @@ if(isset($post->save_delivery)){
       INNER JOIN product_category pc ON p.product_category_id=pc.id 
       LEFT JOIN city ON c.city=city.name 
       WHERE ".($prod ? "p.id = $prod AND " : "")." ".($pv ? "pv.id = $pv AND " : "")." (c.branch_id=$branch_id OR c.branch_id IS NULL) AND (i.invoice_date BETWEEN '$d' AND '$t') ".($sm ? "AND ii.delivery_staff='$sm'":"")." GROUP BY i.id) a ORDER BY id";
+    if ((isset($_GET['debug']) && $_GET['debug'] == '1') || (isset($get->debug) && $get->debug == '1')) {
+      echo "<pre>Order Report SQL:\n" . htmlspecialchars($query) . "</pre>";
+    }
     // $query = "SELECT * FROM (SELECT i.*, invoiceItems(i.id) particulars, SUM(quantity) quantity, SUM(quantity*price) total FROM invoice i, invoice_item ii WHERE i.id=ii.invoice_id AND invoice_date BETWEEN '$d' AND '$t' ".($sm ? "AND i.salesman_id=$sm":"")." GROUP BY i.id) a ORDER BY id";
     $trans = select($query);
 

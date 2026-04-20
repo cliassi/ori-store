@@ -78,7 +78,7 @@
 $categories = select('*', 'product', '1=1 ORDER BY sort_order');
 // Product variants data - ready for database integration
 
-$variance = select('*', 'product_variance', '1=1 ORDER BY sort_order');
+$variance = select('*', 'product_variance', 'visible=1 ORDER BY sort_order');
 $variants = [];
 while ($v = mysqli_fetch_object($variance)) {
   $v = [

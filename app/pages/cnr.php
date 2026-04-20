@@ -197,6 +197,9 @@ if (isset($get->h)) {
 
   ?>
   <style type="text/css">
+    h1{
+      text-align: center;
+    }
     .cnr-main-table thead th,
     .cnr-main-table tbody td {
       text-align: center;

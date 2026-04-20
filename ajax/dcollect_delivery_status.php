@@ -456,6 +456,9 @@ $customers = select($query);
       $con .= "</tr>
                 </thead>
                 <tbody id='cust-body-$customer->id'>";
+      
+      // Store customer ID for later use in button
+      $currentCustomerId = $customer->id;
 
       // Use pre-fetched items data
       $customerItems = isset($allItemsData[$customer->id]) ? $allItemsData[$customer->id] : [];
@@ -549,8 +552,28 @@ $customers = select($query);
       // <tr><td>9</td><td>Pepsi 250ml X 24</td><td>18</td></tr>
       // <tr><td>10</td><td>100 Plus 250ml Ctn X 24</td><td>28</td></tr>
       print "</tbody>
-            </table>
+            </table>";
+      
+      // Collect invoice item IDs for Return to Order button
+      $invoiceItemIds = [];
+      foreach ($customerItems as $i) {
+        if ($i->quantity - (isset($allItemsData[$customer->id]) ? 0 : 0) > 0) {
+          $invoiceItemIds[] = $i->iid;
+        }
+      }
+      
+      // Add Return to Order button directly under table
+      if (!empty($invoiceItemIds) && $ic > 0) {
+        $iidStr = implode(',', $invoiceItemIds);
+        print "<div style='padding: 10px; text-align: center; border: 1px solid #ddd; border-top: none;'>
+          <input type='hidden' name='return_to_order_ids' value='$iidStr'>
+          <button type='submit' class='btn btn-warning btn-sm return-to-order-btn' name='return_to_order' value='1'>
+            <i class='fas fa-undo'></i> Return to Order
+          </button>
         </div>";
+      }
+      
+      print "</div>";
 
       if (!empty($customerItems)) {
         $customerHtml = ob_get_clean();

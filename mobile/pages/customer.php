@@ -74,7 +74,7 @@ if(!isUserIn(['parvez'])){
     $fields[''] = ["display"=>'', 'type'=>'link', 'action'=>'edit'];
 }
 
-$objs = R::find('customer');
+$objs = R::find('customer', 'branch_id=1');
 ?>
 
 <!-- Mobile Header -->
