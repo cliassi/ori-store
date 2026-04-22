@@ -80,8 +80,7 @@ if (isset($post->save)) {
                   "Sohel May Bank account account a taka banking korse Rm:",
                   "Cash Collection kora hoyese Rm:"
                 ],
-                'class' => 'notes',
-                'required' => true
+                'class' => 'notes'
               ],
             ];
 
@@ -122,4 +121,26 @@ if (isset($post->save)) {
       }
       $("#description").val(notes + amount);
     }
-  </script>
+
+    // ✅ HARD VALIDATION ON SUBMIT (THIS FIXES YOUR PROBLEM)
+    $("form").on("submit", function (e) {
+
+      const paymentMethodChecked = $('input[name="payment_method"]:checked').length > 0;
+      const notesChecked = $('input.notes:checked').length > 0;
+
+      if (!paymentMethodChecked) {
+        e.preventDefault();
+
+        Swal.fire({
+          icon: 'error',
+          html: `
+            ⚠️ Please select :<br><br>
+            1. Payment Method
+          `
+        });
+
+        return false;
+      }
+
+    });
+</script>

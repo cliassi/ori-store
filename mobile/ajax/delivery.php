@@ -443,7 +443,11 @@ if ($i->pc_name != $cat) {
         } else {
           print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . nf($i->price * $i->quantity) . "</a>";
         }
-        print "</td><td class='text-center order-qty-col'><a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$i->quantity</a></td>";
+        if ($rolename === 'Delivery Staff' || $rolename === 'Store Staff') {
+          print "</td><td class='text-center order-qty-col'>$i->quantity</td>";
+        } else {
+          print "</td><td class='text-center order-qty-col'><a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$i->quantity</a></td>";
+        }
         print "</tr>";
         $ic++;
 

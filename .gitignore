@@ -68,3 +68,4 @@ node_modules/
 vendor
 uploads/*
 uploads-ori/*
+app/pages/view/exportables/docs/*

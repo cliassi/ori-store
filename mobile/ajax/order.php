@@ -14,6 +14,14 @@ require_once("../f.inc.php");
 // var_dump($_POST);
 // var_dump($post);
 
+$rolename = '';
+$uid = isset($_POST['UID']) ? (int)$_POST['UID'] : (isset($_SESSION['UID']) ? (int)$_SESSION['UID'] : 0);
+if ($uid > 0) {
+  $rid = getFieldValue('sys_user_role', 'ur_role_id', "ur_user_id=" . $uid);
+  if ($rid) {
+    $rolename = getFieldValue('sys_role', 'r_name', "id=" . $rid);
+  }
+}
 
 $customers = isset($_POST['customers']) ? $_POST['customers'] : '';
 $products = isset($_POST['products']) ? $_POST['products'] : '';

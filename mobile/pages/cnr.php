@@ -461,7 +461,7 @@
                       </td>
                       <td class="text-gray-700" ><?= date('d M, Y', strtotime($row->collect_date)) ?></td>
                       <td class="">
-                        <a class="text-blue-600 font-medium" href="?page=i&id=<?= (int) $row->customer_id ?>">
+                        <a class="text-blue-600 font-medium" href="?page=customer_details&id=<?= (int) $row->customer_id ?>">
                           <?php 
                           $displayCode = $row->customer_code;
                           if (empty($displayCode)) {

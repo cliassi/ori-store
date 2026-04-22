@@ -51,7 +51,7 @@ if (isset($post->save)) {
                         'supplier_id' => ['col' => 6, 'label' => 'Supplier', 'type' => 'dropdown', 'value'=>(isset($get->supplier) ? $get->supplier : $obj->supplier_id), 'table'=>'supplier', 'textField'=>'company'],
                         'date' => ['col' => 6, 'label' => 'Date', 'type' => 'date2', 'value' => $obj->date],
                         'amount' => ['col' => 6, 'label' => 'Amount', 'type' => 'text', 'value'=>$obj->contact],
-                        'payment_method' => ['col' => 6, 'label' => 'Payment Method', 'type' => 'radio', 'value'=>$obj->payment_method, 'class'=>'payment_method', 'options'=>['Cash', 'Bank']],
+                        'payment_method' => ['col' => 6, 'label' => 'Payment Method', 'type' => 'radio', 'value' => $obj->payment_method, 'class' => 'payment_method', 'options' => ['Cash', 'Bank'], 'required' => true],
                         'a' => ['col' => 12, 'label' => 'Amount', 'type' => 'buttons', 'class'=>'btn btn-success btn-amount', 'target'=>'amount', 'options'=>[100,200,300,500,1000,1500]],
                         'description' => ['col' => 12, 'label' => 'Particulars', 'type' => 'textarea', 'value' => $obj->address],
                         'l' => ['col' => 12, 'label' => 'Amount', 'type' => 'radios', 'target'=>'amount', 'options'=>[
@@ -106,4 +106,26 @@ if (isset($post->save)) {
     }
     $("#description").val(notes + amount);
   }
+
+  // ✅ HARD VALIDATION ON SUBMIT (THIS FIXES YOUR PROBLEM)
+    $("form").on("submit", function (e) {
+
+      const paymentMethodChecked = $('input[name="payment_method"]:checked').length > 0;
+      const notesChecked = $('input.notes:checked').length > 0;
+
+      if (!paymentMethodChecked) {
+        e.preventDefault();
+
+        Swal.fire({
+          icon: 'error',
+          html: `
+            ⚠️ Please select :<br><br>
+            1. Payment Method
+          `
+        });
+
+        return false;
+      }
+
+    });
 </script>        
