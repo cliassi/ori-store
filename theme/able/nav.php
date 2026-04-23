@@ -90,6 +90,7 @@ $menus = [
       'dcollect_delivery_status'=>'Delivery Status', 
       'dcollect_pending'=>'Pending Order',
       'cnr'=>'C n R Report',
+      'customer_order'=>'Pending Customer Order',
       // 'delivery2'=>'Report',
       // 'dcollect'=>'Order,Pending, Delivery',
       // 'customer'=>'Deliver',

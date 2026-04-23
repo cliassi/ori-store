@@ -85,13 +85,14 @@
                 $items = [
                     // Row 1
                     ['label' => 'Dashboard',       'icon' => 'view-grid',       'page' => 'dashboard'],
-                    ['label' => 'Petty Cash',      'icon' => 'currency-dollar', 'page' => 'petty_cash'],
+                    ['label' => 'Supplier',        'icon' => 'user-add',        'page' => 'supplier_add'],
+                    // ['label' => 'Petty Cash',      'icon' => 'currency-dollar', 'page' => 'petty_cash'],
                     ['label' => 'Cus Due',         'icon' => 'cash',            'page' => 'customer_due'],
                     ['label' => 'Customer',        'icon' => 'shopping-cart',   'page' => 'customer'],
                     // Row 2
                     ['label' => 'Expenses',        'icon' => 'receipt-tax',     'page' => 'expenses'],
                     ['label' => 'Product +',       'icon' => 'plus-circle',     'page' => 'product_add'],
-                    ['label' => 'Supplier',        'icon' => 'user-add',        'page' => 'supplier_add'],
+                    ['label' => 'Order Approval',       'icon' => 'clipboard',       'page' => 'pending_order'],
                     ['label' => 'Order List', 'icon' => 'view-list',       'page' => 'order'],
                     // Row 3
                     ['label' => 'Daily Sales',     'icon' => 'chart-bar',       'page' => 'daily_sales'],

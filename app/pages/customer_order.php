@@ -1,5 +1,60 @@
 <?php
 // Detail endpoint: return just the modal body HTML when ?detail=ID
+if(isset($post->approve_id)){
+  $approve_id = (int)$post->approve_id;
+  // Fetch the order and items
+  $orderBean = R::load('customer_order', $approve_id);
+  if ($orderBean && $orderBean->id) {
+    // Insert into invoice
+    $invoice = R::dispense('invoice');
+    $invoice->customer_id = (int)$orderBean->customer_id;
+    $invoice->order_id = $approve_id;
+    $invoice->invoice_date = $orderBean->invoice_date;
+    $invoice->delivery_date = $orderBean->invoice_date;
+    $invoice->status = 'approved';
+    $invoice_id = R::store($invoice);
+
+    // Insert each item into invoice_item
+    $itemsBeans = R::findAll('customer_order_item', ' customer_order_id = ? ', [$approve_id]);
+    foreach ($itemsBeans as $item) {
+      $invItem = R::dispense('invoice_item');
+      $invItem->invoice_id = $invoice_id;
+      $invItem->product_id = isset($item->product_id) ? (int)$item->product_id : null;
+      $invItem->product_variance_id = isset($item->product_variance_id) ? (int)$item->product_variance_id : null;
+      $invItem->quantity = isset($item->quantity) ? (float)$item->quantity : 0.0;
+      $invItem->price = isset($item->price) ? (float)$item->price : 0.0;
+      R::store($invItem);
+    }
+
+    // Update order as approved
+    $orderBean->status = 'approved';
+    R::store($orderBean);
+  }
+
+}
+// Build and auto-submit a form to /store/invoice for a given order id
+if (isset($get) && isset($get->approve_form)) {
+  $id = (int)$get->approve_form;
+  $order = R::load('customer_order', $id);
+  if (!($order && $order->id)) {
+    echo '<div class="text-danger">Order not found.</div>';
+    exit;
+  }
+  $items = R::find('customer_order_item', ' customer_order_id = ? ', [$id]);
+
+  echo '<!doctype html><html><head><meta charset="utf-8"><title>Submitting...</title></head><body>';
+  echo '<form id="autopost" method="post" action="/store/invoice">';
+  echo '<input type="hidden" name="customer_id" value="'.(int)$order->customer_id.'">';
+  foreach ($items as $it) {
+    if (isset($it->product_variance_id) && (int)$it->product_variance_id) {
+      echo '<input type="hidden" name="product['.(int)$it->product_variance_id.']" value="'.(float)$it->quantity.'">';
+    }
+  }
+  echo '</form>';
+  echo '<script>document.getElementById("autopost").submit();</script>';
+  echo '</body></html>';
+  exit;
+}
 if (isset($get) && isset($get->detail)) {
   $id = (int)$get->detail;
   $hres = select("SELECT co.*, c.company FROM customer_order co LEFT JOIN customer c ON c.id=co.customer_id WHERE co.id=$id LIMIT 1");
@@ -12,7 +67,7 @@ if (isset($get) && isset($get->detail)) {
       <div class="mb-2">
         <div><strong>Order #</strong> <?php echo (int)$h->id; ?></div>
         <div><strong>Customer</strong> <?php echo htmlspecialchars($h->company ?: '—'); ?></div>
-        <div><strong>Invoice Date</strong> <?php echo htmlspecialchars($h->invoice_date ?: '—'); ?></div>
+        <div><strong>Order Date</strong> <?php echo htmlspecialchars($h->order_date ?: '—'); ?></div>
         <div><strong>Status</strong> <?php echo htmlspecialchars($h->status ?: '—'); ?></div>
       </div>
     <?php else: ?>
@@ -36,7 +91,7 @@ if (isset($get) && isset($get->detail)) {
             $name = $row->product_name ?: $row->name;
             $variant = $row->variant ?: $row->description;
             $qty = (int)$row->quantity;
-            $price = (float)($row->price ?? 0);
+            $price = (float)($row->price );
             $sub = $qty * $price;
             $totalQty += $qty; $totalAmt += $sub;
             echo '<tr>';
@@ -77,21 +132,25 @@ if (isset($get) && isset($get->detail)) {
             <thead>
               <tr>
                 <th style="width:80px">ID</th>
-                <th>Customer</th>
-                <th>Invoice Date</th>
-                <th>Status</th>
+                <th>Shop Name</th>
+                <th>Customer Name</th>
+                <th>Order Date</th>
+                <th>Items</th>
                 <th class="text-center">Qty</th>
                 <th class="text-end">Amount</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               <?php
-              $sql = "SELECT co.id, co.invoice_date, co.status, c.company,
+              $sql = "SELECT co.id, co.invoice_date, co.status, c.company, c.contact,
+                             coItems(co.id) items_html,
                              IFNULL(SUM(i.quantity),0) qty,
                              IFNULL(SUM(i.quantity*i.price),0) amount
                         FROM customer_order co
                         LEFT JOIN customer c ON c.id=co.customer_id
                         LEFT JOIN customer_order_item i ON i.customer_order_id=co.id
+                        LEFT JOIN product_variance pv ON pv.id=i.product_variance_id
                        GROUP BY co.id
                        ORDER BY co.id DESC
                        LIMIT 100";
@@ -100,10 +159,18 @@ if (isset($get) && isset($get->detail)) {
                 echo '<tr class="co-row" data-id="'.(int)$o->id.'">';
                 echo '<td>'.(int)$o->id.'</td>';
                 echo '<td>'.htmlspecialchars($o->company ?: '—').'</td>';
+                echo '<td>'.htmlspecialchars($o->contact ?: '—').'</td>';
                 echo '<td>'.htmlspecialchars($o->invoice_date ?: '—').'</td>';
-                echo '<td>'.htmlspecialchars($o->status ?: '—').'</td>';
+                echo '<td>'.($o->items_html ?: '—').'</td>';
                 echo '<td class="text-center">'.(int)$o->qty.'</td>';
                 echo '<td class="text-end">'.number_format((float)$o->amount,2).'</td>';
+                echo '<td>'.htmlspecialchars($o->status ?: '—').'</td>';
+                echo '<td>';
+                if (strtolower($o->status) !== 'approved') {
+                  echo '<button type="button" class="btn btn-sm btn-success" onclick="event.stopPropagation(); approveOrder('.(int)$o->id.')">Approve</button>';
+                }
+                echo '</td>';
+
                 echo '</tr>';
               }
               ?>
@@ -158,6 +225,13 @@ if (isset($get) && isset($get->detail)) {
         modalEl.style.display = 'block';
       }
     }
+
+    // Expose approve submitter globally for inline onclick
+    window.approveOrder = function(id){
+      // Redirect to server endpoint that prepares and auto-submits a full form to /store/invoice
+      const url = '?page=customer_order&approve_form=' + encodeURIComponent(id);
+      window.location.href = url;
+    };
 
     document.querySelectorAll('#co-table .co-row').forEach(tr => {
       tr.style.cursor = 'pointer';

@@ -1,15 +1,26 @@
 <?php
 session_start();
+$get = array(); foreach ($_GET as $key => $value) $get[$key] = $value; unset($_GET); $get = (object)$get;
+$post = array(); foreach ($_POST as $key => $value) $post[$key] = $value; unset($_POST); $post = (object)$post;
+$input = json_decode(file_get_contents('php://input'));
 
-if(isset($_GET['uid'])){
-  define('UID', $_GET['uid']);
+if($_SERVER['REQUEST_URI'] == '/order/'){
+  if(isset($_SESSION['UID'])){
+    session_destroy();
+    unset($_SESSION);
+    session_start();
+  }
+}
+
+if(isset($get->uid)){
+  define('UID', $get->uid);
   $_SESSION['UID'] = UID;
   define('GUEST', false);
 } elseif(isset($_SESSION['UID'])){
   define('UID', $_SESSION['UID']);
   define('GUEST', false);
 } else{
-  define('UID', '2');
+  $get->uid = 0;
   define('GUEST', true);
 }
 error_reporting(E_ERROR | E_PARSE);
@@ -50,11 +61,9 @@ require_once ('config.php');
 require_once ('functions.php');
 // require_once ('f.inc.php');
 
-$get = array(); foreach ($_GET as $key => $value) $get[$key] = $value; unset($_GET); $get = (object)$get;
-$post = array(); foreach ($_POST as $key => $value) $post[$key] = $value; unset($_POST); $post = (object)$post;
-$input = json_decode(file_get_contents('php://input'));
 
-$actions = ['delivery','home','cnr','order_list','order','delivery_status', 'collect','customer_add','invoice','cnr_report','collection','customer','customer_details', 'customer_collection','customer_due','daily_order','daily_purchase','daily_sales','dashboard','expenses','home','order','pending_order','petty_cash','product_add','stock_in','supplier_add','supplier_due'];
+
+$actions = ['delivery', 'place_order','home','cnr','order_list','order','delivery_status', 'collect','customer_add','invoice','cnr_report','collection','customer','customer_details', 'customer_collection','customer_due','daily_order','daily_purchase','daily_sales','dashboard','expenses','home','order','pending_order','petty_cash','product_add','stock_in','supplier_add','supplier_due'];
 $action = isset($get->page)?$get->page:'home';
 $response = [];
 

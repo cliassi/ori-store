@@ -1,17 +1,105 @@
 <?php
 $post->UID = $_SESSION['UID'];
-// Invoice creation/edition page (mobile) - adapted from _resources/pages/forms/invoice.php
+// customer_order creation/edition page (mobile) - adapted from _resources/pages/forms/customer_order.php
 // Expects POST from home.php as product[<variance_id>] => qty and optional customer_id
 
 // $get, $post are prepared by index.php
 
-// Prepare base invoice object and state
-$obj = R::dispense('invoice');
+// If products are posted, immediately create an order for the current session user and show invoice view
+if (!empty($post->product) && is_array($post->product)) {
+  $customerId = isset($_SESSION['UID']) ? $_SESSION['UID'] : (isset($post->customer_id) ? $post->customer_id : null);
+  $inv = R::dispense('customer_order');
+  $inv->status = 'New';
+  $inv->customer_id = $customerId;
+  $inv->invoice_date = isset($post->date) ? $post->date : today();
+  $inv->created_by = 2;
+  R::store($inv);
+
+  $items = [];
+  $grand = 0;
+  foreach ($post->product as $id => $qty) {
+    $qty = (int)$qty;
+    if ($qty <= 0) continue;
+    $variance = R::load('product_variance', $id);
+    if (!$variance || !$variance->id) continue;
+    $product = R::load('product', $variance->product_id);
+    $price = isset($post->price[$id]) ? (float)$post->price[$id] : (float)$variance->price;
+
+    $ii = R::dispense('customer_order_item');
+    $ii->customer_order_id = $inv->id;
+    $ii->product_id = $product->id;
+    $ii->product_variance_id = $variance->id;
+    $ii->quantity = $qty;
+    $ii->price = $price;
+    $ii->cost = $variance->cost;
+    $ii->name = $product->name;
+    $ii->description = $variance->particulars;
+    $ii->delivery_date = $inv->customer_order_date;
+    R::store($ii);
+
+    $line = (object) [
+      'image' => getImageOrPlaceholder($variance->image, $variance->name),
+      'name' => $product->name,
+      'desc' => $variance->particulars,
+      'qty' => $qty,
+      'price' => $price,
+      'total' => $price * $qty,
+    ];
+    $items[] = $line;
+    $grand += $line->total;
+  }
+  ?>
+  <style>
+    .ivc { max-width: 760px; margin: 0 auto; padding: 12px; }
+    .ivc h2 { margin: 0 0 8px; font-size: 18px; }
+    .ivc .meta { color: #6b7280; font-size: 12px; margin-bottom: 10px; }
+    .ivc .row { display:flex; align-items:center; gap:10px; background:#fff; border-radius:12px; padding:8px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .ivc .thumb{ width:56px; height:56px; border-radius:12px; overflow:hidden; background:#f3f4f6; flex:0 0 auto; }
+    .ivc .thumb img{ width:100%; height:100%; object-fit:cover; }
+    .ivc .name{ font-weight:600; color:#0f172a; font-size:13px; }
+    .ivc .desc{ color:#6b7280; font-size:11px; }
+    .ivc .right{ margin-left:auto; text-align:right; min-width:92px; }
+    .ivc .total{ font-weight:700; color:#0f172a; font-size:13px; }
+    .ivc .grand{ text-align:right; font-size:16px; margin-top:10px; }
+    .ivc .cta{ margin-top:12px; display:flex; gap:8px; }
+    .ivc .btn { padding:10px 16px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; }
+    .ivc .btn-primary { background:#22c55e; color:#fff; border:none; }
+  </style>
+  <div class="ivc">
+    <h2>Order Created</h2>
+    <div class="meta">Order #<?php echo htmlspecialchars($inv->id); ?> • <?php echo htmlspecialchars($inv->customer_order_date); ?></div>
+    <div class="list" style="display:grid; gap:8px;">
+      <?php foreach ($items as $it): ?>
+        <div class="row">
+          <div class="thumb"><img src="<?php echo $it->image; ?>" alt="<?php echo htmlspecialchars($it->name); ?>"></div>
+          <div style="flex:1 1 auto; min-width:0;">
+            <div class="name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?php echo htmlspecialchars($it->name); ?></div>
+            <div class="desc"><?php echo htmlspecialchars($it->desc); ?></div>
+          </div>
+          <div class="right">
+            <div class="total">RM <?php echo number_format($it->total, 2); ?></div>
+            <div class="desc">Qty: <?php echo (int)$it->qty; ?> × RM <?php echo number_format($it->price,2); ?></div>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+    <div class="grand"><strong>Grand Total: RM <?php echo number_format($grand, 2); ?></strong></div>
+    <div class="cta">
+      <button class="btn" type="button" onclick="window.history.back()">← Back</button>
+      <a class="btn btn-primary" href="?page=home">Done</a>
+    </div>
+  </div>
+  <?php
+  return; // stop legacy form from rendering
+}
+
+// Prepare base customer_order object and state
+$obj = R::dispense('customer_order');
 $obj->status = 'New';
 
 // If editing (not used in mobile flow yet, but kept for compatibility)
 if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
-  $obj = R::load('invoice', ID);
+  $obj = R::load('customer_order', ID);
 } else {
   // Preselect customer if provided
   if (isset($post->customer_id)) {
@@ -21,14 +109,14 @@ if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
 
 // Handle save
 if (isset($post->save)) {
-  // Create multiple invoices: one invoice per product selected
+  // Create multiple customer_orders: one customer_order per product selected
   if (!empty($post->product) && is_array($post->product)) {
     foreach ($post->product as $id => $qty) {
       $qty = (int)$qty;
       if ($qty <= 0) continue;
 
-      // Build a fresh invoice for each product
-      $inv = R::dispense('invoice');
+      // Build a fresh customer_order for each product
+      $inv = R::dispense('customer_order');
       $inv->status = 'New';
       $inv->customer_id = isset($post->customer_id) ? $post->customer_id : null;
       if (isset($post->salesman) && function_exists('nn') ? nn($post->salesman) : !empty($post->salesman)) {
@@ -38,18 +126,18 @@ if (isset($post->save)) {
           $inv->incentive = $salesman->incentive;
         }
       }
-      $inv->invoice_date = isset($post->date) ? $post->date : today();
-      $inv->created_by = isset($_SESSION['UID']) ? $_SESSION['UID'] : (function_exists('uid') ? uid() : null);
+      $inv->customer_order_date = isset($post->date) ? $post->date : today();
+      $inv->created_by = 2;
 
       R::store($inv);
 
-      // Create single invoice_item for this invoice
+      // Create single customer_order_item for this customer_order
       $variance = R::load('product_variance', $id);
       if (!$variance || !$variance->id) continue;
       $product = R::load('product', $variance->product_id);
 
-      $ii = R::dispense('invoice_item');
-      $ii->invoice_id = $inv->id;
+      $ii = R::dispense('customer_order_item');
+      $ii->customer_order_id = $inv->id;
       $ii->product_id = $product->id;
       $ii->product_variance_id = $variance->id;
       $ii->quantity = $qty;
@@ -57,7 +145,7 @@ if (isset($post->save)) {
       $ii->cost = $variance->cost;
       $ii->name = $product->name;
       $ii->description = $variance->particulars;
-      $ii->delivery_date = $inv->invoice_date;
+      $ii->delivery_date = $inv->customer_order_date;
       R::store($ii);
     }
   }
@@ -303,7 +391,7 @@ if (isset($post->save)) {
   <div class="absolute inset-0 bg-black/50"></div>
   <div class="relative bg-white w-11/12 max-w-sm rounded-lg shadow-lg p-4">
     <div class="text-lg font-semibold">Remove item?</div>
-    <div class="mt-2 text-sm text-gray-600">This will remove the item from the invoice.</div>
+    <div class="mt-2 text-sm text-gray-600">This will remove the item from the customer_order.</div>
     <div class="mt-4 flex justify-end gap-2">
       <button type="button" id="removeRowCancel" class="px-4 py-2 rounded border border-gray-300 bg-white">Cancel</button>
       <button type="button" id="removeRowConfirm" class="px-4 py-2 rounded bg-red-600 text-white">Remove</button>
