@@ -197,10 +197,6 @@ foreach ($products as $pg) {
               <div class="absolute z-10" style="top: 0.5rem;right: 0.8rem;">
                 <div class="qty-badge bg-white text-black rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>" style="display: none;">0</div>
               </div>
-              <!-- Close Button (hidden, legacy) -->
-              <div class="absolute z-10 qty-close-btn" style="top: 0.5rem;left: 0.8rem; display: none;">
-                <div class="bg-white text-gray-500 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>">✕</div>
-              </div>
 
               <!-- Plus button (shown when qty == 0) -->
               <button type="button" class="absolute add-plus-btn" aria-label="Add" style="top: 0.6rem; right: 0.6rem; background:#008048; color:#fff; width:30px; height:30px; border-radius:9999px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.25); z-index:20; opacity:1;">
@@ -271,14 +267,16 @@ foreach ($products as $pg) {
 </button>
 
 <!-- Basket bar -->
-<div id="basketBarHome">
-  <div class="basket-inner">
-    <div>
-      <span class="basket-title">Basket</span>
-      <span> • </span>
-      <span id="basketCountHome">0 Item</span>
+<div id="basketBarWrap">
+  <div id="basketBarHome">
+    <div class="basket-inner">
+      <div>
+        <span class="basket-title">Basket</span>
+        <span> • </span>
+        <span id="basketCountHome">0 Item</span>
+      </div>
+      <div id="basketProceedHome" class="basket-price">RM0.00</div>
     </div>
-    <div id="basketProceedHome" class="basket-price">RM0.00</div>
   </div>
 </div>
 
@@ -423,13 +421,18 @@ foreach ($products as $pg) {
   }
 
   /* Basket bar */
-  #basketBarHome {
+  #basketBarWrap {
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: 10px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 50;
+    background: #ffffff;
+    padding: 10px;
     display: none;
+  }
+  #basketBarHome {
+    position: static;
     background: #22c55e; /* green */
     color: #ffffff;
     padding: 12px 16px;
@@ -838,6 +841,7 @@ foreach ($products as $pg) {
     const formOrder = document.getElementById('form-order');
     const customerSelect = document.getElementById('customerSelectHome');
     const confirmCustomerBtn = document.getElementById('confirmCustomerHome');
+    const basketWrap = document.getElementById('basketBarWrap');
     const basketBar = document.getElementById('basketBarHome');
     const basketCount = document.getElementById('basketCountHome');
     const basketProceed = document.getElementById('basketProceedHome');
@@ -930,14 +934,6 @@ foreach ($products as $pg) {
         badge.textContent = qty;
         badge.style.display = qty > 0 ? 'flex' : 'none';
       });
-      // Show/hide close button
-      const card = sel.closest('.product-item');
-      if (card) {
-        const closeBtn = card.querySelector('.qty-close-btn');
-        if (closeBtn) {
-          closeBtn.style.display = qty > 0 ? 'block' : 'none';
-        }
-      }
     }
 
     // Helpers for new plus/minus UI and basket bar
@@ -979,7 +975,7 @@ foreach ($products as $pg) {
       });
       if (basketCount) basketCount.textContent = `${totalItems} ${totalItems === 1 ? 'Item' : 'Items'}`;
       if (basketProceed) basketProceed.textContent = `RM${totalPrice.toFixed(2)}`;
-      if (basketBar) basketBar.style.display = totalItems > 0 ? 'block' : 'none';
+      if (basketWrap) basketWrap.style.display = totalItems > 0 ? 'block' : 'none';
     }
 
     // Handle badge click to increment quantity
@@ -1002,19 +998,7 @@ foreach ($products as $pg) {
       });
     });
 
-    // Handle close button click to reset quantity to 0
-    document.querySelectorAll('.qty-close-btn').forEach(closeBtn => {
-      const closeIcon = closeBtn.querySelector('div');
-      closeIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const productId = closeIcon.getAttribute('data-product');
-        const sel = document.querySelector(`select.cart-item[data-product="${productId}"]`);
-        if (!sel) return;
-        sel.value = '0';
-        updateAllBadges(productId, sel);
-        updateBasketBar();
-      });
-    });
+    
 
     // Update badge when select changes
     document.querySelectorAll('select.cart-item').forEach(sel => {
