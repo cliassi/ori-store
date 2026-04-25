@@ -22,6 +22,8 @@ if (isset($post->product) && is_array($post->product)) {
 ?>
 
 <style>
+  html,body{max-width:100%;overflow-x:hidden;}
+  *,*::before,*::after{box-sizing:border-box;}
   .po-container{max-width:720px;margin:0 auto;padding:10px 10px 90px;}
   .po-card{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .po-row{display:grid;grid-template-columns:1fr;gap:8px;}
@@ -35,19 +37,28 @@ if (isset($post->product) && is_array($post->product)) {
   .po-btn{width:22px;height:22px;border-radius:9999px;border:1px solid #d1d5db;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-weight:700;}
   .po-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:92px;}
   .po-qty-wrap{display:flex;align-items:center;gap:8px;}
-  .po-footer{position:fixed;left:12px;right:12px;bottom:10px;background:#ffffff;color:#0f172a;border-radius:12px;padding:10px 12px 12px;box-shadow:0 6px 16px rgba(0,0,0,.12);} 
+  .po-footer{position:fixed;left:0;right:0;bottom:10px;transform:translateZ(0);width:calc(100% - 40px);max-width:720px;margin-left:auto;margin-right:auto;background:#ffffff;color:#0f172a;border-radius:12px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));box-shadow:0 6px 16px rgba(0,0,0,.12);} 
   .po-progress{height:3px;background:#f97316;border-radius:9999px;width:28%;margin:0 4px 8px;}
   .po-foot-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;}
   .po-left{display:flex;flex-direction:column;gap:2px;}
   .po-grand{font-weight:800;font-size:18px;color:#0f172a;}
   .po-breakdown{background:transparent;border:none;color:#0ea5e9;text-align:left;padding:0;margin:0;font-size:12px;}
-  .po-cta{background:#22c55e;color:#ffffff;border:none;border-radius:9999px;padding:10px 18px;font-weight:700;}
+  .po-cta{background:#22b55e;color:#ffffff;border:none;border-radius:9999px;padding:10px 18px;font-weight:700;}
+  .po-back{display:inline-flex;align-items:center;gap:8px;background:#f3f4f6;border:1px solid #e5e7eb;padding:10px 12px;border-radius:9999px;color:#111827;font-weight:700;font-size:14px;line-height:1;min-width:48px;justify-content:center;}
+  .po-back:active{opacity:.75;}
+  .po-back .po-back-arrow{font-size:18px;line-height:0;}
   .scrollbar-hide::-webkit-scrollbar{display:none}
   .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
 </style>
 
 <div class="po-container">
-  <h2 class="text-lg font-bold mb-3" style="color:#0f172a">Your Basket</h2>
+  <div class="mb-3" style="display:flex; align-items:center; gap:10px;">
+    <button type="button" style="margin-top:-10px" class="po-back" onclick="window.history.back();" aria-label="Back">
+      <span class="po-back-arrow"><-</span>
+    </button>
+    <h2 class="text-lg font-bold mb-0 text-center" style="margin-top:20px;color:#0f172a; flex:1 1 auto;">Your Order</h2>
+    <div style="width:54px"></div>
+  </div>
 
   <form id="placeOrderForm" method="post" action="?page=invoice">
     <input type='hidden' name='UID' value='<?php echo isset($get->uid) ? htmlspecialchars($get->uid) : ''; ?>'>
@@ -62,7 +73,7 @@ if (isset($post->product) && is_array($post->product)) {
             <?php endif; ?>
           </div>
           <div style="flex:1 1 auto;min-width:0">
-            <div class="po-name line-clamp-2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?php echo $it['name']; ?></div>
+            <div class="po-name line-clamp-2" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;"><?php echo $it['name']; ?></div>
             <div class="po-unit">Unit: RM <?php echo number_format($it['price'], 2); ?></div>
           </div>
           <div class="po-right">

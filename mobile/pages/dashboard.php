@@ -92,12 +92,12 @@
                     // Row 2
                     ['label' => 'Expenses',        'icon' => 'receipt-tax',     'page' => 'expenses'],
                     ['label' => 'Product +',       'icon' => 'plus-circle',     'page' => 'product_add'],
-                    ['label' => 'Order Approval',       'icon' => 'clipboard',       'page' => 'pending_order'],
-                    ['label' => 'Order List', 'icon' => 'view-list',       'page' => 'order'],
+                    ['label' => 'Order Approval',  'icon' => 'clipboard',       'page' => 'customer_order'],
+                    ['label' => 'Order List',      'icon' => 'view-list',       'page' => 'order'],
                     // Row 3
                     ['label' => 'Daily Sales',     'icon' => 'chart-bar',       'page' => 'daily_sales'],
                     ['label' => 'File Manager',    'icon' => 'credit-card',     'page' => 'file'],
-                    ['label' => 'Supplier Due',         'icon' => 'user-circle',     'page' => 'supplier_due'],
+                    ['label' => 'Supplier Due',    'icon' => 'user-circle',     'page' => 'supplier_due'],
                     ['label' => 'Pending Collect', 'icon' => 'view-list',       'page' => 'collect'],
                     // Row 4
                     ['label' => 'Daily Order',     'icon' => 'document-text',   'page' => 'daily_order'],

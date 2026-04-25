@@ -149,12 +149,13 @@ $menus = [
     'name'=>'Acc',
     'children'=> $accs
   ],
-  // [
-  //   'name'=>'Expense',
-  //   'children'=>[
-  //     'expense_account/carwash?company=1'=>'Expense', 
-  //   ]
-  // ],
+  [
+    'name'=>'Expense',
+    'children'=>[
+      'expense_account/carwash?company=1&t=capex'=>'Capex', 
+      'expense_account/carwash?company=1&t=opex'=>'Opex', 
+    ]
+  ],
   [
     'name'=>'Low-Stock',
     'children'=>[

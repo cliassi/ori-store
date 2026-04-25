@@ -2,6 +2,13 @@
 // REMOVE THIS LINE - object is already loaded from controller
 // $object = R::dispense('expense_account');
 
+if (!isset($object) || !is_object($object)) {
+	$object = R::dispense('expense_account');
+	if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
+		$object = R::load('expense_account', ID);
+	}
+}
+
 if(isset($post->save)){
 
 	$fields = ['name','code','fullcode','parent','description','opening_balance', 'company', 'hotel'];
@@ -82,7 +89,7 @@ if(isset($post->save)){
 	}
 	R::store($object);
 
-	redir('/store/expense_account/');
+	redir('/store/expense_account/?t='.$get->t);
 
 }
 openForm();

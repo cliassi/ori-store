@@ -92,6 +92,20 @@ if (METHOD == 'edit' && defined('ID')) {
     // dd($post->price[31]);
     foreach ($post->product as $id => $qty) {
       $obj = R::dispense("invoice");
+      if(isset($post->customer_order_id)){
+        $delete_id = (int)$post->customer_order_id;
+        $orderBean = R::load('customer_order', $delete_id);
+        if ($orderBean && $orderBean->id) {
+          if (strtolower((string)$orderBean->status) !== 'approved') {
+            $itemsBeans = R::find('customer_order_item', ' customer_order_id = ? ', [$delete_id]);
+            foreach ($itemsBeans as $item) {
+              R::trash($item);
+            }
+            R::trash($orderBean);
+          }
+        }
+      }
+      
       $obj->status = "New";
       if (METHOD == 'edit' && defined('ID')) {
         $obj = R::load('invoice', ID);
@@ -140,6 +154,11 @@ if (METHOD == 'edit' && defined('ID')) {
 ?>
 <!-- [ Main Content ] start -->
 <form method="post">
+  <?php
+    if(isset($post->customer_order_id)){
+      print "<input type='hidden' name='customer_order_id' value='$post->customer_order_id'>";
+    }
+  ?>
   <div class="row">
     <div class="col-sm-12">
       <div class="card">

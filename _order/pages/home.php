@@ -433,7 +433,7 @@ foreach ($products as $pg) {
   }
   #basketBarHome {
     position: static;
-    background: #22c55e; /* green */
+    background: #22b55e; /* green */
     color: #ffffff;
     padding: 12px 16px;
     border-radius: 9999px;

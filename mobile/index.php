@@ -50,7 +50,7 @@ $get = array(); foreach ($_GET as $key => $value) $get[$key] = $value; unset($_G
 $post = array(); foreach ($_POST as $key => $value) $post[$key] = $value; unset($_POST); $post = (object)$post;
 $input = json_decode(file_get_contents('php://input'));
 
-$actions = ['delivery','home','cnr','order_list','order','delivery_status', 'collect','customer_add','invoice','cnr_report','collection','customer','customer_details', 'customer_collection','customer_due','daily_order','daily_purchase','daily_sales','dashboard','expenses','home','order','pending_order','petty_cash','product_add','stock_in','supplier_add','supplier_due'];
+$actions = ['delivery','home','cnr','order_list','order','delivery_status','customer_order', 'collect','customer_add','invoice','cnr_report','collection','customer','customer_details', 'customer_collection','customer_due','daily_order','daily_purchase','daily_sales','dashboard','expenses','home','order','pending_order','petty_cash','product_add','stock_in','supplier_add','supplier_due'];
 $action = isset($get->page)?$get->page:'home';
 $response = [];
 
