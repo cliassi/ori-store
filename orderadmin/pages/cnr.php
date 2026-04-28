@@ -113,6 +113,21 @@
     $startDate = $endDate;
     $endDate = $temp;
   }
+
+  // Shift both dates by -1/+1 day (Prev/Next)
+  if (isset($get->shift)) {
+    $shift = (string)$get->shift;
+    if ($shift === 'prev' || $shift === 'next') {
+      $delta = $shift === 'prev' ? '-1 day' : '+1 day';
+      $startDate = date('Y-m-d', strtotime($delta, strtotime($startDate)));
+      $endDate = date('Y-m-d', strtotime($delta, strtotime($endDate)));
+      if ($startDate > $endDate) {
+        $temp = $startDate;
+        $startDate = $endDate;
+        $endDate = $temp;
+      }
+    }
+  }
   
   $reportDate = (isset($get->report_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $get->report_date))
     ? $get->report_date
@@ -291,19 +306,65 @@
 
   <!-- Mobile Header -->
   <div class="bg-primary blob-shape text-white">
-    <div class="max-w-sm mx-auto px-4 py-6">
+    <div class="max-w-full mx-auto px-4 py-6">
       <h2 class="text-xl font-bold text-center mb-2">CNR Report</h2>
       <?php if ($staffId > 0 && $staffName !== ''): ?>
         <div class="text-center text-sm opacity-95">
           <div class="font-semibold"><?php echo htmlspecialchars($staffName); ?></div>
-          <div class="opacity-90"><?php echo htmlspecialchars(df($reportDate)); ?></div>
+          <div class="opacity-90"><?php echo htmlspecialchars(date('d/m/Y', strtotime($reportDate))); ?></div>
         </div>
       <?php endif; ?>
     </div>
   </div>
 
   <?php if ($staffId <= 0): ?>
-    <div class="max-w-sm mx-auto px-4 -mt-6">
+    <div class="max-w-full mx-auto px-2 -mt-6 mb-3">
+      <div class="bg-white rounded-2xl shadow-sm p-4">
+        <form method="get" class="space-y-3">
+          <input type="hidden" name="uid" value="<?php print UID; ?>">
+          <input type="hidden" name="page" value="cnr">
+          <div class="flex items-end justify-center gap-1">
+            <button type="submit" name="shift" value="prev" aria-label="Previous day" class="w-9 h-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-700">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+
+            <div class="grid grid-cols-2 gap-3 flex-1">
+              <div>
+                <label class="text-sm font-semibold" for="start_date">From</label>
+                <input type="date" id="start_date" name="start_date" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" value="<?= htmlspecialchars($startDate) ?>">
+              </div>
+              <div>
+                <label class="text-sm font-semibold" for="end_date">To</label>
+                <input type="date" id="end_date" name="end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" value="<?= htmlspecialchars($endDate) ?>">
+              </div>
+            </div>
+
+            <button type="submit" name="shift" value="next" aria-label="Next day" class="w-9 h-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-700">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </form>
+
+        <script>
+          (function () {
+            var form = document.querySelector('.max-w-full form[method="get"]');
+            if (!form) return;
+            var start = form.querySelector('input[name="start_date"]');
+            var end = form.querySelector('input[name="end_date"]');
+            [start, end].forEach(function (el) {
+              if (!el) return;
+              el.addEventListener('change', function () {
+                form.submit();
+              });
+            });
+          })();
+        </script>
+      </div>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($staffId <= 0): ?>
+    <div class="max-w-full mx-auto px-2 -mt-6">
       <div class="bg-white rounded-2xl shadow-sm p-6">
         <h3 class="text-lg font-semibold mb-4">Select Delivery Staff</h3>
         <div class="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-2">
@@ -372,7 +433,7 @@
             }
             $balanceLabel = number_format((float) $balanceQty, 0, '.', ',');
             ?>
-            <a href="?uid=<?php print UID; ?>&page=cnr&h=<?= (int) $obj->id ?>" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <a href="?uid=<?php print UID; ?>&page=cnr&h=<?= (int) $obj->id ?>&start_date=<?= urlencode($startDate) ?>&end_date=<?= urlencode($endDate) ?>" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div class="grid grid-cols-3 gap-2 items-center">
                 <div class="text-sm text-gray-700 font-semibold"><?= (int) $obj->id ?></div>
                 <div class="text-sm text-gray-800 font-medium truncate"><?= htmlspecialchars($obj->name) ?></div>
@@ -384,27 +445,48 @@
       </div>
     </div>
   <?php else: ?>
-    <div class="max-w-4xl mx-auto px-2 -mt-6">
+    <div class="max-w-full mx-auto px-2 -mt-6">
       <div class="bg-white rounded-2xl shadow-sm p-4 mb-3">
         <form method="get" class="space-y-3">
       <input type="hidden" name="page" value="<?= $get->page ?>">
           <input type="hidden" name="h" value="<?= (int) $staffId ?>">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-sm font-semibold" for="start_date">From</label>
-              <input type="date" id="start_date" name="start_date" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" value="<?= htmlspecialchars($startDate) ?>">
+          <div class="flex items-end justify-center gap-1">
+            <button type="submit" name="shift" value="prev" aria-label="Previous day" class="w-9 h-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-700">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+
+            <div class="grid grid-cols-2 gap-3 flex-1">
+              <div>
+                <label class="text-sm font-semibold" for="start_date">From</label>
+                <input type="date" id="start_date" name="start_date" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" value="<?= htmlspecialchars($startDate) ?>">
+              </div>
+              <div>
+                <label class="text-sm font-semibold" for="end_date">To</label>
+                <input type="date" id="end_date" name="end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" value="<?= htmlspecialchars($endDate) ?>">
+              </div>
             </div>
-            <div>
-              <label class="text-sm font-semibold" for="end_date">To</label>
-              <input type="date" id="end_date" name="end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" value="<?= htmlspecialchars($endDate) ?>">
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" class="flex-1 px-4 py-2 rounded-md bg-blue-500 text-white font-semibold text-sm">Filter</button>
-            <a href="?h=<?= (int) $staffId ?>" class="px-4 py-2 rounded-md border border-gray-300 text-gray-600 font-semibold text-sm text-center">Reset</a>
+
+            <button type="submit" name="shift" value="next" aria-label="Next day" class="w-9 h-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-700">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
           </div>
         </form>
       </div>
+
+      <script>
+        (function () {
+          var form = document.querySelector('.max-w-full form[method="get"]');
+          if (!form) return;
+          var start = form.querySelector('input[name="start_date"]');
+          var end = form.querySelector('input[name="end_date"]');
+          [start, end].forEach(function (el) {
+            if (!el) return;
+            el.addEventListener('change', function () {
+              form.submit();
+            });
+          });
+        })();
+      </script>
 
       <div class="space-y-3">
         <?php if (!$staffNameSql): ?>
@@ -484,7 +566,7 @@
           </div>
 
           <?php if ($visibleRows === 0): ?>
-            <div class="bg-white rounded-2xl shadow-sm p-4 text-center text-sm text-gray-600">No collection found for <?= htmlspecialchars($staffName) ?> between <?= htmlspecialchars(df($startDate)) ?> and <?= htmlspecialchars(df($endDate)) ?>.</div>
+            <div class="bg-white rounded-2xl shadow-sm p-4 text-center text-sm text-gray-600">No collection found for <?= htmlspecialchars($staffName) ?> between <?= htmlspecialchars(date('d/m/Y', strtotime($startDate))) ?> and <?= htmlspecialchars(date('d/m/Y', strtotime($endDate))) ?>.</div>
           <?php endif; ?>
         <?php endif; ?>
       </div>

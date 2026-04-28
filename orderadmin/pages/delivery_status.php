@@ -343,7 +343,7 @@ if (isset($post->deliver)) {
       }
     </style>
     <div class="text-center mb-3-3 position-relative" style="background: linear-gradient(135deg, #1e90ff 0%, #00bfff 100%); padding: 20px 15px; margin: -8px -8px 0px -8px; border-radius: 0 0 20px 20px; box-shadow: 0 4px 12px rgba(30, 144, 255, 0.3);">
-      <h1 class="h3 mb-0" style="color: white; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Delivery Status</h1>
+      <h1 class="h5 mb-0" style="color: white; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Delivery Status</h1>
       <div style="position: absolute; top: 15px; right: 15px; text-align:right;">
         <?php if ($isDeliveryStaff) { ?>
           <!-- Hidden select retained for JS value -->
@@ -355,7 +355,7 @@ if (isset($post->deliver)) {
             <?php echo htmlspecialchars($loggedStaffName); ?>
           </div>
         <?php } else { ?>
-          <select id="delivery-staff-filter" class="form-select form-select-sm" style="min-width: 70px; margin-top: 6px; font-size: 0.8rem; color: #fff; padding: 4px 0 4px 4px;">
+          <select id="delivery-staff-filter" class="form-select form-select-sm" style="min-width: 70px; margin-top: 6px; font-size: 0.8rem;">
             <option value=""></option>
             <?php
             $deliveryStaffFilter = select('distinct name', 'staff_salary', "category='Delivery Staff' ORDER BY name");

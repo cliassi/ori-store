@@ -157,6 +157,7 @@ $get->page = $page; ?>
 	#modal-worker-payment-2 #worker-list .w-name {
 		white-space: normal;
 		word-break: break-word;
+		margin-top: 15px !important;
 	}
 
 	#modal-worker-payment-2 #worker-list .worker-id {
@@ -168,6 +169,32 @@ $get->page = $page; ?>
 	}
 </style>
 <?php
+if (!function_exists('ensureMysqlColumn')) {
+	function ensureMysqlColumn($table, $column, $definition)
+	{
+		global $c;
+
+		$table = preg_replace('/[^A-Za-z0-9_]/', '', $table);
+		$column = preg_replace('/[^A-Za-z0-9_]/', '', $column);
+		if (!$table || !$column)
+			return false;
+
+		$check = $c->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+		if ($check && $check->num_rows > 0)
+			return true;
+
+		return (bool) $c->query("ALTER TABLE `$table` ADD `$column` $definition");
+	}
+}
+// Check if the opex_or_capex column exists in the expense_account_entry table. If not, add it.
+$check = $c->query("SHOW COLUMNS FROM `expense_account_entry` LIKE 'opex_or_capex'");
+if ($check && $check->num_rows == 0) {
+	$result = ensureMysqlColumn("expense_account_entry", "opex_or_capex", "VARCHAR(20) NOT NULL DEFAULT 'Capex'");
+	if (!$result) {
+		salary_log("ERROR: Failed to add opex_or_capex column to expense_account_entry table");
+	}
+}
+
 $mon = isset($get->mon) ? substr($get->mon, 0, 7) : (date("d", time()) <= 10 ? date("Y-m", strtotime(subMonth(1))) : date("Y-m", time()));
 
 if (uid() == 1 && isset($get->approve)) {
@@ -287,6 +314,17 @@ if (isset($post->save_hotel)) {
 	R::store($loan);
 	// redir("?page=3");
 }
+if (isset($post->update_hotel_account)) {
+	$hotel = R::load("hotel", $post->hotel_id);
+	if (isset($post->accountid) && $post->accountid > 0) {
+		$hotel->accountid = $post->accountid;
+		R::store($hotel);
+		alert("Hotel expense account updated successfully");
+	} else {
+		alert("Please select a valid expense account");
+	}
+	redir("?page=3&h=$get->h");
+}
 if (isset($post->save_statement)) {
 	$hotel = R::load("hotel", $post->hotel);
 	$loan = R::dispense("hotel_statement");
@@ -306,6 +344,11 @@ if (isset($post->save_statement)) {
 if (isset($get->delHotel)) {
 	if (isset($get->conf)) {
 		$statement = R::load("hotel_statement", $get->delHotel);
+		// Delete all workers first to avoid foreign key constraint
+		$workers = R::find("hotel_statement_worker", "statement=?", [$statement->id]);
+		foreach ($workers as $w) {
+			R::trash($w);
+		}
 		R::trash($statement);
 		redir("?page=$get->page&mon=$mon");
 
@@ -326,11 +369,12 @@ if (isset($get->delHotel)) {
 		</script>
 		<?php
 	}
-
 }
+
 if (isset($get->duplicate)) {
 	$statement = R::load("hotel_statement", $get->duplicate);
-	$loan = R::dispense("hotel_statement");
+
+	// Check if a statement already exists for this hotel and month
 	$ym = explode("-", $statement->month);
 	$y = $ym[0];
 	$m = $ym[1] + 1;
@@ -338,7 +382,29 @@ if (isset($get->duplicate)) {
 		$y += 1;
 		$m = 1;
 	}
-	$loan->month = "$y-" . zerofill($m, 2);
+	$newMonth = "$y-" . zerofill($m, 2);
+
+	$existingStatement = R::findOne('hotel_statement', 'hotel = ? AND month = ? AND type = ?', [$statement->hotel, $newMonth, $statement->type]);
+	if ($existingStatement) {
+		// Show SweetAlert and redirect back
+		?>
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+		<script>
+			Swal.fire({
+				icon: 'error',
+				title: 'Duplicate Entry',
+				text: 'A salary statement for this hotel and month already exists. Please select a different Store Salary.',
+				confirmButtonText: 'OK'
+			}).then(() => {
+				window.location.href = '?page=3&mon=<?php echo $get->mon; ?>';
+			});
+		</script>
+		<?php
+		exit;
+	}
+
+	$loan = R::dispense("hotel_statement");
+	$loan->month = $newMonth;
 	$loan->hotel = $statement->hotel;
 	$loan->type = $statement->type;
 	$loan->hourly = $statement->hourly;
@@ -371,7 +437,7 @@ if (isset($post->save_worker)) {
 	$worker->basic = $hotel->basic;
 	$worker->working_days = 0;//$post->working_days;
 	$worker->entry_by = uid();
-	$worker->entry_time = now();
+	$worker->entry_time = $post->payment_date;
 	R::store($worker);
 	redir("?page=3&h=$get->h");
 }
@@ -489,30 +555,61 @@ if (isset($post->save_worker_payment)) {
 	if (true) {
 		$payment = R::dispense("hotel_statement_worker_payment");
 		$payment->worker = $post->worker;
-		$payment->date = $post->payment_date;
+		// Use the correct date field that contains YYYY-MM-DD format
+		$payment->date = isset($post->{"banking_date"}) ? $post->{"banking_date"} : $post->payment_date;
 		$payment->amount = $post->amount;
 		$payment->particulars = $post->particulars;
 		$payment->entry_by = uid();
-		$payment->entry_time = now();
+		$payment->entry_time = isset($post->{"banking_date"}) ? $post->{"banking_date"} : $post->payment_date;
 
 		if (isset($post->worker) && strpos($payment->particulars, 'Salary theke permit') !== FALSE) {
 			$payment->worker = $post->worker;
 		}
-		if (isset($post->transfer_customer) && strpos($payment->particulars, "Me2 te") !== FALSE) {
-			$payment->transfer_customer = $post->transfer_customer;
+		R::store($payment);
+
+		if (isset($hotel->accountid) && $hotel->accountid > 0) {
+			// Validate that the hotel accountid exists in expense_account table
+			$accountExists = R::findOne('expense_account', 'id = ?', [$hotel->accountid]);
+			if ($accountExists) {
+				try {
+					// Add hotel name and month/year to the worker particulars for expense entry
+					$particulars = "$hotel->name, " . date("M Y", strtotime($payment->date)) . " maser salary $post->particulars";
+
+					// Check if expense entry already exists for this payment
+					$existingEntry = R::findOne('expense_account_entry', 'entry_id = ? AND entry_type = ?', [$payment->id, 'Store - Salary Payment']);
+
+					if (!$existingEntry || !$existingEntry->id) {
+						$existingEntry = R::dispense('expense_account_entry');
+					}
+
+					// Always update entry_time to match banking date
+					$existingEntry->entry_time = $post->payment_date;
+
+					$existingEntry->accountid = (int) $hotel->accountid;
+					$existingEntry->amount = (float) $post->amount;
+					$existingEntry->particulars = $particulars;
+					$existingEntry->remarks = 'Store - Salary Payment';
+					$existingEntry->entry_type = 'Store - Salary Payment';
+					$existingEntry->entry_id = (int) $payment->id;
+					$existingEntry->tran_type = 'Debit';
+					$existingEntry->entry_by = uid();
+					$existingEntry->month = $statement->month;
+					$existingEntry->expense_date = $post->payment_date;
+					$existingEntry->accountpath = $accountExists->path;
+					$existingEntry->modify_by = uid();
+					$existingEntry->modify_time = now();
+
+					$entryId = R::store($existingEntry);
+					$payment->account_entry_id = $entryId;
+					R::store($payment);
+				} catch (Exception $e) {
+					// Log error but don't fail the payment
+				}
+			}
 		}
 
-		R::store($payment);
-
-
-		//NEW EXPENSE ENTRY
-		$particulars = "$hotel->name er staff $w->name, " . date("M Y", strtotime("{$statement->month}-01")) . " maser salary $post->particulars";
-		$entry = accountEntry($hotel->accountid, $particulars, $post->amount, 'Debit', ['entry_id' => $payment->id, 'entry_type' => 'Factory - Salary Payment', 'month' => $statement->month]);
-		$payment->account_entry_id = $entry->id;
-		R::store($payment);
-
-
 		if (isset($post->transfer_customer) && strpos($payment->particulars, "Me2 te") !== FALSE) {
+			$payment->transfer_customer = $post->transfer_customer;
 			$customer = R::load("transfer_customer", $post->transfer_customer);
 			$transfer_tran = R::dispense("transfer_tran");
 			$transfer_tran->company = 11;
@@ -526,7 +623,6 @@ if (isset($post->save_worker_payment)) {
 			$transfer_tran->hotel_payment_ref = $payment->id;
 			R::store($transfer_tran);
 		}
-
 
 		if (isset($post->worker) && strpos($payment->particulars, 'Salary theke permit') !== FALSE) {
 			$customer = R::load("worker", $post->worker2);
@@ -560,12 +656,36 @@ if (isset($post->save_worker_payment)) {
 }
 //save_worker_payment_2
 if (isset($post->save_worker_payment_2)) {
+	require_once 'salary_log.php';
+
 	$statement = R::load("hotel_statement", $get->h);
 	$hotel = R::load("hotel", $statement->hotel);
-	$saved = false;
+
+	salary_log("Starting salary payment processing for statement: {$get->h}");
+	salary_log("Hotel: {$hotel->name}, Account ID: {$hotel->accountid}");
+
+	// Validate hotel accountid before processing any payments
+	if (!isset($hotel->accountid) || $hotel->accountid <= 0) {
+		salary_log("ERROR: Hotel account ID missing or invalid. Cannot process salary payments.");
+		alert("ERROR: Hotel '{$hotel->name}' does not have a valid expense account assigned. Please assign an expense account to this hotel before processing salary payments.");
+		redir("?page=3&h=$get->h");
+	}
+
+	// Validate that the hotel accountid exists in expense_account table
+	$accountExists = R::findOne('expense_account', 'id = ?', [$hotel->accountid]);
+	if (!$accountExists) {
+		salary_log("ERROR: Hotel account ID {$hotel->accountid} does not exist in expense_account table");
+		alert("ERROR: Hotel's expense account (ID: {$hotel->accountid}) does not exist. Please assign a valid expense account to this hotel.");
+		redir("?page=3&h=$get->h");
+	}
+
 	foreach ($post->workers as $key => $worker) {
-		$worker_salary = $post->salary[$key];
+		// Use salary_hidden[] if salary[] is empty (for non-admin users with disabled inputs)
+		$worker_salary = !empty($post->salary[$key]) ? $post->salary[$key] : (isset($post->salary_hidden[$key]) ? $post->salary_hidden[$key] : '');
 		$w = R::load("hotel_statement_worker", $worker);
+
+		salary_log("Processing worker {$worker} - {$w->name}, salary: {$worker_salary}");
+
 		$me2 = false;
 		if (isset($post->phone) && nn($post->phone)) {
 			$me2 = true;
@@ -574,27 +694,34 @@ if (isset($post->save_worker_payment_2)) {
 				R::store($w);
 			}
 		}
-		// var_dump($statement);
-		// vd($post);
+
 		$salary = ($statement->type == 'Parttime' ? round($w->basic * $w->working_days, 2) : round($w->basic / 30 * $w->working_days)) + ($w->working_days > 30 ? 0000 : 0);
 		if ($statement->hourly && $w->working_days < 325) {
 			$salary -= 100;
 		}
 		$income = getSum("hotel_statement_worker_income", "amount", "worker=$w->id");
 		$salary = $salary + $income;
-		// dd($salary);
 		$paid = mysqli_fetch_object(select("SELECT IFNULL(SUM(amount),0) paid FROM `hotel_statement_worker_payment` WHERE worker=$w->id"));
 
-		$pay = ($salary >= ($paid->paid + $worker_salary)) || (!$w->working_days && ($worker_salary + $paid->paid) <= 1500 && $worker_salary > 0 && date("d", time()) > 14 && date("d", time()) < 21);
-		if (true) {
+		salary_log("Payment validation details - Worker: {$w->name}, UID: " . uid() . ", Working days: {$w->working_days}, Basic salary: {$w->basic}, Calculated salary: {$salary}, Paid: {$paid->paid}, This payment: {$worker_salary}, Current date: " . date("d") . ", Current time: " . time());
+
+		$pay = ($salary >= ($paid->paid + $worker_salary)) || (!$w->working_days && ($worker_salary + $paid->paid) <= 1500 && $worker_salary > 0 && date("d", time()) > 14 && date("d", time()) < 21) || (uid() == 1);
+
+		salary_log("Payment validation - Salary: {$salary}, Paid: {$paid->paid}, This payment: {$worker_salary}, Can pay: " . ($pay ? 'YES' : 'NO') . ", UID: " . uid());
+
+		if ($pay && $worker_salary > 0) {
 			$payment = R::dispense("hotel_statement_worker_payment");
 			$payment->worker = $w->id;
-			$payment->date = $post->payment_date;
+			// Use the correct date field that contains YYYY-MM-DD format
+			$payment->date = isset($post->{"banking_date-2"}) ? $post->{"banking_date-2"} : $post->payment_date;
 			$payment->amount = $worker_salary;
-			$payment->bank = $post->bank;
-			$payment->particulars = $post->particulars;
+			$payment->bank = isset($post->bank) ? $post->bank : null;
+
+			// Use individual particulars from the array
+			$payment->particulars = isset($post->particulars[$key]) ? $post->particulars[$key] : '';
+
 			$payment->entry_by = uid();
-			$payment->entry_time = now();
+			$payment->entry_time = isset($post->{"banking_date-2"}) ? $post->{"banking_date-2"} : $post->payment_date;
 
 			if (isset($w->id) && strpos($payment->particulars, 'Salary theke permit') !== FALSE) {
 				$payment->worker = $w->id;
@@ -603,20 +730,75 @@ if (isset($post->save_worker_payment_2)) {
 				$payment->transfer_customer = $post->transfer_customer;
 			}
 
-			R::store($payment);
+			try {
+				$paymentId = R::store($payment);
+				salary_log("Payment stored successfully with ID: {$paymentId}");
 
+				// Create expense entry for each worker payment - Direct RedBeanPHP approach
+				if (isset($hotel->accountid) && $hotel->accountid > 0) {
+					// Validate that the hotel accountid exists in expense_account table
+					$accountExists = R::findOne('expense_account', 'id = ?', [$hotel->accountid]);
+					if (!$accountExists) {
+						salary_log("ERROR: Hotel account ID {$hotel->accountid} does not exist in expense_account table");
+						continue;
+					}
 
-			//NEW EXPENSE ENTRY
-			if ($saved == false) {
-				$saved = true;
-				$entry = accountEntry($hotel->accountid, $post->particulars, $post->amount, 'Debit', ['entry_id' => $payment->id, 'entry_type' => 'Factory - Salary Payment', 'month' => $statement->month, 'payment_method' => 'Cash', 'hotel' => $hotel->id, 'bank' => $post->bank, 'expense_date' => $post->payment_date]);
-				$payment->account_entry_id = $entry->id;
-				R::store($payment);
+					try {
+						// Add hotel name and month/year to the worker particulars for expense entry
+						$particulars = "$hotel->name, " . date("M Y", strtotime($payment->date)) . " maser salary $payment->particulars";
+
+						// Check if expense entry already exists for this payment
+						$existingEntry = R::findOne('expense_account_entry', 'entry_id = ? AND entry_type = ?', [$payment->id, 'Store - Salary Payment']);
+
+						if (!$existingEntry || !$existingEntry->id) {
+							$existingEntry = R::dispense('expense_account_entry');
+							$existingEntry->entry_time = $post->payment_date;
+						}
+
+						// Use selected expense_account_id if provided, otherwise use hotel's default
+						$selectedAccountId = isset($post->expense_account_id) && $post->expense_account_id > 0 ? (int) $post->expense_account_id : (int) $hotel->accountid;
+
+						// Validate that the selected account exists
+						$accountExists = R::findOne('expense_account', 'id = ?', [$selectedAccountId]);
+						if (!$accountExists) {
+							salary_log("ERROR: Selected account ID {$selectedAccountId} does not exist in expense_account table");
+							continue;
+						}
+
+						$existingEntry->accountid = $selectedAccountId;
+						$existingEntry->amount = (float) $worker_salary;
+						$existingEntry->particulars = $particulars;
+						$existingEntry->remarks = 'Store - Salary Payment';
+						$existingEntry->entry_type = 'Store - Salary Payment';
+						$existingEntry->entry_id = (int) $payment->id;
+						$existingEntry->tran_type = 'Debit';
+						$existingEntry->entry_by = uid();
+						$existingEntry->month = $statement->month;
+						$existingEntry->expense_date = $post->payment_date;
+						$existingEntry->accountpath = $accountExists->path;
+						$existingEntry->modify_by = uid();
+						$existingEntry->modify_time = now();
+						$existingEntry->opex_or_capex = isset($post->opex_or_capex) ? $post->opex_or_capex : 'Capex';
+						$existingEntry->payment_method = isset($post->payment_method) ? $post->payment_method : 'Cash';
+
+						$entryId = R::store($existingEntry);
+						$payment->account_entry_id = $entryId;
+						R::store($payment);
+
+						salary_log("Expense entry created with ID: {$entryId}");
+						salary_log("Expense particulars: {$particulars}");
+					} catch (Exception $e) {
+						salary_log("ERROR: Failed to create expense entry: " . $e->getMessage());
+					}
+				} else {
+					salary_log("ERROR: Hotel account ID missing or invalid: " . (isset($hotel->accountid) ? $hotel->accountid : 'NULL'));
+				}
+
+			} catch (Exception $e) {
+				salary_log("ERROR: Failed to store payment: " . $e->getMessage());
 			}
-
-
-			// redir("?page=3&h=$get->h");
 		} else {
+			salary_log("Payment blocked - Worker: {$w->name}, Amount: {$worker_salary}");
 			if (!$w->working_days && date("d", time() > 14)) {
 				alert("Sorry you cannot pay advance before 15 of the month");
 			} else {
@@ -624,7 +806,9 @@ if (isset($post->save_worker_payment_2)) {
 			}
 		}
 	}
-	redir("?page=3&h=$get->h");
+
+	salary_log("Salary payment processing completed");
+	redir("?page=reports/cash");
 }
 if (isset($post->save_loan)) {
 	$loan = R::dispense("hotel_loan");
@@ -770,7 +954,6 @@ print monthSelector('mon', date("Y-m-d", strtotime($mon . "-01")));
 print space(5) .
 	"<a class='pointer btn btn-info' href='?page=3&mon=" . addMonth(1, $date) . "$bt_url'>Next <i class='fa fa-chevron-right'></i></a>
 	</span>";
-print "<br><br>";
 
 // Month	Hotel	Worker	Income	Expense	Profit	Status
 // NOV,2022	aloft	20				Close
@@ -778,6 +961,11 @@ print "<br><br>";
 if (isset($get->h)) {
 	$hotel = R::load("hotel", $hotel_statement->hotel);
 	print "<h1 class='center panel panel-success'><span id='title-hotel'>$hotel->name</span> Statement - <span id='title-month'>" . date("M Y", strtotime("{$hotel_statement->month}-01")) . "</span></h1>";
+
+	// Show warning if hotel accountid is missing
+	if (!isset($hotel->accountid) || $hotel->accountid <= 0) {
+		print "<div class='alert alert-danger text-center'><strong>WARNING:</strong> This hotel does not have an expense account assigned. <a data-bs-toggle='modal' data-bs-target='#modal-update-hotel-account' class='btn btn-sm btn-warning'>Assign Expense Account</a></div>";
+	}
 
 	print "
 		<table class='table table-bordered table-striped'>
@@ -795,11 +983,11 @@ if (isset($get->h)) {
 					<th>Paid<br>Salary</th>
 					<th>Balance<br>Salary</th>
 					<th>Approved</th>";
-	if (isUserIn(['superadmin', 'durian', 'apple'])) {
+	if (isUserIn(['superadmin'])) {
 		print "<th></th>";
 	}
 
-	if (isUserIn(['superadmin', 'durian', 'apple'])) {
+	if (isUserIn(['superadmin'])) {
 		print "<th></th>";
 		print "<th></th>";
 
@@ -896,24 +1084,28 @@ if (isset($get->h)) {
 		if ($w->approved) {
 			print '<a class="btn btn-success">Approved</a>';
 		} else {
-			if (isUserIn(['superadmin'])) {
+			if (uid() == 1) {
 				print "<form method='post' onsubmit=\"return confirm('Are you sure?');\"><input type='hidden' name='worker' value='" . $w->id . "'><button class='btn btn-danger' name='approve'>Pending</button></form>";
 			} else {
-				print "<button class='btn btn-danger' name='approve'>Pending</button>";
+				print "<button class='btn btn-danger' onClick='showApprovePermissionAlert()' name='approve'>Pending</button>";
 			}
 		}
 		print "</td>";
-		if (isUserIn(['superadmin', 'orange', 'apple'])) {
+		if (uid() == 1 || uid() == 53) {
 			print "<td class='text-center'><a data-bs-toggle='modal' data-bs-target='#modal-worker-edit' onClick='setWorkerId($w->id)' class='btn btn-sm btn-warning'><i class='fa fa-edit'></i></a></td>";
+		} else {
+			print "<td class='text-center'><a onClick='showEditPermissionAlert()' class='btn btn-sm btn-warning'><i class='fa fa-edit'></i></a></td>";
 		}
-		if (isUserIn(['superadmin', 'orange', 'apple'])) {
+		if (isUserIn(['Adminn', 'orange', 'Apple'])) {
 			print "<td class='text-center' nowrap>
 							<a data-bs-toggle='modal' data-bs-target='#modal-deduct-salary' onClick='setWorkerId($w->id)' class='btn btn-sm btn-danger'><i class='fa fa-minus'></i></a>
 							<a data-bs-toggle='modal' data-bs-target='#modal-add-salary' onClick='setWorkerId($w->id)' class='btn btn-sm btn-warning'><i class='fa fa-plus'></i></a>
 						</td>";
 		}
-		if (isUserIn(['superadmin'])) {
+		if (uid() == 1 || uid() == 53) {
 			print "<td class='text-center'><a href='javascript:deleteWorker($w->id)' class='btn btn-sm btn-warning'><i class='fa fa-trash'></i></a></td>";
+		} else {
+			print "<td class='text-center'><a onClick='showDeletePermissionAlert()' class='btn btn-sm btn-warning'><i class='fa fa-trash'></i></a></td>";
 		}
 		print "</tr>";
 		sum('basic', $w->basic);
@@ -1200,9 +1392,12 @@ if (isset($get->h)) {
 		$income = getSum("hotel_income", "amount", "statement=$get->h");
 		$capital = getSum("hotel_capital", "amount", "hotel=$hotel->id");
 		// $expense = getSum("hotel_expense", "amount", "statement=$get->h");
-		// $expense = getSum("expense_account_entry", "amount", "hotel=$stt->hotel AND expense_date LIKE '{$stt->month}-%'");
-		$expense = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->accountid/%' AND month='{$stt->month}' AND tran_type='Debit' AND particulars NOT LIKE '%salary%' AND particulars NOT LIKE '%advance%'");
+		// $expense = getSum("hotel_expense", "amount", "statement=$get->h");
+		// $salary = getSum("hotel_statement_worker", "basic", "statement=$hotel_statement->id");
+		$paid = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->haid/%' AND month='{$stt->month}' AND tran_type='Debit' AND particulars NOT LIKE '%salary%' AND particulars NOT LIKE '%advance%'");
 		//SELECT * FROM `expense_account_entry` WHERE accountpath LIKE '%/41/%' AND MONTH='2024-01'
+		$expense = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->haid/%' AND month='{$stt->month}' AND tran_type='Debit' AND particulars NOT LIKE '%salary%' AND particulars NOT LIKE '%advance%'");
+
 		$withdraw = getSum("hotel_withdraw", "amount", "hotel=$hotel->id");
 		$loan_given = 0; //getSum("hotel_loan", "amount", "hotel=$hotel->id AND `direction`='Give'");
 		$loan_taken = 0; //getSum("hotel_loan", "amount", "hotel=$hotel->id AND `direction`='Collect'");
@@ -1246,7 +1441,7 @@ if (isset($get->h)) {
 				print  "<a class='pointer w160 btn btn-info' target='_blank' href='/app/view/exportables/hotel_parttime_invoice_preview.php?id=$hotel_statement->id'>Preview Invoice</a>";
 			}
 			if(isUserIn(['superadmin', 'orange'])){
-				print "<a class='pointer w160 btn btn-warning'  data-bs-toggle='modal' data-bs-target='#modal-hotel-invoice'>Create Factory Invoice</a>";
+				print "<a class='pointer w160 btn btn-warning'  data-bs-toggle='modal' data-bs-target='#modal-hotel-invoice'>Create Store Invoice</a>";
 			}
 		} 
 		print "<a class='pointer w100 btn btn-primary' data-bs-toggle='modal' data-bs-target='#modal-income'>Income</a>
@@ -1392,16 +1587,14 @@ if (isset($get->h)) {
 		// $expense = getSum("hotel_expense", "amount", "statement=$hotel->id");
 		// $expense = getSum("hotel_expense", "amount", "statement=$hotel->id");
 		// $salary = getSum("hotel_statement_worker", "basic", "statement=$hotel_statement->id");
-		$paid = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->haid/%' AND month='{$hotel_statement->month}' AND tran_type='Debit' AND (particulars LIKE '%salary%' OR particulars LIKE '%advance%')");
+		$paid = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->haid/%' AND month='{$hotel_statement->month}' AND tran_type='Debit' AND particulars NOT LIKE '%salary%' AND particulars NOT LIKE '%advance%'");
 		// $expense = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->haid/%' AND month='{$hotel_statement->month}' AND tran_type='Debit' AND particulars NOT LIKE '%salary%' AND particulars NOT LIKE '%advance%'");
-
-		$expense = getSum("expense_account_entry", "amount", "accountpath LIKE '%/$hotel->haid/%' AND month='{$hotel_statement->month}' AND tran_type='Debit' AND particulars NOT LIKE '%salary%' AND particulars NOT LIKE '%advance%'");
 
 		$withdraw = getSum("hotel_withdraw", "amount", "hotel=$hotel->id");
 		$extra_salary = getSum("hotel_statement_worker_income", "amount", "worker IN (SELECT id FROM hotel_statement_worker WHERE statement=$hotel->id)");
 		$loan_given = 0; //getSum("hotel_loan", "amount", "hotel=$hotel->id AND `direction`='Give'");
 		$loan_taken = 0; //getSum("hotel_loan", "amount", "hotel=$hotel->id AND `direction`='Collect'");
-		$profit = $income + $loan_taken - $expense - $total_salary - $loan_given - $extra_salary;
+		$profit = $income + $loan_taken - $paid - $total_salary - $loan_given - $extra_salary;
 
 		// dd($hotel);
 
@@ -1423,7 +1616,7 @@ if (isset($get->h)) {
 		// print "<td class='text-center'><a href='?page=3&h=$hotel->id&statement#expense'>$hotel->pending_expense</a></td>"; sum("pending_expense", $hotel->pending_expense);
 		print "<td>
 				<a class='btn btn-warning' href='?page=$get->page&duplicate=$hotel->id&mon=$mon'><i class='fa fa-copy'></i> Duplicate</a>
-				<a class='btn btn-danger' href='?page=$get->page&delHotel=$hotel->id&mon=$mon'><i class='fa fa-trash'></i> Del</a>
+				<a class='btn btn-danger' href='#' onclick='confirmDeleteHotel($hotel->id, \"$mon\")'><i class='fa fa-trash'></i> Del</a>
 			</td>";
 		print "</tr>";
 		$i++;
@@ -1456,7 +1649,7 @@ if (isset($get->h)) {
 				<div class="modal-body">
 					<table>
 						<tr>
-							<td>Factory</td>
+							<td>Store</td>
 							<td><?php print sop2('hotel'); ?> <a data-bs-toggle='modal' data-bs-target='#modal-hotel'><i
 										class='fa fa-plus'></i></a></td>
 						</tr>
@@ -1512,19 +1705,60 @@ if (isset($get->h)) {
 			<form method="post" autocomplete="off" enctype='multipart/form-data'>
 				<input type="hidden" name="type" id="type">
 				<div class="modal-header">
-					<h4 class="modal-title">Create Factory</h4>
+					<h4 class="modal-title">Create Store</h4>
 					<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 				</div>
 				<div class="modal-body">
 					<table>
 						<tr>
-							<td>Factory</td>
-							<td><input name="name" required class="form-control" placeholder="Factory name"></td>
+							<td>Store</td>
+							<td><input name="name" required class="form-control" placeholder="Store name"></td>
 						</tr>
 					</table>
 				</div>
 				<div class="modal-footer">
 					<button type="submit" class="btn btn-success" name="save_hotel">Save</button>
+					<button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="modal-update-hotel-account" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<form method="post" autocomplete="off">
+				<input type="hidden" name="hotel_id" value="<?php print isset($hotel) ? $hotel->id : ''; ?>">
+				<div class="modal-header">
+					<h4 class="modal-title">Assign Expense Account to Hotel</h4>
+					<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<table>
+						<tr>
+							<td>Hotel</td>
+							<td><strong><?php print isset($hotel) ? $hotel->name : ''; ?></strong></td>
+						</tr>
+						<tr>
+							<td>Expense Account</td>
+							<td>
+								<?php
+								$expenseAccounts = R::getAll("SELECT id, name FROM expense_account ORDER BY name");
+								print "<select class='form-control' name='accountid' required>";
+								print "<option value=''>Select Expense Account</option>";
+								foreach ($expenseAccounts as $ea) {
+									$selected = (isset($hotel->accountid) && $ea['id'] == $hotel->accountid) ? "selected" : "";
+									print "<option value='{$ea['id']}' {$selected}>{$ea['name']}</option>";
+								}
+								print "</select>";
+								?>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-success" name="update_hotel_account">Update Account</button>
 					<button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
 				</div>
 			</form>
@@ -1691,14 +1925,14 @@ if (isset($get->h)) {
 										print "value='$bt->debit'";
 									}
 									?>
-			placeholder="Amount"></td>
+									placeholder="Amount"></td>
 						</tr>
 						<tr>
 							<td>Payment Method</td>
 							<td>
 								<span><input required="required" type='radio' name='payment_method' class='required pm'
-										value='Cash'> Cash</span>
-								<span><input type='radio' name='payment_method' class='required on' value='Online'>
+										value='cash'> Cash</span>
+								<span><input type='radio' name='payment_method' class='required on' value='online'>
 									Online</span>
 							</td>
 						</tr>
@@ -1835,14 +2069,16 @@ if (isset($get->h)) {
 					<table>
 						<tr>
 							<td>Name</td>
-							<td><input name="name" class="form-control" placeholder="Name"></td>
+							<td><input name="name" id="worker-name-input" class="form-control" placeholder="Name"
+									required></td>
 						</tr>
 						<!-- <tr><td>Basic Salary</td><td><input type="number" name="basic" class="form-control" placeholder="Basic Salary"></td></tr> -->
 						<!-- <tr><td>Working Days</td><td><input type="number" name="working_days" class="form-control" placeholder="Working Days" value="0"></td></tr> -->
 					</table>
 				</div>
 				<div class="modal-footer">
-					<button type="submit" class="btn btn-success" name="save_worker">Save</button>
+					<button type="submit" class="btn btn-success" name="save_worker"
+						onclick="return validateWorkerName()">Save</button>
 					<button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
 				</div>
 			</form>
@@ -2071,9 +2307,9 @@ if (isset($get->h)) {
 							<td>Date</td>
 							<td nowrap>
 								<?php
-								print today();
-								print "<input type='hidden' name='payment_date' value='" . today() . "'>" . space(5);
-								// print dateSelector("payment_date"); 
+								print "<span id='payment-date-display-single'>" . today() . "</span>";
+								print "<input type='hidden' name='payment_date' id='payment_date' value='" . today() . "'>";
+								// print dateSelector("payment_date");
 								?>
 							</td>
 						</tr>
@@ -2099,6 +2335,8 @@ if (isset($get->h)) {
 								<?php
 								print dateSelectorOptional("banking_date", today(), '', '', 'alert');
 								?>
+								<input type='hidden' name='formatted_month_year' id='formatted_month_year_single'
+									value=''>
 								<textarea name="particulars" class="form-control particulars" id="particulars" required
 									placeholder="Particulars"></textarea>
 							</td>
@@ -2135,15 +2373,30 @@ if (isset($get->h)) {
 				<div class="modal-body">
 					<table class="table table-bordered">
 						<tr>
-							<td colspan="2" class='worker-name cntr bold'></td>
+							<td colspan="2" class='text-break worker-name cntr bold'></td>
+						</tr>
+						<tr>
+							<td>Expense Account</td>
+							<td>
+								<?php
+								$expenseAccounts = R::getAll("SELECT id, name FROM expense_account ORDER BY name");
+								print "<select class='form-control' name='expense_account_id' id='expense_account_id' style='width: 100%;' required>";
+								print "<option value=''>Select Expense Account</option>";
+								foreach ($expenseAccounts as $ea) {
+									$selected = (isset($hotel->accountid) && $ea['id'] == $hotel->accountid) ? "selected" : "";
+									print "<option value='{$ea['id']}' {$selected}>{$ea['name']}</option>";
+								}
+								print "</select>";
+								?>
+							</td>
 						</tr>
 						<tr>
 							<td>Date</td>
 							<td nowrap>
 								<?php
-								print today();
-								print "<input type='hidden' name='payment_date' value='" . today() . "'>" . space(5);
-								// print dateSelector("payment_date"); 
+								print "<span id='payment-date-display-bulk'>" . today() . "</span>";
+								print "<input type='hidden' name='payment_date' id='payment_date' value='" . today() . "'>";
+								// print dateSelector("payment_date");
 								?>
 							</td>
 						</tr>
@@ -2170,35 +2423,80 @@ if (isset($get->h)) {
 							</td>
 						</tr>
 						<tr>
+							<td>Banking Date</td>
+							<td>
+								<?php print dateSelectorOptional("banking_date-2", today(), '', '', 'alert'); ?>
+								<input type='hidden' name='formatted_month_year' id='formatted_month_year' value=''>
+							</td>
+						</tr>
+						<!-- <tr>
+							<td>Entry Type</td>
+							<td>
+								<div class="form-check form-check-inline">
+									<input class="form-check-input" type="radio" name="opex_or_capex"
+										id="opex_or_capex_capex" value="Capex" checked>
+									<label class="form-check-label" for="opex_or_capex_capex">Capex</label>
+								</div>
+								<div class="form-check form-check-inline">
+									<input class="form-check-input" type="radio" name="opex_or_capex"
+										id="opex_or_capex_opex" value="Opex">
+									<label class="form-check-label" for="opex_or_capex_opex">Opex</label>
+								</div>
+							</td>
+						</tr> -->
+						<tr>
+							<td>Payment Method</td>
+							<td>
+								<div class="form-check form-check-inline">
+									<input class="form-check-input payment-method-radio" type="radio"
+										name="payment_method" id="payment_method_cash" value="cash" checked>
+									<label class="form-check-label" for="payment_method_cash">Cash</label>
+								</div>
+								<div class="form-check form-check-inline">
+									<input class="form-check-input payment-method-radio" type="radio"
+										name="payment_method" id="payment_method_bank" value="online">
+									<label class="form-check-label" for="payment_method_bank">Bank</label>
+								</div>
+								<div id="bank-selector" style="display: none; margin-top: 10px;">
+									<select class="form-control" name="bank_account" id="bank_account">
+										<option value="">Select Bank Account</option>
+										<option value="Apw may bank Acc">Apw may bank Acc</option>
+									</select>
+								</div>
+							</td>
+						</tr>
+						<tr>
 							<td>Particulars</td>
 							<td>
-								<!-- <br> -->
-								<?php
-								$filter = "trash=0";
-								$filter .= " AND show_in_hotel>0 ORDER BY show_in_hotel";
-								// print sop2("bank", "", ['optional'=>true, 'attr'=>'required', 'filter'=>$filter]);
-								?>
-								<!-- <div><input class='bank-account' type='radio' name='r'>Neat & Clean May bank </div>
-								<div><input class='bank-account' type='radio' name='r'>Ddcon May bank </div>
-								<div><input class='bank-account' type='radio' name='r'>Bdcon May bank </div>
-								<div><input class='bank-account' type='radio' name='r'>Ekawin May bank </div>
-								<div><input class='bank-account' type='radio' name='r'>Keep Clean May bank </div>
-								<div><input class='bank-account' type='radio' name='r'>Kt May bank personal </div>
-								<div><input class='bank-account' type='radio' name='r'>Kt Rhb bank personal </div>
-								<div><input class='bank-account' type='radio' name='r'>Neat & Clean Rhb bank </div>
-								<div><input class='bank-account' type='radio' name='r'>Emon May bank personal </div>
-								<div><input class='bank-account' type='radio' name='r'>Tutul May bank personal </div> -->
-								<!-- <br> -->
-								<?php
-								print dateSelectorOptional("banking_date-2", today(), '', '', 'alert');
-								?>
-								<textarea name="particulars" class="form-control particulars w300" rows='5'
-									id="particulars" required placeholder="Particulars"></textarea>
-							</td>
-							<td id='worker-list'>
 								<table class='table table-bordered'>
-									<tr id='worker-list-empty-row'>
-										<td colspan="2"></td>
+									<tr>
+										<td style="vertical-align: top !important;;">
+											<?php
+											$filter = "trash=0";
+											$filter .= " AND show_in_hotel>0 ORDER BY show_in_hotel";
+											// print sop2("bank", "", ['optional'=>true, 'attr'=>'required', 'filter'=>$filter]);
+											?>
+											<!-- <div><input class='bank-account' type='radio' name='r'>Neat & Clean May bank </div>
+											<div><input class='bank-account' type='radio' name='r'>Ddcon May bank </div>
+											<div><input class='bank-account' type='radio' name='r'>Bdcon May bank </div>
+											<div><input class='bank-account' type='radio' name='r'>Ekawin May bank </div>
+											<div><input class='bank-account' type='radio' name='r'>Keep Clean May bank </div>
+											<div><input class='bank-account' type='radio' name='r'>Kt May bank personal </div>
+											<div><input class='bank-account' type='radio' name='r'>Kt Rhb bank personal </div>
+											<div><input class='bank-account' type='radio' name='r'>Neat & Clean Rhb bank </div>
+											<div><input class='bank-account' type='radio' name='r'>Emon May bank personal </div>
+											<div><input class='bank-account' type='radio' name='r'>Tutul May bank personal </div> -->
+											<!-- <br> -->
+
+											<div id="particulars-container"></div>
+										</td>
+										<td id='worker-list'>
+											<table class='table table-bordered'>
+												<tr id='worker-list-empty-row'>
+													<td colspan="2"></td>
+												</tr>
+											</table>
+										</td>
 									</tr>
 								</table>
 							</td>
@@ -2213,8 +2511,6 @@ if (isset($get->h)) {
 		</div>
 	</div>
 </div>
-
-
 
 <div class="modal fade" id="save_remarks_modal" role="dialog">
 	<div class="modal-dialog modal-md">
@@ -2261,9 +2557,34 @@ if (isset($get->h)) {
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+<!-- Include Select2 (once in layout) -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script type="text/javascript">
 	var isAdmin = <?php echo (uid() == 1) ? 'true' : 'false'; ?>;
+
+	$(document).ready(function () {
+		// Initialize select2 for expense_account_id when modal is shown
+		$('#modal-worker-payment-2').on('shown.bs.modal', function () {
+			if ($.fn.select2) {
+				$("#expense_account_id").select2({
+					width: '100%',
+					placeholder: 'Select Expense Account',
+					allowClear: true,
+					dropdownParent: $('#modal-worker-payment-2')
+				});
+			}
+		});
+
+		// Destroy select2 when modal is hidden to prevent issues
+		$('#modal-worker-payment-2').on('hidden.bs.modal', function () {
+			if ($.fn.select2) {
+				$("#expense_account_id").select2('destroy');
+			}
+		});
+	});
+
 	function selectMs() {
 		$("#ds").removeAttr("checked");
 		$("#ms").attr("checked", "checked");
@@ -2325,11 +2646,36 @@ if (isset($get->h)) {
 		$(".modal-worker .worker_id").val(id);
 	}
 
+	function showEditPermissionAlert() {
+		Swal.fire({
+			icon: 'error',
+			title: 'Permission Denied',
+			text: 'Can not Edit Basic Salary'
+		});
+	}
+	function showDeletePermissionAlert() {
+		Swal.fire({
+			icon: 'error',
+			title: 'Permission Denied',
+			text: 'Can not Delete Employee'
+		});
+	}
+
+	function showApprovePermissionAlert() {
+		Swal.fire({
+			icon: 'error',
+			title: 'Permission Denied',
+			text: 'Can not Approve'
+		});
+	}
+
 	function setWorkerIds() {
 		names = "";
 		// <tr id='worker-list-empty-row'><td></td><td></td></tr>
 		name_count = $(".worker-payment:checked").length;
 		$(".worker-list-item").remove();
+		$("#particulars-container").empty(); // Clear previous textareas
+
 		$($(".worker-payment:checked")).each(function (i, e) {
 			var name = $(e).data('name');
 			var id = $(e).data('id');
@@ -2337,7 +2683,10 @@ if (isset($get->h)) {
 			names += (names != '' ? ', ' : '') + name;
 			if (name_count > 0) {
 				var disabledAttr = isAdmin ? '' : 'disabled';
-				$("#worker-list-empty-row").before("<tr class='worker-list-item'><td nowrap class='w-name'>" + name + " <input type='hidden' name='workers[]' value='" + id + "'></td><td><input type='number' step='any' name='salary[]' required class='form-control w80 worker-id' value='" + (isNaN(balance) ? '' : balance) + "' " + disabledAttr + "></td></tr>");
+				$("#worker-list-empty-row").before("<tr class='worker-list-item'><td nowrap class='w-name'>" + name + " <input type='hidden' name='workers[]' value='" + id + "'></td><td><input type='number' step='any' name='salary[]' required class='form-control w80 worker-id' value='" + (isNaN(balance) ? '' : balance) + "' " + disabledAttr + "><input type='hidden' name='salary_hidden[]' value='" + (isNaN(balance) ? '' : balance) + "'></td></tr>");
+
+				// Add individual textarea for this worker in particulars-container
+				$("#particulars-container").append("<div class='worker-particulars-wrapper' data-worker-id='" + id + "' data-worker-name='" + name + "'><textarea name='particulars[]' class='form-control particulars w300 mb-1' rows='2' required placeholder='e.g., " + name + " ke " + (isNaN(balance) ? '' : balance) + " Petty cash Theke Deoya hoyese'></textarea></div>");
 			}
 			$("#modal-worker-payment-2").find(".worker-name").text(names);
 		});
@@ -2367,9 +2716,11 @@ if (isset($get->h)) {
 	$(document).on("change", "#worker-payment-select-all", function () {
 		$(".worker-payment").prop("checked", $(this).is(":checked"));
 		syncWorkerPaymentSelectAll();
+		setWorkerIds(); // Call setWorkerIds to update particulars when select all is used
 	});
 	$(document).on("change", ".worker-payment", function () {
 		syncWorkerPaymentSelectAll();
+		setWorkerIds(); // Call setWorkerIds to update particulars when individual checkbox is changed
 	});
 	syncWorkerPaymentSelectAll();
 	function calcWorkerTotal() {
@@ -2508,8 +2859,64 @@ if (isset($get->h)) {
 	});
 	$("#account_name,#payment_amount").keyup(setParticulars2);
 
-	$("select.bank").change(setParticulars2);
+	// Handle payment method radio button change
+	$(".payment-method-radio").change(function () {
+		if ($(this).val() === 'online') {
+			$("#bank-selector").show();
+		} else {
+			$("#bank-selector").hide();
+		}
+		setParticulars2();
+	});
 
+	// Handle bank account selection change - ensure it always updates particulars
+	$("#bank_account").change(function () {
+		setParticulars2();
+	});
+
+	// Handle banking date change for first modal - sync with payment date and display
+	$("#_banking_date").change(function () {
+		var bankingDate = $(this).val();
+		var bankingDateFormatted = $("#banking_date").val(); // Get YYYY-MM-DD format
+		if (bankingDate) {
+			// Update payment date hidden field with MySQL format and display with formatted date
+			$("#modal-worker-payment input[name='payment_date']").val(bankingDateFormatted);
+			$("#payment-date-display-single").text(bankingDateFormatted);
+
+			// Auto-update hidden month/year field with manual parsing
+			const date = new Date(bankingDateFormatted);
+			const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+			const formattedDate = monthNames[date.getMonth()] + " " + date.getFullYear();
+			$("#formatted_month_year_single").val(formattedDate);
+		}
+	});
+	// Also handle changes on the banking date dropdowns for first modal
+	$("#banking_date_day, #banking_date_mon, #banking_date_year").change(function () {
+		// Trigger the change event on the hidden field after a short delay
+		setTimeout(function () {
+			$("#_banking_date").trigger("change");
+		}, 100);
+	});
+	// Handle banking date change - sync with payment date and update particulars
+	$("#_banking_date-2").change(function () {
+		var bankingDate = $(this).val();
+		var bankingDateFormatted = $("#banking_date-2").val(); // Get YYYY-MM-DD format
+		if (bankingDate) {
+			// Update payment date hidden field with MySQL format and display with formatted date
+			$("#modal-worker-payment-2 input[name='payment_date']").val(bankingDateFormatted);
+			$("#payment-date-display-bulk").text(bankingDateFormatted);
+		}
+		// Auto-update month/year in particulars when banking date changes
+		setParticulars2();
+	});
+
+	// Also handle changes on the banking date dropdowns
+	$("#banking_date-2_day, #banking_date-2_mon, #banking_date-2_year").change(function () {
+		// Trigger the change event on the hidden field after a short delay
+		setTimeout(function () {
+			$("#_banking_date-2").trigger("change");
+		}, 100);
+	});
 	function setParticulars2() {
 		// var text = $(".bank-account-selected").parent().text();
 		var text = $(".bank option:selected").text();
@@ -2517,39 +2924,41 @@ if (isset($get->h)) {
 		var val = $("#modal-worker-payment-2 #payment_amount").val();
 		var name = $("#modal-worker-payment-2 #account_name").val();
 		var dt = $("#modal-worker-payment-2 #_banking_date-2").val();
+		// Parse the date correctly - handle YYYY-MM-DD format
 		const date = new Date(dt);
 
-		// Get the month abbreviation and year
-		const options = { month: 'short', year: 'numeric' };
-		const formattedDate = date.toLocaleDateString('en-US', options);
-		var particulars = ''; //$("#modal-worker-payment-2 #_banking_date-2").val() + ' ' + text;
-		// particulars += ' account theke banking kora hoyese Rm ' + val + ' ' + name + ' er account a ' + st + ' deoya hoyese, ';
-		name_count = $(".worker-payment:checked").length;
+		// Get the month abbreviation and year from the parsed date
+		const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		const formattedDate = monthNames[date.getMonth()] + " " + date.getFullYear();
 
+		// Update hidden field with formatted month/year for backend processing
+		$("#formatted_month_year").val(formattedDate);
 
-		workers = ''
-		if (name_count > 1) {
-			$($(".worker-id")).each(function (i, e) {
-				var amt = parseFloat($(e).val());
-				if (!isNaN(amt)) {
-					workers += ", " + $(e).parent().parent().find('.w-name').text().trim() + ' ke ' + amt + ' taka ';
-				}
-			});
+		// Get payment method and bank account
+		var paymentMethod = $("input[name='payment_method']:checked").val();
+		var bankAccount = $("#bank_account").val();
+		var paymentSource = "Petty cash";
+
+		// Get hotel name from page title
+		var hotelName = $("#title-hotel").text();
+		if (paymentMethod === 'online' && bankAccount) {
+			paymentSource = bankAccount;
 		}
 
-		if (name_count > 1) {
-			//11-Jan-2025  account theke Alamin ke General Staff Salary er  deoya hoyese Rm 1
-			// particulars += ' account theke ' + name + ' er account a <?php print isset($hotel) ? $hotel->name : ' '; ?> er ' + st + ' deoya hoyese Rm ' + val + workers;
-			// particulars += `<?php print isset($hotel) ? $hotel->name : ' '; ?>, ${formattedDate} maser salary ${name} ke ${val} taka Petty cash theke payment deoya hoyese`;
-			particulars += `<?php print isset($hotel) ? $hotel->name : ' '; ?>, ${formattedDate} maser salary ${workers} Petty cash theke deoya hoyese`;
-		} else {
-			// particulars += ' account theke ' + name + ' ke <?php print isset($hotel) ? $hotel->name : ' '; ?> er ' + st + ' deoya hoyese Rm ' + val + workers;
-			particulars += `<?php print isset($hotel) ? $hotel->name : ' '; ?>, ${formattedDate} maser salary ${name} ke ${val} taka Petty cash theke deoya hoyese`;
-		}
+		// Populate each worker's individual textarea with their specific particulars
+		$(".worker-particulars-wrapper").each(function (i, e) {
+			var workerName = $(e).data('worker-name');
+			var workerId = $(e).data('worker-id');
 
-		console.log(particulars)
+			// Find the corresponding salary input for this worker
+			var salaryInput = $(".worker-id").eq(i);
+			var amt = parseFloat(salaryInput.val());
 
-		$("#modal-worker-payment-2 .particulars").val(particulars);
+			if (!isNaN(amt)) {
+				var workerParticulars = `${workerName} ke Rm ${amt} ${paymentSource} Theke Deoya hoyese`;
+				$(e).find('textarea').val(workerParticulars);
+			}
+		});
 	}
 
 	$("#modal-expense .amount").keyup(setParticularsExpense);
@@ -2586,4 +2995,30 @@ if (isset($get->h)) {
 			);
 		}
 	<?php } ?>
+
+	function confirmDeleteHotel(hotelId, mon) {
+		Swal.fire({
+			title: 'Are you sure?',
+			text: "You won't be able to revert this!",
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonColor: '#d33',
+			cancelButtonColor: '#3085d6',
+			confirmButtonText: 'Yes, delete it!'
+		}).then((result) => {
+			if (result.isConfirmed) {
+				window.location.href = '?page=18&delHotel=' + hotelId + '&mon=' + mon + '&conf';
+			}
+		});
+	}
+
+	function validateWorkerName() {
+		var workerName = $("#worker-name-input").val().trim();
+		if (workerName === "") {
+			// alert("Worker is empty!");
+			Swal.fire({ icon: 'error', text: "Worker name is empty!" });
+			return false;
+		}
+		return true;
+	}
 </script>

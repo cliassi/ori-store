@@ -123,7 +123,7 @@ $query = "SELECT * FROM (
 SELECT IFNULL(ii.delivery_date,i.invoice_date) dd, i.*, invoiceItems(i.id) particulars, 
     SUM(ii.quantity) quantity, SUM(ii.quantity*ii.price) total, SUM(ii.quantity*(ii.price-ii.cost)) profit, SUM(ii.quantity*(ii.cost)) cost FROM invoice i
   INNER JOIN invoice_item ii ON i.id=ii.invoice_id 
-  INNER JOIN customer c ON c.id=i.customer_id LEFT JOIN city ON c.city=city.name 
+  INNER JOIN customer c ON c.id=i.customer_id INNER JOIN city ON c.city=city.name 
   INNER JOIN product_variance pv ON pv.id=ii.product_variance_id 
   INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id 
   INNER JOIN product_category pc ON p.product_category_id=pc.id 

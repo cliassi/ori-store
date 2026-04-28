@@ -1,0 +1,73 @@
+<?php
+error_reporting(E_ERROR | E_PARSE);
+session_start();
+header("HTTP/1.1 200 OK");
+ini_set('display_errors', 1);
+//header('Access-Control-Allow-Origin: *');
+header("Access-Control-Allow-Origin: http://localhost:8100");
+header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token');
+header('Content-Type: application/json');
+
+// Handle preflight (OPTIONS) requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+
+date_default_timezone_set('Asia/Kuala_Lumpur');
+
+require_once ('env.php');
+require_once ('config.php');
+require_once ('functions.php');
+// require_once ('f.inc.php');
+
+$get = array(); foreach ($_GET as $key => $value) $get[$key] = $value; unset($_GET); $get = (object)$get;
+$post = array(); foreach ($_POST as $key => $value) $post[$key] = $value; unset($_POST); $post = (object)$post;
+$input = json_decode(file_get_contents('php://input'));
+
+$actions = ['home','products', 'product'];
+$action = isset($get->action)?$get->action:'home';
+$response = [];
+if(in_array($action, $actions)){
+  $response['error'] = 0;
+  $response['message'] = 'ok';
+  switch ($action) {
+    case 'home':{
+      $products = R::find('product');
+      $data = [];
+      foreach ($products as $key => $product) {
+        array_push($data, ['id'=>$product->id,'name'=>$product->name, 'image'=>$product->image, 'image_orientation'->$product->image_orientation]);
+      }
+      $response['data'] = $data;
+    } break;
+    case 'products':{
+      $products = R::find('product_variance', "product_id=?", [$get->id]);
+      $data = [];
+      foreach ($products as $key => $product) {
+        array_push($data, ['id'=>$product->id,'name'=>$product->particulars, 'image'=>$product->image, 'size'=>$product->size]);
+      }
+      $response['data'] = $data;
+    } break;
+    
+    default:
+      $response = ['error'=>1,'message'=>'unknown request', 'data'=>[]];
+      break;
+  }
+} else{
+  $response = ['error'=>1,'message'=>'unknown request', 'data'=>[]];
+}
+
+print json_encode($response);
+
+function getDateFromTimestamp($timestamp) {
+  //return date('Y-m-d', strtotime($timestamp));
+  $dateTime = new DateTime($timestamp);
+  return $dateTime->format('d F Y');
+}
+
+// Function to get the time from a timestamp
+function getTimeFromTimestamp($timestamp) {
+  return date('H:i:s', strtotime($timestamp));
+}

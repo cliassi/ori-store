@@ -1115,7 +1115,7 @@ function days($from_date, $to_date = ''){
 	function uid(){
 		if(isset($_GET['uid'])) return $_GET['uid'];
 		global $get;
-		if(isset($get->id)) return $get->id;
+		if(isset($get->uid)) return $get->uid;
 		// return UID; // Undefined constant
 		return 1; // Default user ID
 		// return iss(APP.'_id', 0);

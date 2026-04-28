@@ -135,7 +135,7 @@ if($pendingList) $delivery = $pendingList;
 						ii.delivered delivered, ii.price, ii.old_price, IFNULL(ii.delivery_date,i.invoice_date) dd FROM invoice i 
 						INNER JOIN invoice_item ii ON i.id=ii.invoice_id
 						INNER JOIN customer c ON c.id=i.customer_id
-						LEFT JOIN city ON c.city=city.name
+						INNER JOIN city ON c.city=city.name
 						INNER JOIN `product_variance` pv ON pv.id=ii.product_variance_id 
 						INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id
 						inner join product_category pc ON p.product_category_id=pc.id

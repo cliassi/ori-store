@@ -22,6 +22,10 @@ if(isset($post->email) && isset($post->login)){
     global $c;
     $_SESSION[ROOT.'_loggedin'] = true;
     $_SESSION[ROOT.'_username'] = $post->email;
+    $branch = R::load('branch', 1);
+    
+    $_SESSION['branch_id'] = $branch->id;
+    $_SESSION['branch_name'] = $branch->name;
     update("sys_user", "u_last_login_time = NOW(), u_loggedin = 1, u_last_ip='{$_SERVER['REMOTE_ADDR']}'", " id = '".uid()."'");
   if(rolecode()=='carwashstaff'){
     redir("?page=18");

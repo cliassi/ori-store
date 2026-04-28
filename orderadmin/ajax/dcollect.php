@@ -230,7 +230,7 @@ $customers = select($query);
 						ii.delivered delivered, ii.price, ii.old_price, IFNULL(ii.delivery_date,i.invoice_date) dd FROM invoice i 
 						INNER JOIN invoice_item ii ON i.id=ii.invoice_id
 						INNER JOIN customer c ON c.id=i.customer_id
-						LEFT JOIN city ON c.city=city.name
+						INNER JOIN city ON c.city=city.name
 						INNER JOIN `product_variance` pv ON pv.id=ii.product_variance_id 
 						INNER JOIN product p ON p.id=pv.product_id AND ii.product_id=p.id
 						inner join product_category pc ON p.product_category_id=pc.id
@@ -316,7 +316,7 @@ $customers = select($query);
           $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
           $collected = $i->quantity;
           print "<td>";
-          if ($i->old_price && false) {
+          if ($i->old_price) {
             print nf($i->price * $i->quantity);
           } else {
             print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . nf($i->price * $i->quantity) . "</a>";

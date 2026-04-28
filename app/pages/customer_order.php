@@ -55,21 +55,35 @@ if (isset($get) && isset($get->approve_form)) {
     echo '<div class="text-danger">Order not found.</div>';
     exit;
   }
-  $items = R::find('customer_order_item', ' customer_order_id = ? ', [$id]);
 
-  echo '<!doctype html><html><head><meta charset="utf-8"><title>Submitting...</title></head><body>';
-  echo '<form id="autopost" method="post" action="/store/invoice">';
-  echo '<input type="hidden" name="customer_id" value="'.(int)$order->customer_id.'">';
-  echo '<input type="hidden" name="customer_order_id" value="'.(int)$order->id.'">';
-  foreach ($items as $it) {
-    if (isset($it->product_variance_id) && (int)$it->product_variance_id) {
-      echo '<input type="hidden" name="product['.(int)$it->product_variance_id.']" value="'.(float)$it->quantity.'">';
+  if (strtolower((string)$order->status) !== 'approved') {
+    $items = R::find('customer_order_item', ' customer_order_id = ? ', [$id]);
+
+    $invoice = R::dispense('invoice');
+    $invoice->customer_id = (int)$order->customer_id;
+    $invoice->customer_order_id = (int)$order->id;
+    $invoice->invoice_date = $order->invoice_date;
+    $invoice->delivery_date = $order->invoice_date;
+    $invoice->status = 'approved';
+    $invoice_id = R::store($invoice);
+
+    foreach ($items as $item) {
+      $invItem = R::dispense('invoice_item');
+      $invItem->invoice_id = (int)$invoice_id;
+      $invItem->product_id = isset($item->product_id) ? (int)$item->product_id : null;
+      $invItem->product_variance_id = isset($item->product_variance_id) ? (int)$item->product_variance_id : null;
+      $invItem->quantity = isset($item->quantity) ? (float)$item->quantity : 0.0;
+      $invItem->price = isset($item->price) ? (float)$item->price : 0.0;
+      R::store($invItem);
     }
+
+    foreach ($items as $item) {
+      R::trash($item);
+    }
+    R::trash($order);
   }
-  echo '</form>';
-  echo '<script>document.getElementById("autopost").submit();</script>';
-  echo '</body></html>';
-  exit;
+
+  // redir('?page=customer_order');
 }
 if (isset($get) && isset($get->detail)) {
   $id = (int)$get->detail;
@@ -199,9 +213,6 @@ if (isset($get) && isset($get->detail)) {
               $toSql = isset($c) ? mysqli_real_escape_string($c, $toDate) : $toDate;
               $where = " WHERE DATE(co.invoice_date) BETWEEN '$fromSql' AND '$toSql' ";
 
-              $totalQtyAll = 0;
-              $totalAmtAll = 0.0;
-
               $sql = "SELECT co.id, co.customer_id, co.invoice_date, co.status, c.company, c.contact,
                              coItems(co.id) items_html,
                              IFNULL(SUM(i.quantity),0) qty,
@@ -222,9 +233,6 @@ if (isset($get) && isset($get->detail)) {
               } elseif ($res) {
                 $i = 1;
                 while ($o = mysqli_fetch_object($res)) {
-                  $totalQtyAll += (int)$o->qty;
-                  $totalAmtAll += (float)$o->amount;
-
                   $elapsedStr = '—';
                   $baseDateStr = '';
                   if (isset($o->order_date) && $o->order_date) {
@@ -269,14 +277,6 @@ if (isset($get) && isset($get->detail)) {
               }
               ?>
             </tbody>
-            <tfoot>
-              <tr>
-                <th colspan="6" class="text-end">Total</th>
-                <th class="text-center"><?php echo (int)$totalQtyAll; ?></th>
-                <th class="text-end"><?php echo number_format((float)$totalAmtAll, 2); ?></th>
-                <th></th>
-              </tr>
-            </tfoot>
           </table>
         </div>
 

@@ -1,0 +1,38 @@
+<?php
+
+require '../vendor/autoload.php';
+
+use App\Config\Database;
+use App\Controllers\AuthController;
+use App\Middleware\JWTMiddleware;
+use App\Helpers\JWTHandler;
+
+use Dotenv\Dotenv;
+
+Dotenv::createImmutable(__DIR__ . '/../')->load();
+Database::initialize();
+JWTHandler::initialize();
+
+$path = $_SERVER['REQUEST_URI'];
+$method = $_SERVER['REQUEST_METHOD'];
+
+try {
+    $auth = new AuthController();
+
+    if ($path === '/register' && $method === 'POST') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        echo json_encode($auth->register($data));
+    } elseif ($path === '/login' && $method === 'POST') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        echo json_encode($auth->login($data));
+    } elseif ($path === '/profile' && $method === 'GET') {
+        $decoded = JWTMiddleware::authenticate();
+        echo json_encode(['success' => true, 'data' => $decoded]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'Route not found']);
+    }
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode(['error' => $e->getMessage()]);
+}

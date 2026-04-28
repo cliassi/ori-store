@@ -28,6 +28,9 @@
     width: 100%;
     padding: 8px
   }
+  .h3{
+    font-size: 18px !important;
+  }
 
   .table-customer {
     font-size: 12px

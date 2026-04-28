@@ -19,6 +19,21 @@ if ($startDate > $endDate) {
   $endDate = $temp;
 }
 
+// Shift both dates by -1/+1 day (Prev/Next)
+if (isset($get->shift)) {
+  $shift = (string)$get->shift;
+  if ($shift === 'prev' || $shift === 'next') {
+    $delta = $shift === 'prev' ? '-1 day' : '+1 day';
+    $startDate = date('Y-m-d', strtotime($delta, strtotime($startDate)));
+    $endDate = date('Y-m-d', strtotime($delta, strtotime($endDate)));
+    if ($startDate > $endDate) {
+      $temp = $startDate;
+      $startDate = $endDate;
+      $endDate = $temp;
+    }
+  }
+}
+
 if (isset($get->h)) {
 
   $staffId = (int) $get->h;
@@ -597,8 +612,9 @@ if (isset($get->h)) {
 } else {
   ?>
   <div class="table-responsive" style="padding: 20px 50px;">
-    <form method="get" class="d-flex align-items-center gap-2" style="margin-bottom:10px; flex-wrap: wrap;">
-      <div>
+    <form method="get" class="d-flex align-items-center justify-content-center gap-2" style="margin-bottom:10px; flex-wrap: wrap; width:100%;">
+      <button type="submit" name="shift" value="prev" class="btn btn-outline-secondary" style="align-self: flex-end; margin-bottom: 0;">Prev</button>
+      <div style='text-align:center'>
         <label class="mb-2" style="display: block;"><strong>From</strong></label>
         <div class="d-flex gap-2">
           <?php
@@ -654,9 +670,22 @@ if (isset($get->h)) {
         </div>
       </div>
       
-      <button type="submit" class="btn btn-primary" style="align-self: flex-end; margin-bottom: 0;">Filter</button>
-      <a href="?" class="btn btn-light" style="align-self: flex-end; margin-bottom: 0;">Reset</a>
+      <button type="submit" name="shift" value="next" class="btn btn-outline-secondary" style="align-self: flex-end; margin-bottom: 0;">Next</button>
     </form>
+
+    <script>
+      (function () {
+        var form = document.querySelector('form[method="get"].d-flex');
+        if (!form) return;
+
+        var selects = form.querySelectorAll('select[name^="start_"] , select[name^="end_"]');
+        selects.forEach(function (sel) {
+          sel.addEventListener('change', function () {
+            form.submit();
+          });
+        });
+      })();
+    </script>
     <table class="table table-hover table-bordered">
       <thead>
         <th width="70">ID</th>

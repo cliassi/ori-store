@@ -61,6 +61,8 @@ require_once ('config.php');
 require_once ('functions.php');
 // require_once ('f.inc.php');
 
+// sendPush('c81087f4-0b65-4dab-a202-5687b9995f7b', 'New order from customer');
+// notifyUsers('New order from customer TEST 123');
 
 
 $actions = ['delivery', 'place_order','home','cnr','order_list','order','delivery_status', 'collect','customer_add','invoice','cnr_report','collection','customer','customer_details', 'customer_collection','customer_due','daily_order','daily_purchase','daily_sales','dashboard','expenses','home','order','pending_order','petty_cash','product_add','stock_in','supplier_add','supplier_due'];

@@ -1,148 +1,17 @@
 <?php
-$post->UID = $_SESSION['UID'];
-// customer_order creation/edition page (mobile) - adapted from _resources/pages/forms/customer_order.php
+
+// Invoice creation/edition page (mobile) - adapted from _resources/pages/forms/invoice.php
 // Expects POST from home.php as product[<variance_id>] => qty and optional customer_id
 
 // $get, $post are prepared by index.php
 
-// If products are posted, immediately create an order for the current session user and show invoice view
-if (!empty($post->product) && is_array($post->product)) {
-  $customerId = isset($_SESSION['UID']) ? $_SESSION['UID'] : (isset($post->customer_id) ? $post->customer_id : null);
-  $inv = R::dispense('customer_order');
-  $inv->status = 'New';
-  $inv->customer_id = $customerId;
-  $inv->invoice_date = isset($post->date) ? $post->date : today();
-  $inv->created_by = 2;
-  R::store($inv);
-
-  $items = [];
-  $grand = 0;
-  $customer = R::load("customer", $inv->customer_id);
-  $lineParts = [];
-  foreach ($post->product as $id => $qty) {
-    $qty = (int)$qty;
-    if ($qty <= 0) continue;
-    $variance = R::load('product_variance', $id);
-    if (!$variance || !$variance->id) continue;
-    $product = R::load('product', $variance->product_id);
-    $price = isset($post->price[$id]) ? (float)$post->price[$id] : (float)$variance->price;
-
-    $ii = R::dispense('customer_order_item');
-    $ii->customer_order_id = $inv->id;
-    $ii->product_id = $product->id;
-    $ii->product_variance_id = $variance->id;
-    $ii->quantity = $qty;
-    $ii->price = $price;
-    $ii->cost = $variance->cost;
-    $ii->name = $product->name;
-    $ii->description = $variance->particulars;
-    $ii->delivery_date = $inv->customer_order_date;
-    R::store($ii);
-
-    $desc = trim((string)$variance->particulars);
-    if ($desc === '') {
-      $desc = trim((string)$product->name);
-    }
-    if ($desc !== '') {
-      $lineParts[] = $desc . ' (' . $qty.')';
-    }
-
-    $line = (object) [
-      'image' => getImageOrPlaceholder($variance->image, $variance->name),
-      'name' => $product->name,
-      'desc' => $variance->particulars,
-      'qty' => $qty,
-      'price' => $price,
-      'total' => $price * $qty,
-    ];
-    $items[] = $line;
-    $grand += $line->total;
-  }
-
-  $customerName = isset($customer->contact) ? trim((string)$customer->company) : '';
-  $msg = 'New order from customer ' . $customerName;
-  if (!empty($lineParts)) {
-    $msg .= ' - ' . implode(', ', $lineParts);
-  }
-  notifyUsers($msg);
-  ?>
-  <style>
-    .po-container{max-width:720px;margin:0 auto;padding:10px 10px 40px;}
-    .po-row{display:grid;grid-template-columns:1fr;gap:8px;}
-    .po-card{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
-    .po-thumb{width:56px;height:56px;border-radius:12px;overflow:hidden;background:#f3f4f6;flex:0 0 auto;}
-    .po-thumb img{width:100%;height:100%;object-fit:cover;}
-    .po-name{font-weight:600;color:#0f172a;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-    .po-unit{color:#6b7280;font-size:11px;}
-    .po-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:110px;margin-left:auto;}
-    .po-total{font-weight:700;color:#0f172a;font-size:13px;}
-    .po-qty-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 8px;font-size:12px;color:#111827;}
-    .po-title{font-size:16px;font-weight:700;margin:0 0 6px;color:#0f172a;}
-    .po-meta{color:#6b7280;font-size:12px;margin-bottom:10px;}
-    .po-grand{margin-top:10px;text-align:right;font-size:14px;color:#0f172a;}
-    .po-actions{margin-top:12px;display:flex;gap:8px;justify-content:center;}
-    .po-btn{padding:10px 16px;border-radius:9999px;border:1px solid #e5e7eb;background:#fff;color:#0f172a;text-decoration:none;}
-    .po-btn-primary{background:#22c55e;color:#fff;border:none;}
-    .po-btn-return{
-      background:#fbbf24;color:#111827;border:none;margin-top: 15px;
-      border-radius:30px;padding:5px 56px;font-weight:500;
-      text-decoration:none;display:inline-flex;align-items:center;gap:10px;
-      font-size: 12px;
-    }
-    .po-btn-return:active{opacity:.8;}
-    .po-title svg{
-      display: inline-block;
-      margin-top: -8px;
-    }
-  </style>
-
-  <div class="po-container">
-    <div class="po-title" style="
-    color: #008048;
-    font-size: 1rem;
-    text-align: center;
-    margin: 0 24px;padding: 15px 0;font-weight:500;
-    display: block;
-<div style="display:flex;align-items:center;gap:10px;">
-  
-  <span>Order has been Confirmed <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style="width:1.6em;height:1.6em;">
-    <path fill="rgb(34, 181, 94)" d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM438 209.7C427.3 201.9 412.3 204.3 404.5 215L285.1 379.2L233 327.1C223.6 317.7 208.4 317.7 199.1 327.1C189.8 336.5 189.7 351.7 199.1 361L271.1 433C276.1 438 282.9 440.5 289.9 440C296.9 439.5 303.3 435.9 307.4 430.2L443.3 243.2C451.1 232.5 448.7 217.5 438 209.7z"/>
-  </svg></span>
-</div>
-    <!-- <div class="po-meta">Order #<?php echo htmlspecialchars($inv->id); ?> • <?php echo htmlspecialchars($inv->customer_order_date); ?></div> -->
-
-    <div class="po-row">
-      <?php foreach ($items as $it): ?>
-        <div class="po-card">
-          <div class="po-thumb"><img src="<?php echo $it->image; ?>" alt="<?php echo htmlspecialchars($it->name); ?>"></div>
-          <div style="flex:1 1 auto; min-width:0;">
-            <div class="po-name"><?php echo htmlspecialchars($it->name); ?></div>
-            <div class="po-unit">Unit: RM <?php echo number_format($it->price, 2); ?></div>
-          </div>
-          <div class="po-right">
-            <div class="po-total">RM <?php echo number_format($it->total, 2); ?></div>
-            <div class="po-qty-pill">Qty: <span><?php echo (int)$it->qty; ?></span></div>
-          </div>
-        </div>
-      <?php endforeach; ?>
-    </div>
-
-    <div class="po-grand"><strong>Grand Total: RM <?php echo number_format($grand, 2); ?></strong></div>
-    <div class="po-actions">
-      <a class="po-btn-return" href="?page=home&uid=<?php print $_SESSION['UID']; ?>"><span style="display:inline-flex;align-items:center;line-height:0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:13px;height:13px;fill:currentColor"><path d="M255.545 8c-66.269.119-126.438 26.233-170.86 68.685L48.971 40.971C33.851 25.851 8 36.559 8 57.941V192c0 13.255 10.745 24 24 24h134.059c21.382 0 32.09-25.851 16.971-40.971l-41.75-41.75c30.864-28.899 70.801-44.907 113.23-45.273 92.398-.798 170.283 73.977 169.484 169.442C423.236 348.009 349.816 424 256 424c-41.127 0-79.997-14.678-110.63-41.556-4.743-4.161-11.906-3.908-16.368.553L89.34 422.659c-4.872 4.872-4.631 12.815.482 17.433C133.798 479.813 192.074 504 256 504c136.966 0 247.999-111.033 248-247.998C504.001 119.193 392.354 7.755 255.545 8z"/></svg></span><span>Return to Home</span></a>
-    </div>
-  </div>
-  <?php
-  return; // stop legacy form from rendering
-}
-
-// Prepare base customer_order object and state
-$obj = R::dispense('customer_order');
+// Prepare base invoice object and state
+$obj = R::dispense('invoice');
 $obj->status = 'New';
 
 // If editing (not used in mobile flow yet, but kept for compatibility)
 if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
-  $obj = R::load('customer_order', ID);
+  $obj = R::load('invoice', ID);
 } else {
   // Preselect customer if provided
   if (isset($post->customer_id)) {
@@ -152,14 +21,52 @@ if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
 
 // Handle save
 if (isset($post->save)) {
-  // Create multiple customer_orders: one customer_order per product selected
+  // Check if this is from customer order approval
+  if (isset($post->customer_order_id)) {
+    // Handle customer order approval - delete original order and items
+    $orderId = (int)$post->customer_order_id;
+    
+    // Load order to check status
+    $orderCheckSql = "SELECT * FROM customer_order WHERE id = $orderId LIMIT 1";
+    $orderResult = mysqli_query($c, $orderCheckSql);
+    $order = mysqli_fetch_object($orderResult);
+    
+    if ($order && $order->id && strtolower($order->status) !== 'approved') {
+      $selectedItemIds = [];
+      if (isset($post->customer_order_item_id)) {
+        $selectedItemIds = $post->customer_order_item_id;
+      }
+
+      $selectedItemIds = array_values(array_filter(array_map('intval', (array)$selectedItemIds)));
+      if (!empty($selectedItemIds)) {
+        $idList = implode(',', $selectedItemIds);
+        $deleteItemsSql = "DELETE FROM customer_order_item WHERE customer_order_id = $orderId AND id IN ($idList)";
+        mysqli_query($c, $deleteItemsSql);
+      } else {
+        // Fallback to old behavior (approve all items)
+        $deleteItemsSql = "DELETE FROM customer_order_item WHERE customer_order_id = $orderId";
+        mysqli_query($c, $deleteItemsSql);
+      }
+
+      // Remove order only if no items remain
+      $remainSql = "SELECT COUNT(*) c FROM customer_order_item WHERE customer_order_id = $orderId";
+      $remainRes = mysqli_query($c, $remainSql);
+      $remain = $remainRes ? (int)mysqli_fetch_object($remainRes)->c : 0;
+      if ($remain <= 0) {
+        $deleteOrderSql = "DELETE FROM customer_order WHERE id = $orderId";
+        mysqli_query($c, $deleteOrderSql);
+      }
+    }
+  }
+  
+  // Create multiple invoices: one invoice per product selected
   if (!empty($post->product) && is_array($post->product)) {
     foreach ($post->product as $id => $qty) {
       $qty = (int)$qty;
       if ($qty <= 0) continue;
 
-      // Build a fresh customer_order for each product
-      $inv = R::dispense('customer_order');
+      // Build a fresh invoice for each product
+      $inv = R::dispense('invoice');
       $inv->status = 'New';
       $inv->customer_id = isset($post->customer_id) ? $post->customer_id : null;
       if (isset($post->salesman) && function_exists('nn') ? nn($post->salesman) : !empty($post->salesman)) {
@@ -169,18 +76,18 @@ if (isset($post->save)) {
           $inv->incentive = $salesman->incentive;
         }
       }
-      $inv->customer_order_date = isset($post->date) ? $post->date : today();
-      $inv->created_by = 2;
+      $inv->invoice_date = isset($post->date) ? $post->date : today();
+      $inv->created_by = isset($_SESSION['UID']) ? $_SESSION['UID'] : (function_exists('uid') ? uid() : null);
 
       R::store($inv);
 
-      // Create single customer_order_item for this customer_order
+      // Create single invoice_item for this invoice
       $variance = R::load('product_variance', $id);
       if (!$variance || !$variance->id) continue;
       $product = R::load('product', $variance->product_id);
 
-      $ii = R::dispense('customer_order_item');
-      $ii->customer_order_id = $inv->id;
+      $ii = R::dispense('invoice_item');
+      $ii->invoice_id = $inv->id;
       $ii->product_id = $product->id;
       $ii->product_variance_id = $variance->id;
       $ii->quantity = $qty;
@@ -188,7 +95,7 @@ if (isset($post->save)) {
       $ii->cost = $variance->cost;
       $ii->name = $product->name;
       $ii->description = $variance->particulars;
-      $ii->delivery_date = $inv->customer_order_date;
+      $ii->delivery_date = $inv->invoice_date;
       R::store($ii);
     }
   }
@@ -434,7 +341,7 @@ if (isset($post->save)) {
   <div class="absolute inset-0 bg-black/50"></div>
   <div class="relative bg-white w-11/12 max-w-sm rounded-lg shadow-lg p-4">
     <div class="text-lg font-semibold">Remove item?</div>
-    <div class="mt-2 text-sm text-gray-600">This will remove the item from the customer_order.</div>
+    <div class="mt-2 text-sm text-gray-600">This will remove the item from the invoice.</div>
     <div class="mt-4 flex justify-end gap-2">
       <button type="button" id="removeRowCancel" class="px-4 py-2 rounded border border-gray-300 bg-white">Cancel</button>
       <button type="button" id="removeRowConfirm" class="px-4 py-2 rounded bg-red-600 text-white">Remove</button>

@@ -4,10 +4,12 @@ if(isset($post->save)){
 
 	if(isset($post->id)){
 		$obj = R::load('city', $post->id);
+    update("customer", "city='$post->name'", "city='$obj->name'");
 	}
 	$obj->name = $post->name;
   $obj->branch_id = $branch_id;
 	R::store($obj);
+  // die(0);
 	redir("?");
 }
 

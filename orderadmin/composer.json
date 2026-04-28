@@ -1,0 +1,7 @@
+{
+  "require": {
+    "symfony/var-dumper": "^6.4",
+    "gabordemooij/redbean": "dev-master",
+    "vlucas/phpdotenv": "^5.6"
+  }
+}
