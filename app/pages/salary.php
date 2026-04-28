@@ -437,7 +437,7 @@ if (isset($post->save_worker)) {
 	$worker->basic = $hotel->basic;
 	$worker->working_days = 0;//$post->working_days;
 	$worker->entry_by = uid();
-	$worker->entry_time = $post->payment_date;
+	$worker->entry_time = now();
 	R::store($worker);
 	redir("?page=3&h=$get->h");
 }
