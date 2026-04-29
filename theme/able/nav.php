@@ -157,9 +157,11 @@ $menus = [
     ]
   ],
   [
-    'name'=>'Low-Stock',
+    'name'=>'Stock',
     'children'=>[
-      'lowstock'=>'Low-Stock'
+      'lowstock'=>'Low-Stock',
+      'report/stock'=>'Stock Report',
+      'order/add?supplier=0'=>'Re-Order',
     ]
   ],
   // [

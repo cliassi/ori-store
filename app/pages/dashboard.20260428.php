@@ -368,22 +368,8 @@
 		</div>
 	</div>
 	<script>
-		function loadDashboardMetrics(opts) {
-			opts = opts || {};
-			var useSelectedMon = !!opts.useSelectedMon;
-			var mon = '';
-			try {
-				var qsMon = (new URLSearchParams(window.location.search)).get('mon');
-				if (qsMon) {
-					mon = qsMon;
-				} else if (useSelectedMon) {
-					mon = (document.querySelector('[name="mon"]') || {}).value || '';
-				}
-			} catch (e) {
-				if (useSelectedMon) {
-					mon = (document.querySelector('[name="mon"]') || {}).value || '';
-				}
-			}
+		function loadDashboardMetrics() {
+			var mon = (document.querySelector('[name="mon"]') || {}).value || '';
 			var url = '/store/ajax/dashboard_metrics.php' + (mon ? ('?mon=' + encodeURIComponent(mon)) : '');
 			var root = document.getElementById('metrics-root');
 			if (root) root.innerHTML = '<div class="text-muted">Loading metrics...</div>';
@@ -394,20 +380,20 @@
 		}
 
 		// Initial load
-		document.addEventListener('DOMContentLoaded', function () { loadDashboardMetrics({ useSelectedMon: false }); });
+		document.addEventListener('DOMContentLoaded', loadDashboardMetrics);
 
 		// Reload when Show clicked (prevent full submit)
 		document.addEventListener('click', function(e){
 			var btn = e.target.closest('.btn.btn-info');
 			if (!btn) return;
 			e.preventDefault();
-			loadDashboardMetrics({ useSelectedMon: true });
+			loadDashboardMetrics();
 		});
 
 		// Also reload when month changes
 		document.addEventListener('change', function(e){
 			if (e.target && e.target.name === 'mon') {
-				loadDashboardMetrics({ useSelectedMon: true });
+				loadDashboardMetrics();
 			}
 		});
 		$(document).ready(function () {

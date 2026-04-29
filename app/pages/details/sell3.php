@@ -166,6 +166,16 @@
       color: blue;
       font-weight: 700;
     }
+  /* Floating Order Button - Fixed position while scrolling */
+  .floating-order-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-radius: 50px;
+    padding: 12px 24px;
+  }
   </style>
   <div class="row">
     <!-- Zero config table start -->
@@ -240,6 +250,11 @@
     </div>
   </div>
   </div>
+
+  <a class="btn btn-primary floating-order-btn float-end" data-bs-toggle="modal" data-bs-target="#orderModal"
+    onclick="placeOrder()">
+    <i class="fas fa-shopping-cart"></i> Order
+  </a>
 
   <div class="modal fade modal-lightbox" id="lightboxModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
