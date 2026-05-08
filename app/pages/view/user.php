@@ -9,6 +9,9 @@ if(uid()==1){
 			redir("/store/user");
 		}
 	}
+	if(isset($get->notify) && isset($get->uid)){
+		update("sys_user", "order_notification='$get->notify'", "id=".($get->uid + 0));
+	}
 }
 if(uid() == 1 && isset($get->loginas)){
 	$get->loginas = $get->loginas + 0;
@@ -53,7 +56,7 @@ $users = select("u.*, GROUP_CONCAT(r_name SEPARATOR ', ') AS roles", "sys_user u
 print "<table class='table table-bordered table-striped' width='100%'>";
 //<th>Owner</th><th>Logged In?</th><th>Email</th>
 print "<thead>
-	<th>Sl.</th><th>Name</th><th>Username</th><th>PIN</th><th>Password</th><th>Avatar</th><th>Roles</th><th>User Since</th><th>Status</th><th>Last IP</th><th>Last Login Time</th><th>".options2('user', '', array('add'))."</th>
+	<th>Sl.</th><th>Name</th><th>Username</th><th>PIN</th><th>Password</th><th>Notification</th><th>Roles</th><th>User Since</th><th>Status</th><th>Last IP</th><th>Last Login Time</th><th>".options2('user', '', array('add'))."</th>
 	</thead>";
 print "<tbody>";
 $i = 1;
@@ -78,7 +81,9 @@ while($user = mysqli_fetch_object($users)){
 	print "</td>";
 	print "<td>$user->u_pin</td>";
 	print "<td>$user->pass</td>";
-	print "<td>$avatar</td>";
+	print "<td class='text-center'><a href='?notify=".($user->order_notification ? '0' : '1')."&uid=$user->id'>".($user->order_notification ? 'Yes' : 'No')."</a></td>";
+	
+	// print "<td>$avatar</td>";
 	print "<td>$user->roles</td>";
 	print "<td>$user->u_date_created</td>";
 	print "<td>".($user->u_status?"Active":"Inactive")."</td>";

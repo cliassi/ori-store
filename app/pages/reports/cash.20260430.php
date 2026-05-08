@@ -574,25 +574,18 @@ print "<form method='post'>";
 	// print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Cash In</th><th class='w120'></th><th>Cash Out</th><th class='w120'></th><th>Balance</th><th></th>";
 
 	//<th><a href='add_cash'>Add Cash</a><br><a href='widthdraw'>Cash Withdraw</a></th><th>Invested Capital</th>
-	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th>Cash Out</th><th>Balance</th><th>Manager</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Approval</th>";
+	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Type</th><th class='w120'>Bank Sales</th><th>Cash Sales</th><th>Expenses</th><th>Approval</th><th>Bank Balance</th><th>Cash Balance</th>";
 	if(uid() == 1){
 		print "<th>Del</th>";
 	}
 	print "</tr>";
-	$openingTailColspan = 5 + (uid() == 1 ? 1 : 0);
-	print "<tr><th colspan='5'>Opening Balance</th><th>".nf($total)."</th><th colspan='".$openingTailColspan."'></th></tr>";
+	print "<tr><th colspan='10'>Opening Balance</th><th>".nf($total)."</th><th colspan='2'></th></tr>";
 	$i = 1;
 	// vd($opening);
 	$userList = userList();
 	$userList[0] = '';
 	$total_debit = 0;
-	$cashInTotal = 0;
-	$cashOutTotal = 0;
-	$bankInTotal = 0;
-	$bankOutTotal = 0;
 	while($tr = mysqli_fetch_object($trans)){
-		$cashBefore = $total;
-		$bankBefore = sum('bank');
 		
 		$r = "<td title='$tr->entry_time > $tr->status'>".df($tr->date)."</td>";
 		$r .= "<td class='particulars pre-wrap'>";
@@ -634,76 +627,109 @@ print "<form method='post'>";
 		$r .= "</td>";
 
 		// .($tr->source == 'hotel_statement_worker_payment' ? '<img src="assets/verified.png" width="32px">' : (($tr->source == 'expenditure' && in_array($tr->ref, [91,92])) ?  '<img src="assets/verified2.png" width="32px">': ''))."$tr->particulars</td>";
-		$approvalCell = '';
 		if($tr->status=='Pending'){
-			$approvalCell = "<input type='checkbox' name='approvem[]' value='{$tr->source}-{$tr->id}'>";
+			$r .= "<td><input type='checkbox' name='approvem[]' value='{$tr->source}-{$tr->id}'></td>";
+		} else{
+			$r .= "<td></td>";
 		}
-
-		sum($tr->source, $tr->amount);
-		if($tr->source == 'bd_handover'){
+		$r .= "<td title='$tr->source'><small>".$userList[$tr->entry_by]."</small></td>";
+	
+	// Determine type text
+	$typeText = '';
+	if(in_array($tr->source, ['expense_account_entry', 'expense_account_entry_bank'])) {
+		$expenseEntry = R::load('expense_account_entry', $tr->id);
+		if($expenseEntry && $expenseEntry->id) {
+			$opexOrCapex = isset($expenseEntry->opex_or_capex) ? strtolower(trim($expenseEntry->opex_or_capex)) : 'capex';
+			if($opexOrCapex === 'opex') {
+				$typeText = 'Opex';
+			} else {
+				$typeText = 'Capex';
+			}
+		} else {
+			$typeText = 'Capex';
+		}
+	} elseif($tr->source == 'bd_handover') {
+		$typeText = 'Handover';
+	} elseif($tr->source == 'payment_cash') {
+		$typeText = 'Payment';
+	} elseif($tr->source == 'payment_bank') {
+		$typeText = 'Payment';
+	}
+	$r .= "<td>".$typeText."</td>";
+	
+	// if($tr->amount > 0)
+	sum($tr->source, $tr->amount);
+	if($tr->source == 'bd_handover'){
 			$handover = R::load("bd_handover", $tr->id);
 			sum('bank', $handover->bank_amount);
 			sum('banko', $handover->bank_amount);
+			$r .= "<td class='right'>".nf($handover->bank_amount)."</td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total += $tr->amount;
-		} elseif($tr->source == 'cw_cash'){
+	} elseif($tr->source == 'cw_cash'){
 			sum('cash', $tr->amount);
 			// if($tr->amount<0) sum('bank', 0 - $tr->amount);
+			if($tr->amount>0)
+			$r .= "<td class='right'></td><td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total += $tr->amount;
-		} elseif($tr->source == 'cw_bank'){
+	} elseif($tr->source == 'cw_bank'){
 		// if($tr->amount<0) sum('bank', 0 - $tr->amount);
+			$r .= "<td class='right'>".nf($tr->amount)."</td>";
+			if($tr->se){
+				$r .= "<td class='right'>".nf(0-$tr->amount)."</td>";
+				sum('cw_cash', 0 -$tr->amount);
+				$total += 0 - $tr->amount;
+			} else{
+				$r .= "<td></td>";
+			}
+			$r .= "<td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			sum('bank', $tr->amount);
 			sum('banko', $tr->amount);
 			// $total += $tr->amount;
 		} elseif($tr->source == 'payment_cash'){
+			$r .= "<td></td><td class='right'>".nf(0-$tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= $tr->amount;
 		} elseif($tr->source == 'payment_bank'){
+			$r .= "<td class='right'>".nf(0-$tr->amount)."</td><td></td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			// $total -= $tr->amount;
 
 			sum('bank', 0-$tr->amount);
 			sum('banko', 0-$tr->amount);
 		} elseif($tr->source == 'cw_payment'){
+			$r .= "<td></td><td class='right'>".nf($tr->amount)."</td><td></td><td></td><td></td><td class='center'></td>";
 			// $total += $tr->amount;
 		} elseif($tr->source == 'expense_account_entry' || $tr->source == 'cw_outlet'){
+			$r .= "<td></td><td></td>";
+			$r .= "<td class='right' style='color:#FF0000'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= $tr->amount;
 			if($tr->source == 'cw_outlet'){
 				sum('expense_account_entry', abs($tr->amount));
 			}
 		} elseif($tr->source == 'expense_account_entry_bank'){
+			$r .= "<td></td><td></td>";
+			$r .= "<td class='right' style='color:#FFAE42'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			// $total -= $tr->amount;
 			sum('bank', 0 - $tr->amount);
 		} elseif($tr->source == 'cw_cash_withdraw'){
+			$r .= "<td></td>";
+			$r .= "<td class='right'>".nf($tr->amount)."</td><td></td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= abs($tr->amount);
 		} else{
+			$r .= "<td></td><td></td>";
+			$r .= "<td class='right'>".nf($tr->amount)."</td><td class='center'>".($tr->status=='Pending'?"<a class='protected-link22' ".(uid()==1?"href='?d=$d&t=$t&approve=$tr->source&id=$tr->id'":"")."><span class='btn btn-danger btn-sm w80' title=''>Pending</span></a>":"<span class='btn btn-sm btn-success w80' title=''>Approved</span>")."</td>";
 			$total -= $tr->amount;
 		}
-		$cashAfter = $total;
-		$bankAfter = sum('bank');
-		$cashDelta = $cashAfter - $cashBefore;
-		$bankDelta = $bankAfter - $bankBefore;
-		if ($cashDelta > 0) {
-			$cashInTotal += $cashDelta;
-		} elseif ($cashDelta < 0) {
-			$cashOutTotal += abs($cashDelta);
+		if(strpos($tr->source, 'bank') !== FALSE){
+			$r .= "<td class='rht'>".nf(sum('bank'))."</td>";
+			if($tr->se){
+				$r .= "<td class='rht'>".nf($total)."</td>";
+			} else{
+				$r .= "<td class='rht'></td>";
+			}
+		} elseif($tr->source == 'bd_handover'){
+			$r .= "<td class='rht'>".nf(sum('bank'))."</td><td class='rht'>".nf($total)."</td>";
+		} else{
+			$r .= "<td class='rht'></td><td class='rht'>".nf($total)."</td>";
 		}
-		if ($bankDelta > 0) {
-			$bankInTotal += $bankDelta;
-		} elseif ($bankDelta < 0) {
-			$bankOutTotal += abs($bankDelta);
-		}
-
-		$cashIn = $cashDelta > 0 ? nf($cashDelta) : '';
-		$cashOut = $cashDelta < 0 ? nf(abs($cashDelta)) : '';
-		$bankIn = $bankDelta > 0 ? nf($bankDelta) : '';
-		$bankOut = $bankDelta < 0 ? nf(abs($bankDelta)) : '';
-
-		$r .= "<td class='right'>".$cashIn."</td>";
-		$r .= "<td class='right'>".$cashOut."</td>";
-		$r .= "<td class='rht'>".nf($cashAfter)."</td>";
-		$r .= "<td title='$tr->source'><small>".$userList[$tr->entry_by]."</small></td>";
-		$r .= "<td class='right'>".$bankIn."</td>";
-		$r .= "<td class='right'>".$bankOut."</td>";
-		$r .= "<td class='rht'>".nf($bankAfter)."</td>";
-		$r .= "<td class='center'>".$approvalCell."</td>";
 		/*
 		if(uid() != 1 && isUserIn(['orange']) && $tr->source == 'hotel_statement_worker_payment'){
 			if($tr->done_by){
@@ -730,7 +756,7 @@ print "<form method='post'>";
 		$i++;
 	}
 
-	print "<tr><th colspan='3'></th><th class='right'>".nf($cashInTotal)."</th><th class='right'>".nf($cashOutTotal)."</th><th class='right'>".nf($total)."</th><th></th><th class='right'>".nf($bankInTotal)."</th><th class='right'>".nf($bankOutTotal)."</th><th class='right'>".nf(sum('bank'))."</th><th></th>".(uid()==1?"<th></th>":"")."</tr>";
+	print "<tr><th colspan='5'></th><th class='right'>".nf(sum('banko') - sum('banko'))."</th><th class='right'>".nf(sum('bd_handover'))."</th><th class='right' title='expense_account_entry'>".nf(sum('expense_account_entry') + sum('expense_account_entry_bank'))."</th><th class='right'>Balance</th><th class='right'>".nf(sum('bank'))."</th><th class='right'>".nf($total)."</th></tr>";
 
 	if(uid() == 1){
 		print "<tr><td colspan='13' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";

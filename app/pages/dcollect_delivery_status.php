@@ -1,7 +1,8 @@
 <?php
 // vd($post);
 // Handle Return to Order first (before deliver) ONLY when button clicked
-if (isset($post->return_to_order) && isset($post->return_to_order_ids) && !empty($post->return_to_order_ids)) {
+if (isset($post->return_to_order_ids) && isset($post->return_to_order_ids) && !empty($post->return_to_order_ids)) {
+  // var_dump($post);
   $invoiceItemIds = explode(',', (string)$post->return_to_order_ids);
 
   foreach ($invoiceItemIds as $iid) {
@@ -24,6 +25,7 @@ if (isset($post->return_to_order) && isset($post->return_to_order_ids) && !empty
       $ii->assigned_by = null;
       $ii->delivery_staff = null;
       R::store($ii);
+      var_dump($ii);
     }
   }
   

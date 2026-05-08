@@ -4,6 +4,20 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 session_start();
 
+$__pushLoginLog =  'push_login.log';
+try {
+    $logEntry = [
+        'time' => date('Y-m-d H:i:s'),
+        'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
+        'ua' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '',
+        'get' => $_GET,
+        'post' => $_POST,
+    ];
+    @file_put_contents($__pushLoginLog, json_encode($logEntry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND);
+} catch (Throwable $e) {
+    // ignore logging failures
+}
+
 date_default_timezone_set('Asia/Kuala_Lumpur');
 require_once ('env.php');
 require_once ('config.php');

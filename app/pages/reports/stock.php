@@ -494,6 +494,78 @@ form.mb-3 {
                                         $total_return = 0;
                                         $total_damage = 0;
                                         $total_collection = 0;
+
+                                        $openingSql = "
+                                            SELECT v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit,
+                                                COALESCE(SUM(a.stock_quantity), 0) stock_quantity,
+                                                COALESCE(SUM(a.damage_quantity), 0) damage_quantity
+                                            FROM `product` p
+                                            JOIN `product_variance` v ON p.id = v.product_id
+                                            LEFT JOIN (
+                                                SELECT v.id, -oi.quantity stock_quantity, 0 damage_quantity
+                                                FROM `product_variance` v
+                                                JOIN `invoice_item` oi ON v.id = oi.product_variance_id
+                                                JOIN `invoice` o ON oi.invoice_id = o.id
+                                                WHERE v.id = " . (int)ID . "
+                                                    AND o.invoice_date < '$from_date'
+
+                                                UNION ALL
+
+                                                SELECT v.id, oi.returned_quantity stock_quantity, 0 damage_quantity
+                                                FROM `product_variance` v
+                                                JOIN `stock_collect_item` oi ON v.id = oi.product_variance_id
+                                                JOIN `stock_collect` o ON oi.stock_collect_id = o.id
+                                                WHERE v.id = " . (int)ID . "
+                                                    AND oi.returned_quantity > 0
+                                                    AND o.date < '$from_date'
+
+                                                UNION ALL
+
+                                                SELECT v.id, 0 stock_quantity, oi.damaged_quantity damage_quantity
+                                                FROM `product_variance` v
+                                                JOIN `stock_collect_item` oi ON v.id = oi.product_variance_id
+                                                JOIN `stock_collect` o ON oi.stock_collect_id = o.id
+                                                WHERE v.id = " . (int)ID . "
+                                                    AND oi.damaged_quantity > 0
+                                                    AND o.date < '$from_date'
+
+                                                UNION ALL
+
+                                                SELECT v.id, oi.quantity stock_quantity, 0 damage_quantity
+                                                FROM `product_variance` v
+                                                JOIN `order_item` oi ON v.id = oi.product_variance_id
+                                                JOIN `order` o ON oi.order_id = o.id
+                                                WHERE v.id = " . (int)ID . "
+                                                    AND o.order_date < '$from_date'
+
+                                                UNION ALL
+
+                                                SELECT v.id, 0 stock_quantity, oi.quantity damage_quantity
+                                                FROM `product_variance` v
+                                                JOIN `damaged_item` oi ON v.id = oi.product_variance_id
+                                                WHERE v.id = " . (int)ID . "
+                                                    AND DATE(oi.created_at) < '$from_date'
+                                            ) a ON a.id = v.id
+                                            WHERE v.id = " . (int)ID . "
+                                            GROUP BY v.id, p.id, p.name, p.image, v.particulars, v.cost, v.price, v.image, size, unit
+                                        ";
+                                        $openingItems = select($openingSql);
+                                        if ($openingItems !== false && ($opening = mysqli_fetch_object($openingItems))) {
+                                            $bal = $opening->stock_quantity + 0;
+                                            $balp = $opening->damage_quantity + 0;
+                                            echo "<tr id='var-opening' title='opening'>";
+                                            echo "<td>$i</td>";
+                                            echo "<td>" . date("d M y", strtotime($from_date)) . "</td>";
+                                            echo "<td>Opening Stock - $opening->particulars</td>";
+                                            echo "<td class='text-center'><img src='" . ROOT . "/{$opening->vimage}' alt='Product Image'></td>";
+                                            echo "<td>$opening->size</td>";
+                                            echo "<td></td>";
+                                            echo "<td></td>";
+                                            echo "<td></td><td></td><td></td><td></td>";
+                                            echo "<td class='text-center stock-balance'>" . ($balp > 0 ? "<span style='color:grey'>(- $balp pcs)</span> " : "") . "$bal</td>";
+                                            echo "</tr>";
+                                            $i++;
+                                        }
                                         
                                         while ($var = mysqli_fetch_object($items)) {
                                             // Check product_variance filter (ID from URL or dropdown)
