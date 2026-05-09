@@ -69,7 +69,7 @@ $fields = [
 
 
 if(!isUserIn(['parvez'])){
-    unset($fields['password']);
+    // unset($fields['password']);
 } else{
     $fields[''] = ["display"=>'', 'type'=>'link', 'action'=>'edit'];
 }
@@ -99,6 +99,7 @@ $objs = R::find('customer', 'branch_id=1');
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-2 py-2 text-left">Code</th>
+                        <th class="px-2 py-2 text-left">PIN</th>
                         <th class="px-2 py-2 text-left">Shop Name</th>
                         <th class="px-2 py-2 text-left">Contact</th>
                         <th class="px-2 py-2 text-left">Mobile</th>
@@ -113,6 +114,7 @@ $objs = R::find('customer', 'branch_id=1');
                     foreach ($objs as $key => $obj) {
                         echo "<tr class='border-b'>";
                         echo "<td class='px-2 py-1'>$obj->code</td>";
+                        echo "<td class='px-2 py-1'>$obj->password</td>";
                         echo "<td class='px-2 py-1'><a href='?page=customer_details&id=$obj->id' class='text-blue-600 font-medium'>$obj->company</a></td>";
                         echo "<td class='px-2 py-1'>$obj->contact</td>";
                         echo "<td class='px-2 py-1'>$obj->mobile</td>";

@@ -11,8 +11,12 @@ extract($_POST);
 
 
 if(isset($update_date)){
-    $item = R::load('invoice_item', $invoice_item_id);
-    $inv = R::load('invoice', $item->invoice_id);
+    $ids = array_filter(array_map('intval', explode(',', $invoice_item_id)));
+    $invoice_item_id = implode(',', array_unique($ids));
+    if (!$invoice_item_id || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        exit;
+    }
+    $date = mysqli_real_escape_string($c, $date);
 	//updatep("invoice_item", "delivery_date='$date'", "product_variance_id=$item->product_variance_id and delivery_date <= curdate() AND quantity > delivered and invoice_id IN  (SELECT id FROM invoice WHERE customer_id=$inv->customer_id)");
 	// updatep("invoice_item", "delivery_date='$date'", "product_variance_id IN ($item->product_variance_id) and quantity > delivered and invoice_id IN  (SELECT id FROM invoice WHERE customer_id=$inv->customer_id)");
 	update("invoice_item", "delivery_date='$date'", "id IN ($invoice_item_id)");

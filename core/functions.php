@@ -52,6 +52,64 @@ if (!function_exists('ensureMysqlColumn')) {
 }
 
 
+function notifyUsers($message, $title = "ORI : Customer Order"){
+    $users = R::find('sys_user', 'order_notification=1');
+    foreach($users as $user){
+        $sub = R::findOne("push_client", "`type`='a' AND id=$user->id");
+        if($sub){
+            sendPush($sub->uuid, $message, $title);
+        }
+    }
+}
+
+function sendPush($tag, $message, $title = "ORI : Customer Order")
+{
+    $payload = [
+        'tag' => (string)$tag,
+        'message' => (string)$message,
+        'title' => (string)$title,
+    ];
+
+    $url = 'http://localhost:88';
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+
+    $logFile = __DIR__ . DIRECTORY_SEPARATOR . 'push.log';
+    $logPrefix = '[' . date('Y-m-d H:i:s') . '] ';
+
+    $response = curl_exec($ch);
+    if ($response === false) {
+        $err = curl_error($ch);
+        $logLine = $logPrefix
+            . "URL=$url | payload=" . json_encode($payload)
+            . " | curl_error=" . $err
+            . PHP_EOL;
+        @file_put_contents($logFile, $logLine, FILE_APPEND);
+        curl_close($ch);
+        return false;
+    }
+
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $logLine = $logPrefix
+        . "URL=$url | payload=" . json_encode($payload)
+        . " | status=$status | response=" . $response
+        . PHP_EOL;
+    @file_put_contents($logFile, $logLine, FILE_APPEND);
+
+    return [
+        'status' => $status,
+        'response' => $response,
+    ];
+}
+
+
 function convertPdfToImages(string $pdfFilename, string $outputName){
     $pdfPath = __DIR__ . '/' . $pdfFilename;
     $outputBase = __DIR__ . '/' . $outputName;

@@ -58,7 +58,12 @@
     display: table-row-group;
   }
 </style>
-<div class="text-center"><h3>Pending Order</h3></div>
+<div class="text-center">
+  <h3>Pending Order</h3>
+  <label style="font-weight: normal; float: right; margin-top:-30px">
+    <input type="checkbox" id="check-all-orders"> Check all
+  </label>
+</div>
 <table class="table table-bordered table-hover table-striped table-customer">
   <thead>
     <tr>
@@ -183,7 +188,7 @@
         <!-- Date picker -->
         <div class="mb-3">
           <label for="datepicker" class="form-label">Select Date</label>
-          <input type="date" class="form-control" id="datepicker" name="date" required>
+          <input type="date" class="form-control" id="datepicker" name="date" required value="<?= date('Y-m-d') ?>">
 
           <div class="form-text">Current delivery date: <span id="currentDeliveryDate"></span></div>
         </div>
@@ -217,6 +222,14 @@
   })
 
   document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('check-all-orders').addEventListener('change', function() {
+      const checked = this.checked;
+      document.querySelectorAll('.orders input.iid-date').forEach(function(cb) {
+        cb.checked = checked;
+        cb.indeterminate = false;
+      });
+    });
+
     document.querySelectorAll('.table-customer .tbody-toggle-cell .tbody-toggle').forEach((toggle) => {
       toggle.addEventListener('click', (e) => {
         e.preventDefault();
@@ -235,9 +248,23 @@
     // Form submit handler
     document.getElementById('dateForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      debugger;
-      const id = document.getElementById('hiddenId').value;
       const date = document.getElementById('datepicker').value;
+      const selectedIds = [];
+
+      document.querySelectorAll('input.iid-date:checked').forEach(function(cb) {
+        const ids = cb.dataset.iids ? cb.dataset.iids.split(',') : [cb.value];
+        ids.forEach(function(id) {
+          id = String(id).trim();
+          if (id && !selectedIds.includes(id)) selectedIds.push(id);
+        });
+      });
+
+      const id = selectedIds.length ? selectedIds.join(',') : document.getElementById('hiddenId').value;
+      const updateCount = id ? id.split(',').filter(Boolean).length : 0;
+
+      if (!updateCount || !confirm('Update delivery date for ' + updateCount + ' selected item(s) to ' + date + '?')) {
+        return;
+      }
 
       // You can send the data to server or handle it as needed
       console.log('ID:', id, 'Date:', date);
@@ -266,12 +293,15 @@
   // Function to call and show modal with ID
   function setDate(el, id) {
     var checked = $(".iid-date:checked");
-    debugger;
     if (checked.length > 0) {
       // map values into array, join with commas
       var values = checked.map(function() {
-        return this.value;
-      }).get().join(",");
+        return this.dataset.iids ? this.dataset.iids : this.value;
+      }).get().join(",").split(",").map(function(value) {
+        return value.trim();
+      }).filter(function(value, index, values) {
+        return value && values.indexOf(value) === index;
+      }).join(",");
 
       document.getElementById('hiddenId').value = values;
     } else {
@@ -280,7 +310,7 @@
     }
 
     // document.getElementById('hiddenId').value = id;
-    document.getElementById('datepicker').value = ''; // Optional: clear previous value
+    document.getElementById('datepicker').value = new Date().toISOString().slice(0, 10);
     document.getElementById('currentDeliveryDate').innerHTML = $(el).data('dd');
     dateModal.show();
   }
@@ -320,7 +350,8 @@
       })
       .fail(() => {});
   });
-  $("input[type=checkbox]").change(triggerChange);
+  $(".checkbox-area, .checkbox-product, #all-order, #delivery-list, #pending-only, #collection-list, #pending-list").change(triggerChange);
+
   triggerChange();
 
   function triggerChange() {

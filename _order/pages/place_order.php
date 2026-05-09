@@ -111,7 +111,7 @@ if (isset($post->product) && is_array($post->product)) {
         <div class="po-left">
           <div class="po-grand">RM<span id="poGrand">0.00</span></div>
         </div>
-        <button type="submit" name="save" value="1" class="po-cta">Place Order</button>
+        <button type="submit" name="save" value="1" class="po-cta">Confirm Order</button>
       </div>
     </div>
   </form>
