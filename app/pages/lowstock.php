@@ -189,7 +189,7 @@ $contant = "";
                   // } else{
                   //   print "<td></td>";
                   // }
-                  print "<td class='text-center fs-4' colspan='2' style='width:15px !important;' id='particulars-$var->id' data-ori='$var->image_orientation' data-sort-order='$var->sort_order' data-frozen='$var->frozen' data-uom='$pc->uom' data-uom2='$pc->uom2'><a href='/factory/report/stock-old/$var->id'>$var->particulars</a></td>";
+                  print "<td class='text-center fs-4' colspan='2' style='width:15px !important;' id='particulars-$var->id' data-ori='$var->image_orientation' data-sort-order='$var->sort_order' data-frozen='$var->frozen' data-uom='$pc->uom' data-uom2='$pc->uom2'><a href='/store/report/stock/$var->id'>$var->particulars</a></td>";
                   print "<td id='min_stock-$var->id' class='text-center stock-value'>$var->min_stock</td>";
                   print "<td id='stock-$var->id' class='text-center stock-value " . ($var->stock < $var->min_stock ? 'color-red' : '') . "'>$var->stock</td>";
                   // print "<td id='size-$var->id' class='text-center'>$var->size</td>";
