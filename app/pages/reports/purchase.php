@@ -150,14 +150,14 @@ if(isset($post->delete_outsource_expense)){
   // $get->d = $d;
   // $get->t = $t;
   $dateLimit = false;
-  if (uid() != 1) {
-    $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
-    $dateLimit = $sevenDaysAgo;
-    if (daydiff($d, $sevenDaysAgo) > 0) {
-        $d = $sevenDaysAgo;
-        $get->d = $d;
-    }
-  }
+  // if (uid() != 1 || uid() != 47 || uid() != 45) {
+  //   $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+  //   $dateLimit = $sevenDaysAgo;
+  //   if (daydiff($d, $sevenDaysAgo) > 0) {
+  //       $d = $sevenDaysAgo;
+  //       $get->d = $d;
+  //   }
+  // }
 
   $com = isset($get->company) ? $get->company : '';
   $ec = isset($get->expense_category) ? $get->expense_category : '';

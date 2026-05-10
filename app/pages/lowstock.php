@@ -6,7 +6,8 @@
   .hidden-variant {
     display: none;
   }
-  th{
+
+  th {
     text-align: center !important;
   }
 
@@ -157,9 +158,9 @@ $contant = "";
               foreach ($objs as $key => $obj) {
                 $pc = R::load("product_category", $obj->product_category_id);
                 print "<tr id='product-$obj->id'>";
-                print "<th colspan='3'></th>";
-                print "<th><span class='badge rounded-circle bg-primary' style='width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;'>$i</span></th>";
-                print "<th class='text-left'>$obj->name</th>";
+                print "<th colspan='2'></th>";
+                print "<th style='important; width: 1px!important;'><span class='badge text-left rounded-circle bg-primary' style='width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;'>$i</span></th>";
+                print "<th class='text-center w-25 fs-4' style='padding-right:75px !important'>$obj->name</th>";
                 print "<th>Min. Stock</th>";
                 print "<th>Avl. Stock</th>";
                 // print "<th>$pc->uom</th>";
@@ -176,18 +177,19 @@ $contant = "";
                 while ($var = mysqli_fetch_object($variances)) {
                   $totalVariants++;
                   $isHidden = ($vi > 10) ? 'hidden-variant' : '';
-                  if($var->stock >= $var->min_stock) continue;
+                  if ($var->stock >= $var->min_stock)
+                    continue;
 
                   print "<tr id='var-$var->id'  class='variant-row $isHidden' data-product='$obj->id'>";
                   print "<td style='text-align:center'>$vi</td>";
                   // print "<td>$vi</td>";
-                  print "<td class='text-center'><img src='" . ROOT . "/{$var->image}' height='80px' style='border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.15);'></td>";
+                  print "<td class='text-center' width='166px'><img src='" . ROOT . "/{$var->image}' height='80px' style='border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.15);'></td>";
                   // if($var->image_single){
                   //   print "<td><img src='".ROOT."/{$var->image_single}' height='80px'></td>";
                   // } else{
                   //   print "<td></td>";
                   // }
-                  print "<td id='particulars-$var->id' data-ori='$var->image_orientation' data-sort-order='$var->sort_order' data-frozen='$var->frozen' data-uom='$pc->uom' data-uom2='$pc->uom2' colspan='3' class='text-center'><a href='/store/report/stock/$var->id'>$var->particulars</a></td>";
+                  print "<td class='text-center fs-4' colspan='2' style='width:15px !important;' id='particulars-$var->id' data-ori='$var->image_orientation' data-sort-order='$var->sort_order' data-frozen='$var->frozen' data-uom='$pc->uom' data-uom2='$pc->uom2'><a href='/factory/report/stock-old/$var->id'>$var->particulars</a></td>";
                   print "<td id='min_stock-$var->id' class='text-center stock-value'>$var->min_stock</td>";
                   print "<td id='stock-$var->id' class='text-center stock-value " . ($var->stock < $var->min_stock ? 'color-red' : '') . "'>$var->stock</td>";
                   // print "<td id='size-$var->id' class='text-center'>$var->size</td>";

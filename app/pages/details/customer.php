@@ -362,7 +362,7 @@ while ($item = mysqli_fetch_object($trans)) {
  
 
   if($item->src == 'invoice'){
-    print "<td><input type='radio' id='itme_$item->id' value='$item->id'></td>";
+    print "<td><input class='form-check-input' type='radio' id='itme_$item->id' value='$item->id'></td>";
     print "<td class='text-right'>".nf($item->amount)."</td>";
     print "<td></td>";
     sum('balance',$item->amount);

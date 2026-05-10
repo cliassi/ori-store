@@ -18,10 +18,13 @@ if (isset($post->save)) {
         $obj->company = $post->company;
         $obj->contact = $post->contact;
         $obj->mobile = $post->mobile;
+        if(isset($post->location))
         $obj->location = $post->location;
         $obj->city = $post->city;
+        if(isset($post->email))
         $obj->email = $post->email;
         $obj->branch_id = $branch_id;
+        if(isset($post->password))
         $obj->password = $post->password;
         if(uid()==1){
           $obj->branch_id = isset($post->branch_id) ? $post->branch_id : $branch_id;
@@ -111,9 +114,9 @@ $html .=  "</table></td></tr>
                         'city' => ['col' => 6, 'label' => 'Area', 'type' => 'dropdown', 'value'=>$obj->city, 'table'=>'city', 'valueField'=>'name', 'filter'=>'branch_id = '.$branch_id, 'required' => true],
                         'html' => ['col' => 6, 'type' => 'html', 'html' => $html],
                         'image' => ['col' => 6, 'label' => 'Photo', 'type' => 'image', 'value'=>$obj->image, 'required' => false],
-                        'location' => ['col' => 4, 'label' => 'Location', 'type' => 'text', 'value' => $obj->location, 'required' => true],
-                        'email' => ['col' => 4, 'label' => 'Username', 'type' => 'text', 'value' => $obj->email, 'required' => false],
-                        'password' => ['col' => 4, 'label' => 'Password', 'type' => 'text', 'value' => $obj->password, 'required' => false],
+                        // 'location' => ['col' => 4, 'label' => 'Location', 'type' => 'text', 'value' => $obj->location, 'required' => true],
+                        // 'email' => ['col' => 4, 'label' => 'Username', 'type' => 'text', 'value' => $obj->email, 'required' => false],
+                        // 'password' => ['col' => 4, 'label' => 'Password', 'type' => 'text', 'value' => $obj->password, 'required' => false],
                         // 'email' => ['col' => 6, 'label' => 'Email', 'type' => 'email', 'value' => $obj->email],
                         // 'password' => ['col' => 6, 'label' => 'Password', 'type' => 'password', 'value' => $obj->password],
                       ];
