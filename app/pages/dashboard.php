@@ -346,7 +346,7 @@
 					<div class='center'>
 
 						<form><button
-								class='btn btn-success'><?php print df(today()); ?></button><?php print space(5) . monthSelector('mon', isset($get->mon) ? $get->mon : ''); ?>
+								class='btn btn-success'><?php print dfd(today()); ?></button><?php print space(5) . monthSelector('mon', isset($get->mon) ? $get->mon : ''); ?>
 							<button class='btn btn-info'>Show</button>
 					</div>
 

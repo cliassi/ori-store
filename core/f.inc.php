@@ -830,6 +830,12 @@
 	function df($time){
 		return (trim($time)!="" && $time!=null && $time!='0000-00-00' && $time!='0000-00-00 00:00:00') ? date("d M, Y", strtotime($time)) : false;
 	}
+	function dfd($time)
+	{
+		return (trim($time) != "" && $time != null && $time != '0000-00-00' && $time != '0000-00-00 00:00:00')
+			? date("d", strtotime($time))
+			: false;
+	}
 	function dfh($time){
 		return (trim($time)!="" && $time!=null && $time!='0000-00-00' && $time!='0000-00-00 00:00:00') ? date("d-M-Y", strtotime($time)) : false;
 	}
