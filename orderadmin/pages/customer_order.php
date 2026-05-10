@@ -338,8 +338,9 @@ $res = mysqli_query($c, $sql);
         echo '<tr>';
         echo '<th colspan="4" style="text-align:center">';
         if (strtolower((string)$row['status']) !== 'approved') {
-          echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm">Approve</button>';
           echo '<button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" style="margin-left:5px;" onclick="return confirm(\'Delete this order?\')">Delete</button>';
+          print "<span style='margin-left:3rem;'></span>";
+          echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm">Approve</button>'; 
         } else {
           echo '<span class="badge bg-success">Approved</span>';
         }

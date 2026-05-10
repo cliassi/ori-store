@@ -1,7 +1,7 @@
 <?php
 // vd($post);
 // Handle Return to Order first (before deliver) ONLY when button clicked
-if (isset($post->return_to_order_ids) && isset($post->return_to_order_ids) && !empty($post->return_to_order_ids)) {
+if (isset($post->return_to_order) && isset($post->return_to_order_ids) && !empty($post->return_to_order_ids)) {
   // var_dump($post);
   $invoiceItemIds = explode(',', (string)$post->return_to_order_ids);
 
@@ -25,7 +25,6 @@ if (isset($post->return_to_order_ids) && isset($post->return_to_order_ids) && !e
       $ii->assigned_by = null;
       $ii->delivery_staff = null;
       R::store($ii);
-      var_dump($ii);
     }
   }
   
@@ -526,8 +525,13 @@ elseif (isset($post->deliver)) {
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        // Submit the form
-        $(this).closest('form').submit();
+        const form = $(this).closest('form');
+        $('<input>').attr({
+          type: 'hidden',
+          name: 'return_to_order',
+          value: '1'
+        }).appendTo(form);
+        form.submit();
       }
     });
   });

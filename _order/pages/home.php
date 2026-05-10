@@ -77,15 +77,15 @@
 // Product categories data - ready for database integration
 $categories = select('*', 'product', '1=1 ORDER BY sort_order');
 // Product variants data - ready for database integration
-
-$variance = select('*', 'product_variance', 'visible=1 ORDER BY sort_order');
+// var_dump($_SESSION);
+$variance = select('pv.*, cpv.price cp', 'product_variance pv LEFT JOIN customer_product_variance cpv ON cpv.product_variance_id = pv.id AND cpv.customer_id='.$_SESSION['UID'], 'pv.visible=1 ORDER BY pv.sort_order');
 $variants = [];
 while ($v = mysqli_fetch_object($variance)) {
   $v = [
     'id' => $v->id,
     'product_id' => $v->product_id,
     'name' => $v->particulars,
-    'price' => $v->price,
+    'price' => $v->cp ? $v->cp : $v->price,
     'size' => $v->size,
     'pack' => $v->unit,
     'image' => getImageOrPlaceholder($v->image, $v->particulars)
@@ -207,7 +207,7 @@ foreach ($products as $pg) {
               <div class="absolute qty-controls" style="top: 0.35rem; right: 0.5rem; display:none; z-index:20;">
                 <div style="display:flex; align-items:center; gap:6px; background:#fff; border:1px solid #e5e7eb; border-radius:9999px; padding:4px 8px; box-shadow:0 1px 2px rgba(0,0,0,.06);">
                   <button type="button" class="btn-dec" aria-label="Decrease" style="width:20px; height:20px; border-radius:9999px; border:1px solid #d1d5db; background:#fff; color:#111827; display:flex; align-items:center; justify-content:center; font-weight:700;">−</button>
-                  <span class="qty-text" style="min-width:10px; text-align:center; font-weight:700; color:#111827; font-size:12px;">1</span>
+                  <span class="qty-text" style="min-width:10px; text-align:center; font-weight:700; color:#111827; font-size:12px; cursor:pointer;">1</span>
                   <button type="button" class="btn-inc" aria-label="Increase" style="width:20px; height:20px; border-radius:9999px; border:1px solid #d1d5db; background:#fff; color:#111827; display:flex; align-items:center; justify-content:center; font-weight:700;">+</button>
                 </div>
               </div>
@@ -870,7 +870,7 @@ foreach ($products as $pg) {
 
     function openQtyModal(targetSelect) {
       qtyTargetSelect = targetSelect;
-      if (qtyInputEl) qtyInputEl.value = '';
+      if (qtyInputEl) qtyInputEl.value = targetSelect ? String(parseInt(targetSelect.value || '0', 10) || '') : '';
 
       try {
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1024,6 +1024,8 @@ foreach ($products as $pg) {
       applyQtyToSelect(qtyTargetSelect, qtyInputEl ? qtyInputEl.value : '0');
       const productId = qtyTargetSelect.getAttribute('data-product');
       updateAllBadges(productId, qtyTargetSelect);
+      const card = qtyTargetSelect.closest('.product-item');
+      if (card) syncControls(card);
       qtyTargetSelect = null;
       closeQtyModal();
       updateBasketBar();
@@ -1044,6 +1046,7 @@ foreach ($products as $pg) {
       const plusBtn = card.querySelector('.add-plus-btn');
       const incBtn = card.querySelector('.btn-inc');
       const decBtn = card.querySelector('.btn-dec');
+      const qtyText = card.querySelector('.qty-text');
       const sel = card.querySelector('select.cart-item');
 
       function cur() { return parseInt(sel.value || '0', 10); }
@@ -1076,6 +1079,11 @@ foreach ($products as $pg) {
         sel.value = String(q);
         syncControls(card);
         updateBasketBar();
+      });
+      qtyText && qtyText.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (IS_GUEST) return;
+        openQtyModal(sel);
       });
 
       // Initial UI sync
@@ -1129,6 +1137,13 @@ foreach ($products as $pg) {
         sel.value = String(q);
         syncControls(card);
         updateBasketBar();
+        return;
+      }
+      if (t.classList.contains('qty-text')) {
+        const { card, sel } = getCardAndSelectFrom(t);
+        if (!card || !sel) return;
+        if (IS_GUEST) return;
+        openQtyModal(sel);
         return;
       }
     });
