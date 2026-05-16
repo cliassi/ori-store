@@ -178,7 +178,7 @@ $items = select($itemQuery);
       // Print item row
       $partAttr = htmlspecialchars($item->particulars, ENT_QUOTES);
       echo "<tr data-vid='$item->vid' data-qty='$remainingQty' data-unit-price='$item->price' data-particulars='$partAttr'>
-        <td style='width:30px;'><input type='checkbox' name='iid[$item->iid]' value='$item->iid'> <a href='#' id='invoice-item-date-$item->iid' data-dd='" . df($item->dd) . "' onclick='setDate(this, $item->iid); return false;' style='text-decoration:none; color:#333; font-weight:bold; cursor:pointer;'>$itemSerial</a></td>
+        <td style='width:30px;'><input type='checkbox' class='iid-date' name='iid[$item->iid]' value='$item->iid'> <a href='#' id='invoice-item-date-$item->iid' data-dd='" . df($item->dd) . "' onclick='setDate(this, $item->iid); return false;' style='text-decoration:none; color:#333; font-weight:bold; cursor:pointer;'>$itemSerial</a></td>
         <td>$item->particulars</td>
         <td style='text-align:center; width:60px;'>" . nf($item->price * $remainingQty) . "</td>
         <td style='text-align:center; width:50px;'>$remainingQty</td>
@@ -391,135 +391,10 @@ $items = select($itemQuery);
     }
 
     function rebuildConsolidatedTable() {
-      var map = new Map();
-
-      var selected = document.querySelectorAll('input.selected-customer:checked');
       var container = document.getElementById('consolidated-container');
       var tbody = document.getElementById('consolidated-body');
-      if (!container || !tbody) return;
-
-      // Always start by hiding the container
-      container.classList.remove('show');
-      tbody.innerHTML = '';
-      console.log('rebuildConsolidatedTable called. Selected customers:', selected.length);
-
-      if (!selected.length) {
-        return;
-      }
-
-      selected.forEach(function(cb) {
-        var custId = cb.getAttribute('data-cust');
-        var body = document.getElementById('cust-body-' + custId);
-        if (!body) return;
-
-        body.querySelectorAll('tr[data-vid]').forEach(function(row) {
-          var vid = row.getAttribute('data-vid');
-          var qty = parseFloat(row.getAttribute('data-qty') || '0') || 0;
-          var particulars = row.getAttribute('data-particulars') || '';
-          var unitPrice = parseFloat(row.getAttribute('data-unit-price') || '0') || 0;
-          if (!vid || qty <= 0) return;
-
-          var cur = map.get(vid);
-          if (!cur) {
-            map.set(vid, {
-              particulars: particulars,
-              qty: qty,
-              unitPrice: unitPrice
-            });
-          } else {
-            cur.qty += qty;
-          }
-        });
-      });
-
-      tbody.innerHTML = '';
-
-      // Only show container if we have actual items in the map
-      if (!map.size || map.size === 0) {
-        container.classList.remove('show');
-        console.log('Hiding consolidated container - no items in map. Map size:', map.size);
-        return;
-      }
-
-      // Only show if we have items to display
-      container.classList.add('show');
-      console.log('Showing consolidated container - items found. Map size:', map.size);
-
-      var fmt = new Intl.NumberFormat('en-US', {
-        maximumFractionDigits: 2
-      });
-      var serial = 1;
-
-      Array.from(map.values())
-        .sort(function(a, b) {
-          return (a.particulars || '').localeCompare(b.particulars || '');
-        })
-        .forEach(function(item) {
-          var tr = document.createElement('tr');
-
-          var tdSerial = document.createElement('td');
-          tdSerial.className = 'text-center';
-          var wrap = document.createElement('div');
-
-          var cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.className = 'iid-date consolidated-toggle';
-          cb.checked = true; // Auto-select consolidated items
-          wrap.appendChild(cb);
-
-          var a = document.createElement('a');
-          a.href = '#';
-          a.className = 'has-checkbox';
-          a.textContent = String(serial++);
-          wrap.appendChild(a);
-
-          tdSerial.appendChild(wrap);
-
-          var tdName = document.createElement('td');
-          tdName.textContent = item.particulars;
-
-          var tdPrice = document.createElement('td');
-          tdPrice.className = 'text-center';
-          tdPrice.textContent = fmt.format(item.unitPrice * item.qty);
-
-          var tdOrderQty = document.createElement('td');
-          tdOrderQty.className = 'text-center order-qty-col';
-          tdOrderQty.textContent = fmt.format(item.qty);
-
-          tr.appendChild(tdSerial);
-          tr.appendChild(tdName);
-          tr.appendChild(tdPrice);
-          tr.appendChild(tdOrderQty);
-          tbody.appendChild(tr);
-        });
-
-      // build consolidated totals footer (Qty only)
-      var totalQty = 0;
-      map.forEach(function (item) {
-        totalQty += (parseFloat(item.qty) || 0);
-      });
-
-      var table = container.querySelector('table');
-      if (table) {
-        var oldFoot = table.querySelector('tfoot');
-        if (oldFoot) oldFoot.remove();
-        var tfoot = document.createElement('tfoot');
-        var trf = document.createElement('tr');
-
-        var thLabel = document.createElement('th');
-        thLabel.colSpan = 3; // #, Name, Price
-        thLabel.className = 'text-end';
-        thLabel.textContent = 'Total';
-
-        var thQty = document.createElement('th');
-        thQty.className = 'text-center order-qty-col';
-        thQty.textContent = fmt.format(totalQty);
-
-        trf.appendChild(thLabel);
-        trf.appendChild(thQty);
-        tfoot.appendChild(trf);
-        table.appendChild(tfoot);
-      }
+      if (container) container.classList.remove('show');
+      if (tbody) tbody.innerHTML = '';
     }
 
     document.addEventListener('change', function(e) {

@@ -131,7 +131,7 @@ if(isset($post->save_delivery_date)){
 }
 
 // Get transactions
-$limit = "";
+$limit = isset($get->show) ? "" : " limit 10";
 $opening = 0;
 
     $trans = select("SELECT * FROM (SELECT * FROM (
