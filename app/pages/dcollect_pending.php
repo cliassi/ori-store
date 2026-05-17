@@ -60,8 +60,8 @@
 </style>
 <div class="text-center">
   <h3>Pending Order</h3>
-  <label style="font-weight: normal; float: right; margin-top:-30px">
-    <input type="checkbox" id="check-all-orders"> Check all
+  <label style="font-weight: normal; float: right; margin-top:-30px; margin-right: 30px">
+    <input type="checkbox" id="check-all-orders"> Select all
   </label>
 </div>
 <table class="table table-bordered table-hover table-striped table-customer">
@@ -227,6 +227,9 @@
       document.querySelectorAll('.orders input.iid-date').forEach(function(cb) {
         cb.checked = checked;
         cb.indeterminate = false;
+        cb.dispatchEvent(new Event('change', {
+          bubbles: true
+        }));
       });
     });
 
@@ -249,17 +252,7 @@
     document.getElementById('dateForm').addEventListener('submit', function(e) {
       e.preventDefault();
       const date = document.getElementById('datepicker').value;
-      const selectedIds = [];
-
-      document.querySelectorAll('input.iid-date:checked').forEach(function(cb) {
-        const ids = cb.dataset.iids ? cb.dataset.iids.split(',') : [cb.value];
-        ids.forEach(function(id) {
-          id = String(id).trim();
-          if (id && !selectedIds.includes(id)) selectedIds.push(id);
-        });
-      });
-
-      const id = selectedIds.length ? selectedIds.join(',') : document.getElementById('hiddenId').value;
+      const id = getSelectedInvoiceItemIds() || document.getElementById('hiddenId').value;
       const updateCount = id ? id.split(',').filter(Boolean).length : 0;
 
       if (!updateCount || !confirm('Update delivery date for ' + updateCount + ' selected item(s) to ' + date + '?')) {
@@ -292,20 +285,10 @@
 
   // Function to call and show modal with ID
   function setDate(el, id) {
-    var checked = $(".iid-date:checked");
-    if (checked.length > 0) {
-      // map values into array, join with commas
-      var values = checked.map(function() {
-        return this.dataset.iids ? this.dataset.iids : this.value;
-      }).get().join(",").split(",").map(function(value) {
-        return value.trim();
-      }).filter(function(value, index, values) {
-        return value && values.indexOf(value) === index;
-      }).join(",");
-
-      document.getElementById('hiddenId').value = values;
+    var selectedIds = getSelectedInvoiceItemIds();
+    if (selectedIds) {
+      document.getElementById('hiddenId').value = selectedIds;
     } else {
-      // fallback to the argument
       document.getElementById('hiddenId').value = id;
     }
 
@@ -313,6 +296,20 @@
     document.getElementById('datepicker').value = new Date().toISOString().slice(0, 10);
     document.getElementById('currentDeliveryDate').innerHTML = $(el).data('dd');
     dateModal.show();
+  }
+
+  function getSelectedInvoiceItemIds() {
+    const selectedIds = [];
+
+    document.querySelectorAll('.orders input.iid-date:checked').forEach(function(cb) {
+      const ids = cb.dataset.iids ? cb.dataset.iids.split(',') : [cb.value];
+      ids.forEach(function(id) {
+        id = String(id).trim();
+        if (id && !selectedIds.includes(id)) selectedIds.push(id);
+      });
+    });
+
+    return selectedIds.join(',');
   }
 
   $("#update_quantity_button").click(function() {
@@ -402,7 +399,7 @@
     // if(pendingList) $(".delivery-list").prop('checked', false);
 
     console.log('Selected IDs:', selectedCustomers, selectedProducts, pending);
-    $.post('/store/ajax/dcollect.php', {
+    $.post('/store/ajax/dcollect_pending.php', {
         customers: selectedCustomers,
         products: selectedProducts,
         order: order,

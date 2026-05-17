@@ -24,8 +24,8 @@ if (!function_exists('ensureMysqlColumn')) {
   }
 }
 
-ensureMysqlColumn("invoice_item", "collected_at", "DATETIME NULL DEFAULT NULL");
-ensureMysqlColumn("invoice_item", "collected_by", "INT NULL DEFAULT NULL");
+// ensureMysqlColumn("invoice_item", "collected_at", "DATETIME NULL DEFAULT NULL");
+// ensureMysqlColumn("invoice_item", "collected_by", "INT NULL DEFAULT NULL");
 
 if (!function_exists('elapsedIntervalLabel')) {
   function elapsedIntervalLabel($startTs, $endTs = null)

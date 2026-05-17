@@ -556,13 +556,18 @@ if (isset($post->collect)) {
 
             // Category product columns removed for mobile-only area list
             print "</tr>";
-            ?>
           </tbody>
         </table>
       </div>
     </div>
-    <div class='orders'></div>
+    <div style="padding: 8px 10px; display:flex; align-items:center; gap:10px; background:#fff; border-bottom:1px solid #e5e7eb; position:sticky; top:0; z-index:999;">
+      <label style="margin:0; font-weight:600;">
+        <input type="checkbox" id="select-all-orders"> Select all
+      </label>
+      <button type="button" class="btn btn-primary btn-sm" id="change-delivery-date">Change Delivery Date</button>
+    </div>
 
+    <div class='orders'></div>
     <?php
     $deliveryStaff = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
     ?>
@@ -734,9 +739,13 @@ if (isset($post->collect)) {
         // Form submit handler
         document.getElementById('dateForm').addEventListener('submit', function(e) {
           e.preventDefault();
-          debugger;
-          const id = document.getElementById('hiddenId').value;
           const date = document.getElementById('datepicker').value;
+          const id = getSelectedInvoiceItemIds() || document.getElementById('hiddenId').value;
+          const updateCount = id ? id.split(',').filter(Boolean).length : 0;
+
+          if (!updateCount || !confirm('Update delivery date for ' + updateCount + ' selected item(s) to ' + date + '?')) {
+            return;
+          }
 
           // You can send the data to server or handle it as needed
           console.log('ID:', id, 'Date:', date);
@@ -754,9 +763,6 @@ if (isset($post->collect)) {
               setTimeout(() => {
                 $('#pending-only').trigger('change');
               }, 1000);
-
-              // Then call the hide() method
-              myModal.hide();
             })
             .fail(() => {});
           dateModal.hide();
@@ -765,17 +771,10 @@ if (isset($post->collect)) {
 
       // Function to call and show modal with ID
       function setDate(el, id) {
-        var checked = $(".iid-date:checked");
-        debugger;
-        if (checked.length > 0) {
-          // map values into array, join with commas
-          var values = checked.map(function() {
-            return this.value;
-          }).get().join(",");
-
-          document.getElementById('hiddenId').value = values;
+        var selectedIds = getSelectedInvoiceItemIds();
+        if (selectedIds) {
+          document.getElementById('hiddenId').value = selectedIds;
         } else {
-          // fallback to the argument
           document.getElementById('hiddenId').value = id;
         }
 
@@ -783,6 +782,20 @@ if (isset($post->collect)) {
         document.getElementById('datepicker').value = ''; // Optional: clear previous value
         document.getElementById('currentDeliveryDate').innerHTML = $(el).data('dd');
         dateModal.show();
+      }
+
+      function getSelectedInvoiceItemIds() {
+        const selectedIds = [];
+
+        document.querySelectorAll('.orders input.iid-date:checked').forEach(function(cb) {
+          const ids = cb.dataset.iids ? cb.dataset.iids.split(',') : [cb.value];
+          ids.forEach(function(id) {
+            id = String(id).trim();
+            if (id && !selectedIds.includes(id)) selectedIds.push(id);
+          });
+        });
+
+        return selectedIds.join(',');
       }
 
       $("#update_quantity_button").click(function() {

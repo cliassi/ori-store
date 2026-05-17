@@ -37,11 +37,15 @@
         .modal.custom-fallback .modal-content{ border-radius: 8px; overflow: hidden; background: #ffffff; box-shadow: 0 10px 30px rgba(0,0,0,0.35);}
         .modal.custom-fallback .modal-header, .modal.custom-fallback .modal-body, .modal.custom-fallback .modal-footer{background: #ffffff;}
         .modal.custom-fallback .modal-body{ padding: 16px; }
-        body.modal-open{ overflow: hidden; }
+        body.modal-dcollect_pendingopen{ overflow: hidden; }
         td{text-align: left;}
         .modal th{background-color: rgba(120,250,70, .1) !important;}
         .modal th span{font-weight: 700;}
         .w150{width: 150px !important;}
+        td{
+            white-space: nowrap;
+            border: solid 1px #e7eaee;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -120,7 +124,7 @@ $customers = toA('customer', 'id', 'company');
 $salesmans = toA('salesman');
 
 $query = "SELECT * FROM (
-SELECT IFNULL(ii.delivery_date,i.invoice_date) dd, i.*, invoiceItems(i.id) particulars, 
+SELECT IFNULL(ii.delivery_date,i.invoice_date) dd, c.mobile, i.*, invoiceItems(i.id) particulars, 
     SUM(ii.quantity) quantity, SUM(ii.quantity*ii.price) total, SUM(ii.quantity*(ii.price-ii.cost)) profit, SUM(ii.quantity*(ii.cost)) cost FROM invoice i
   INNER JOIN invoice_item ii ON i.id=ii.invoice_id 
   INNER JOIN customer c ON c.id=i.customer_id INNER JOIN city ON c.city=city.name 
@@ -130,6 +134,16 @@ SELECT IFNULL(ii.delivery_date,i.invoice_date) dd, i.*, invoiceItems(i.id) parti
   WHERE ".($prod ? "p.id = $prod AND " : "")." ".($pv ? "pv.id = $pv AND " : "")." i.invoice_date BETWEEN '$d' AND '$t' ".($sm ? "AND i.salesman_id=$sm":"")." GROUP BY i.id) a ORDER BY id";
 
 $trans = select($query);
+
+// Pre-calculate totals for summary cards
+$totalQty = 0;
+$totalAmt = 0;
+$transData = [];
+while ($item = mysqli_fetch_object($trans)) {
+    $transData[] = $item;
+    $totalQty += $item->quantity;
+    $totalAmt += $item->total;
+}
 ?>
 
 <!-- Mobile Header -->
@@ -141,41 +155,71 @@ $trans = select($query);
         <form class="mb-4">
             <input type="hidden" name="page" value="daily_order">
             <input type="hidden" name="pm" value="<?php echo $pm; ?>">
-            <div class="flex gap-2 text-sm">
-                <input type="date" name="d" value="<?php echo $d; ?>" class="flex-1 px-2 py-1 rounded text-gray-800">
-                <span class="text-white">to</span>
-                <input type="date" name="t" value="<?php echo $t; ?>" class="flex-1 px-2 py-1 rounded text-gray-800">
-                <button type="submit" class="bg-white text-primary px-3 py-1 rounded font-semibold">Filter</button>
+            <div class="flex gap-1 text-sm items-center">
+                <input type="date" name="d" value="<?php echo $d; ?>" class="flex-1 px-1 py-0.5 rounded text-gray-800 text-xs" style="min-width: 0;">
+                <span class="text-white text-xs">to</span>
+                <input type="date" name="t" value="<?php echo $t; ?>" class="flex-1 px-1 py-0.5 rounded text-gray-800 text-xs" style="min-width: 0;">
+                <button type="submit" class="bg-white text-primary px-2 py-0.5 rounded font-semibold text-xs whitespace-nowrap">Filter</button>
             </div>
         </form>
         
         <!-- Additional Filters -->
         <div class="space-y-2 text-sm">
             <div class="flex gap-2">
-                <select name="prod" class="flex-1 px-2 py-1 rounded text-gray-800 text-xs">
+                <select name="prod" id="prodFilter" class="w-1/2 px-1 py-1 rounded text-gray-800 text-xs" style="min-width: 0;" onchange="updateVarianceFilter()">
                     <option value="">All Products</option>
                     <?php
                     $products = select('*', 'product');
+                    $productList = [];
                     while($product = mysqli_fetch_object($products)) {
+                        $productList[$product->id] = $product;
                         $selected = ($prod == $product->id) ? 'selected' : '';
                         echo "<option value='$product->id' $selected>$product->name</option>";
                     }
                     ?>
                 </select>
-            </div>
-            <div class="flex gap-2">
-                <select name="salesman" class="flex-1 px-2 py-1 rounded text-gray-800 text-xs">
-                    <option value="">All Salesmen</option>
+                <select name="pv" id="pvFilter" class="w-1/2 px-1 py-1 rounded text-gray-800 text-xs" style="min-width: 0;">
+                    <option value="">All Variances</option>
                     <?php
-                    $objs = select('distinct name, incentive', 'staff_salary', "category='Marketing'");
-                    while ($man = mysqli_fetch_object($objs)) {
-                        $selected = ($man->name == $sm) ? 'selected' : '';
-                        echo "<option value='$man->name' $selected>$man->name</option>";
+                    $variances = select('*', 'product_variance', 'visible=1', 'ORDER BY particulars');
+                    $varianceList = [];
+                    while($pv = mysqli_fetch_object($variances)) {
+                        $varianceList[$pv->id] = $pv;
+                        $selected = ($get->pv == $pv->id) ? 'selected' : '';
+                        echo "<option value='$pv->id' data-product='$pv->product_id' $selected>$pv->particulars</option>";
                     }
                     ?>
                 </select>
             </div>
         </div>
+        <script>
+        function updateVarianceFilter() {
+            const prodId = document.getElementById('prodFilter').value;
+            const pvSelect = document.getElementById('pvFilter');
+            const options = pvSelect.querySelectorAll('option');
+            
+            options.forEach(option => {
+                if (option.value === '') {
+                    option.style.display = 'block';
+                    return;
+                }
+                const productId = option.getAttribute('data-product');
+                if (!prodId || productId === prodId) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+            
+            // Reset variance selection if current selection doesn't match product
+            const selectedOption = pvSelect.options[pvSelect.selectedIndex];
+            if (selectedOption && selectedOption.value !== '' && selectedOption.getAttribute('data-product') !== prodId && prodId !== '') {
+                pvSelect.value = '';
+            }
+        }
+        // Initialize on page load
+        updateVarianceFilter();
+        </script>
     </div>
 </div>
 
@@ -185,15 +229,15 @@ $trans = select($query);
         <div class="grid grid-cols-3 gap-4 text-sm">
             <div class="text-center">
                 <div class="text-gray-600">Total Orders</div>
-                <div class="font-bold text-lg"><?php echo mysqli_num_rows($trans); ?></div>
+                <div class="font-bold text-lg"><?php echo count($transData); ?></div>
             </div>
             <div class="text-center">
                 <div class="text-gray-600">Total Quantity</div>
-                <div class="font-bold text-lg"><?php echo nf0(sum('quantity')); ?></div>
+                <div class="font-bold text-lg"><?php echo nf0($totalQty); ?></div>
             </div>
             <div class="text-center">
                 <div class="text-gray-600">Total Amount</div>
-                <div class="font-bold text-lg"><?php echo nf(sum('total')); ?></div>
+                <div class="font-bold text-lg"><?php echo nf($totalAmt); ?></div>
             </div>
         </div>
     </div>
@@ -221,12 +265,14 @@ $trans = select($query);
                     <tbody>
                         <?php
                         $i = 1;
-                        while ($item = mysqli_fetch_object($trans)) {
+                        foreach ($transData as $item) {
                             echo "<tr class='border-b'>";
                             echo "<td class='px-2 py-1'>$i</td>";
                             echo "<td class='px-2 py-1'>".df($item->invoice_date)."<br>".df($item->dd)."</td>";
                             echo "<td class='px-2 py-1'>INV".zerofill($item->id, 5)."</td>";
-                            echo "<td class='px-2 py-1'><a href='/store/customer/details/$item->customer_id' class='text-blue-600'>".$customers[$item->customer_id]."</a></td>";
+                            echo "<td class='px-2 py-1'>
+                            <a href='https://wa.me/{$item->mobile}' target='_blank' style='margin-right: 5px; display: inline-block'><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640' style='width:18px; height:18px;'><path fill='rgb(34, 181, 94)' d='M476.9 161.1C435 119.1 379.2 96 319.9 96C197.5 96 97.9 195.6 97.9 318C97.9 357.1 108.1 395.3 127.5 429L96 544L213.7 513.1C246.1 530.8 282.6 540.1 319.8 540.1L319.9 540.1C442.2 540.1 544 440.5 544 318.1C544 258.8 518.8 203.1 476.9 161.1zM319.9 502.7C286.7 502.7 254.2 493.8 225.9 477L219.2 473L149.4 491.3L168 423.2L163.6 416.2C145.1 386.8 135.4 352.9 135.4 318C135.4 216.3 218.2 133.5 320 133.5C369.3 133.5 415.6 152.7 450.4 187.6C485.2 222.5 506.6 268.8 506.5 318.1C506.5 419.9 421.6 502.7 319.9 502.7zM421.1 364.5C415.6 361.7 388.3 348.3 383.2 346.5C378.1 344.6 374.4 343.7 370.7 349.3C367 354.9 356.4 367.3 353.1 371.1C349.9 374.8 346.6 375.3 341.1 372.5C308.5 356.2 287.1 343.4 265.6 306.5C259.9 296.7 271.3 297.4 281.9 276.2C283.7 272.5 282.8 269.3 281.4 266.5C280 263.7 268.9 236.4 264.3 225.3C259.8 214.5 255.2 216 251.8 215.8C248.6 215.6 244.9 215.6 241.2 215.6C237.5 215.6 231.5 217 226.4 222.5C221.3 228.1 207 241.5 207 268.8C207 296.1 226.9 322.5 229.6 326.2C232.4 329.9 268.7 385.9 324.4 410C359.6 425.2 373.4 426.5 391 423.9C401.7 422.3 423.8 410.5 428.4 397.5C433 384.5 433 373.4 431.6 371.1C430.3 368.6 426.6 367.2 421.1 364.5z'/></svg></a>
+                            <a href='/store/customer/details/$item->customer_id' class='text-blue-600'>".$customers[$item->customer_id]."</a></td>";
                             echo "<td class='px-2 py-1 text-xs'>$item->particulars</td>";
                             echo "<td class='px-2 py-1 text-right'>".nf0($item->quantity)."</td>";
                             echo "<td class='px-2 py-1 text-right'>".nf($item->total)."</td>";
@@ -241,17 +287,14 @@ $trans = select($query);
                             echo "<td class='px-2 py-1 text-center text-xs'>$item->salesman</td>";
                             echo "</tr>";
                             
-                            sum('total',$item->total);
-                            sum('quantity',$item->quantity);
-                            sum('profit',$item->profit);
                             $i++;
                         }
                         ?>
                         
                         <tr class="bg-gray-100 font-semibold">
                             <td colspan="5" class="px-2 py-2">TOTAL</td>
-                            <td class="px-2 py-2 text-right"><?php echo nf0(sum('quantity')); ?></td>
-                            <td class="px-2 py-2 text-right"><?php echo nf(sum('total')); ?></td>
+                            <td class="px-2 py-2 text-right"><?php echo nf0($totalQty); ?></td>
+                            <td class="px-2 py-2 text-right"><?php echo nf($totalAmt); ?></td>
                             <td colspan="2" class="px-2 py-2"></td>
                         </tr>
                     </tbody>
