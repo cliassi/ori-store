@@ -467,13 +467,15 @@ function getAccountsWithChild($select = '', $parent = 0, $depth = 0, $group = fa
 function invest($data = [])
 {
     $post = (object) $data;
-    $id = (int) ($post->investment_id ?? 0);
+    $id = (int) (isset($post->investment_id) ? $post->investment_id : 0);
+
     $bean = $id > 0 ? R::load('investment', $id) : R::dispense('investment');
-    $bean->amount = (float) ($post->amount ?? 0);
-    $bean->particulars = (string) ($post->particulars ?? '');
-    $bean->payment_method = (string) ($post->payment_method ?? 'Bank');
-    $bean->status = (string) ($post->status ?? 'Pending');
-    $bean->date = (string) ($post->date ?? today());
+    $bean->amount = (float) (isset($post->amount) ? $post->amount : 0);
+    $bean->particulars = (string) (isset($post->particulars) ? $post->particulars : '');
+    $bean->payment_method = (string) (isset($post->payment_method) ? $post->payment_method : 'Bank');
+    $bean->status = (string) (isset($post->status) ? $post->status : 'Pending');
+    $bean->date = (string) (isset($post->date) ? $post->date : today());
+
     $bean->trans_type = 'Invset';
     if (isset($post->payment_id)) {
         $bean->payment_id = $post->payment_id;

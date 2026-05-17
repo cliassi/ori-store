@@ -80,9 +80,9 @@ if (isset($post->is_investment) && $post->is_investment == '1') {
 		$object->amount,
 		$object->particulars,
 		$object->payment_method,
-		(int) ($object->investment_id ?? 0)
+		(int) (isset($object->investment_id) ? $object->investment_id : 0)
 	);
-	if ($investmentId > 0 && (int) ($object->investment_id ?? 0) !== $investmentId) {
+	if ($investmentId > 0 && (int) (isset($object->investment_id) ? $object->investment_id : 0) !== $investmentId) {
 		$object->investment_id = $investmentId;
 		R::store($object);
 	}

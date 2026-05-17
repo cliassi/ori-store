@@ -27,14 +27,15 @@ if (isset($get->restore) && (int) $get->restore > 0) {
 
 // Save action (add/edit)
 if (isset($post->save_investment)) {
-    $id = (int) ($post->investment_id ?? 0);
+    $id = (int) (isset($post->investment_id) ? $post->investment_id : 0);
+
     $bean = $id > 0 ? R::load('investment', $id) : R::dispense('investment');
 
     if ($bean) {
-        $bean->amount = (float) ($post->amount ?? 0);
-        $bean->particulars = (string) ($post->particulars ?? '');
-        $bean->payment_method = (string) ($post->payment_method ?? 'Bank');
-        $bean->date = (string) ($post->date ?? today());
+        $bean->amount = (float) (isset($post->amount) ? $post->amount : 0);
+        $bean->particulars = (string) (isset($post->particulars) ? $post->particulars : '');
+        $bean->payment_method = (string) (isset($post->payment_method) ? $post->payment_method : 'Bank');
+        $bean->date = (string) (isset($post->date) ? $post->date : today());
 
         if ($id == 0) {
             // New record
@@ -74,8 +75,8 @@ $investments = R::getAll("SELECT i.*,
 $cashBalance = 0;
 $bankBalance = 0;
 foreach ($investments as &$inv) {
-    $amount = (float) ($inv['amount'] ?? 0);
-    $inv['payment_method'] = $inv['payment_method'] ?? 'Bank';
+    $amount = (float) (isset($inv['amount']) ? $inv['amount'] : 0);
+    $inv['payment_method'] = isset($inv['payment_method']) ? $inv['payment_method'] : 'Bank';
 
     if (empty($inv['trash'])) {
         if ($inv['payment_method'] == 'Cash') {
@@ -203,7 +204,7 @@ unset($inv);
                                     <?php echo $inv['date'] ? df($inv['date']) : ''; ?>
                                 </td>
                                 <td class="bg-slate">
-                                    <?php echo htmlspecialchars($inv['particulars'] ?? ''); ?>
+                                    <?php echo htmlspecialchars(isset($inv['particulars']) ? $inv['particulars'] : ''); ?>
                                 </td>
                                 <td class="bg-cash amount-cell">
                                     <?php echo ($inv['payment_method'] == 'Cash' && (float) $inv['amount'] > 0) ? nf($inv['amount']) : ''; ?>
@@ -218,7 +219,7 @@ unset($inv);
                                         <?php echo nf($inv['bank_balance']); ?>
                                     </strong></td>
                                 <td class="bg-slate">
-                                    <?php echo $inv['created_by_name'] ?? 'System'; ?>
+                                    <?php echo isset($inv['created_by_name']) ? $inv['created_by_name'] : 'System'; ?>
                                 </td>
                                 <td class="bg-slate">
                                     <?php echo $inv['created_at'] ? date('d/m/Y H:i', strtotime($inv['created_at'])) : '-'; ?>
