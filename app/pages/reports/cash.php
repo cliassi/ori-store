@@ -212,6 +212,20 @@ if(isset($post->cash_edit_save)){
 				}
 				R::store($bean);
 			}
+		} elseif($editSource === 'investment') {
+			$bean = R::load('investment', $editId);
+			if($bean && $bean->id) {
+				if(!empty($editDate)) {
+					$bean->date = $editDate;
+				}
+				if(!empty($editParticulars)) {
+					$bean->particulars = $editParticulars;
+				}
+				if($editAmount > 0) {
+					$bean->amount = $editAmount;
+				}
+				R::store($bean);
+			}
 		}
 	}
 	redir($cashRedirectUrl);
@@ -308,6 +322,19 @@ if(isset($post->save_bank_deposit)){
 	redir("?");
 }
 
+
+if(isset($post->save_investment)){
+	$investment = R::dispense("investment");
+	$investment->date = isset($post->date) ? $post->date : today();
+	$investment->particulars = $post->particulars;
+	$investment->amount = $post->amount;
+	$investment->payment_method = isset($post->payment_method) ? $post->payment_method : 'Bank';
+	$investment->created_by = uid();
+	$investment->created_at = now();
+	$investment->trash = 0;
+	R::store($investment);
+	redir("?d=$d&t=$t");
+}
 
 if(isset($post->withdraw)){
 	// dd($post);
@@ -473,6 +500,7 @@ if(isset($get->cw)){
 	print "</div>";
 	print "<div class='col-md-5'>";
 	if(isUserIn(['superadmin','amla','orange', 'parvez'])){
+		print "<a data-bs-toggle='modal' data-bs-target='.invest' class='btn btn-warning'>Asset Invest</a>".space(5);
 		print "<a data-bs-toggle='modal' data-bs-target='.withdraw' class='btn btn-primary'>Cash Withdraw</a>".space(5);
  	} 
 	if(isUserIn(['superadmin','amla','orange', 'parvez'])){
@@ -565,6 +593,8 @@ if(isset($get->cw)){
 			SELECT '' se, 'payment_cash' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Cash'
 			UNION
 			SELECT '' se, 'payment_bank' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Bank'
+			UNION
+			SELECT payment_method se, 'investment' source, id, amount, `date`, created_at entry_time, created_by entry_by, particulars, '' `status`, '' ref, '' done_by, '' done_time, 0 checked FROM investment WHERE COALESCE(trash,0)=0 AND date BETWEEN '$d' AND '$t'
 		) t ORDER BY date");
 
 // print "SELECT 'hotel_statement_worker_payment' source, p.id, p.amount, p.date, p.entry_time, CONCAT('<u>', h.name, '</u> er staff <u>', w.name, '</u>, ', DATE_FORMAT(CONCAT(s.month,'-01'), '%b %Y'), ' maser salary ', p.particulars), IFNULL(p.approved_by, 'Pending') status, '' ref FROM `hotel_statement_worker_payment` p, `hotel_statement_worker` w, `hotel_statement` s, `hotel` h WHERE p.worker=w.id AND w.statement=s.id AND s.hotel=h.id AND p.date>'$hotel_start_date' AND (p.date BETWEEN '$d' AND '$t') AND (p.particulars LIKE 'Petty Cash theke%' OR p.particulars LIKE 'Me2 te%')";
@@ -673,6 +703,8 @@ print "<form method='post'>";
 			sum('bank', 0 - $tr->amount);
 		} elseif($tr->source == 'cw_cash_withdraw'){
 			$total -= abs($tr->amount);
+		} elseif($tr->source == 'investment'){
+			$total += $tr->amount;
 		} else{
 			$total -= $tr->amount;
 		}
@@ -730,7 +762,9 @@ print "<form method='post'>";
 		$i++;
 	}
 
-	print "<tr><th colspan='3'></th><th class='right'>".nf($cashInTotal)."</th><th class='right'>".nf($cashOutTotal)."</th><th class='right'>".nf($total)."</th><th></th><th class='right'>".nf($bankInTotal)."</th><th class='right'>".nf($bankOutTotal)."</th><th class='right'>".nf(sum('bank'))."</th><th></th>".(uid()==1?"<th></th>":"")."</tr>";
+	$investment_period_total = getSum("investment", "amount", "date BETWEEN '$d' AND '$t' AND trash=0");
+
+	print "<tr><th colspan='3' class='text-right'>Total Investment</th><th class='right text-danger' colspan='2'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>".nf($cashInTotal)."</th><th class='right'>".nf($cashOutTotal)."</th><th class='right'>".nf($total)."</th><th></th><th class='right'>".nf($bankInTotal)."</th><th class='right'>".nf($bankOutTotal)."</th><th class='right'>".nf(sum('bank'))."</th><th></th>".(uid()==1?"<th></th>":"")."</tr>";
 
 	if(uid() == 1){
 		print "<tr><td colspan='13' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";
@@ -1135,6 +1169,38 @@ closeForm();
 	      </div>
 	    </form>
 	    </div><!-- /.modal-content -->
+ 	</div><!-- /.modal-dialog -->
+	</div>
+
+	<div class="modal fade invest" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+	  <div class="modal-dialog modal-md" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+	        <h4 class="modal-title">Asset Investment</h4>
+	      </div>
+	      <form method="post">
+	      <div class="modal-body">
+	        <table class="table table-bordered">
+	        	<tr><th>Date</th><th><?php print ds('date'); ?></th></tr>
+	        	<tr><th>Amount</th><th><input type='number' class='form-control' required name='amount' id="invest-amount" min="1" ></th></tr>
+	        	<tr><th>Particulars</th><th>
+	        		<textarea class='form-control' id='invest_particulars' required name='particulars'></textarea>
+	        	</th></tr>
+	        	<tr><th>Payment Method</th><th>
+	        		<select class='form-control' name='payment_method' id='invest_payment_method'>
+	        			<option value='Bank'>Bank</option>
+	        			<option value='Cash'>Cash</option>
+	        		</select>
+	        	</th></tr>
+	        </table>
+	      </div>
+	      <div class="modal-footer">
+	        <button class="btn btn-primary" type="submit" name="save_investment">Save</button>
+	        <button type="button" data-bs-dismiss="modal" aria-label="Close" class="btn btn-default" data-bs-dismiss="modal">Close</button>
+	      </div>
+	    </form>
+	    </div><!-- /.modal-content -->
 	  </div><!-- /.modal-dialog -->
 	</div>
 
@@ -1275,6 +1341,12 @@ closeForm();
 				title = 'Bank & Cash Handover';
 				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
 				html += '<div class="mb-3"><label class="form-label">Cash Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				break;
+			case 'investment':
+				title = 'Investment';
+				html = '<div class="mb-3"><label class="form-label">Date</label><input type="date" class="form-control" name="cash_edit_date" value="' + date + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-control" name="cash_edit_amount" value="' + amount + '" required></div>';
+				html += '<div class="mb-3"><label class="form-label">Particulars</label><textarea class="form-control" name="cash_edit_particulars" rows="3" required>' + particulars + '</textarea></div>';
 				break;
 		}
 		
