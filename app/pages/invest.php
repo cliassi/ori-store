@@ -69,7 +69,7 @@ $investments = R::getAll("SELECT i.*,
     LEFT JOIN sys_user u2 ON i.updated_by = u2.id
     LEFT JOIN sys_user u3 ON i.deleted_by = u3.id
     WHERE i.date BETWEEN ? AND ?
-    ORDER BY i.date DESC, i.created_at DESC" . $investmentLimitSql, [$fromDate, $toDate]);
+    ORDER BY i.date ASC, i.created_at ASC" . $investmentLimitSql, [$fromDate, $toDate]);
 
 // Calculate running totals separately for Cash and Bank
 $cashBalance = 0;
