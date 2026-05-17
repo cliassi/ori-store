@@ -565,7 +565,7 @@
 		}
 		return nn($return)?substr($return, 0, -strlen($separator)):$return;
 	}
-	function fn($fname, $mname = '', $lname ='', $op1 ='', $op2 =''){ //format name
+	function format_name($fname, $mname = '', $lname ='', $op1 ='', $op2 =''){ //format name
 		$name = $fname;
 		if($mname <> ""){
 			$name .= " $mname";

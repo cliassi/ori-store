@@ -804,7 +804,7 @@ if (isset($get->copy) && $get->copy > 0) {
 // ─────────────────────────────────────────────────────────────
 if (isset($get->cw)) {
 	$company = R::load("cw_company", $get->cw);
-	print "<h3><strong>Factory</strong> Petty Cash Report</h3>";
+	print "<h3><strong>Store</strong> Petty Cash Report</h3>";
 	$d = isset($get->d) && !empty($get->d) ? $get->d : subDay(10);
 	$t = isset($get->t) && !empty($get->t) ? $get->t : today();
 
@@ -995,6 +995,13 @@ if (isset($get->cw)) {
 		} elseif ((string) $tr->source === 'cw_payment') {
 			// treat bank collection summary as bank in
 			$bankIn = (float) $amount;
+		} elseif ((string) $tr->source === 'investment') {
+			if (strtolower((string) $tr->se) === 'cash') {
+				$cashIn = (float) $amount;
+			} else {
+				$bankIn = (float) $amount;
+			}
+			$typeText = 'Investment';
 		}
 
 		$cashBalance += ($cashIn - $cashOut);

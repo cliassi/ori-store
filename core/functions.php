@@ -52,11 +52,12 @@ if (!function_exists('ensureMysqlColumn')) {
 }
 
 
-function notifyUsers($message, $title = "ORI : Customer Order"){
+function notifyUsers($message, $title = "ORI : Customer Order")
+{
     $users = R::find('sys_user', 'order_notification=1');
-    foreach($users as $user){
+    foreach ($users as $user) {
         $sub = R::findOne("push_client", "`type`='a' AND id=$user->id");
-        if($sub){
+        if ($sub) {
             sendPush($sub->uuid, $message, $title);
         }
     }
@@ -65,9 +66,9 @@ function notifyUsers($message, $title = "ORI : Customer Order"){
 function sendPush($tag, $message, $title = "ORI : Customer Order")
 {
     $payload = [
-        'tag' => (string)$tag,
-        'message' => (string)$message,
-        'title' => (string)$title,
+        'tag' => (string) $tag,
+        'message' => (string) $message,
+        'title' => (string) $title,
     ];
 
     $url = 'http://localhost:88';
@@ -94,7 +95,7 @@ function sendPush($tag, $message, $title = "ORI : Customer Order")
         return false;
     }
 
-    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     $logLine = $logPrefix
@@ -110,7 +111,8 @@ function sendPush($tag, $message, $title = "ORI : Customer Order")
 }
 
 
-function convertPdfToImages(string $pdfFilename, string $outputName){
+function convertPdfToImages(string $pdfFilename, string $outputName)
+{
     $pdfPath = __DIR__ . '/' . $pdfFilename;
     $outputBase = __DIR__ . '/' . $outputName;
     $pdftoppm = 'C:\\poppler\\Library\\bin\\pdftoppm.exe'; // Use your actual path
@@ -137,9 +139,10 @@ function convertPdfToImages(string $pdfFilename, string $outputName){
 
 
 
-function accountEntry($accountid, $particulars, $amount, $type, $data = []){
+function accountEntry($accountid, $particulars, $amount, $type, $data = [])
+{
     global $branch_id;
-    $data = (object)$data;
+    $data = (object) $data;
     $entry = R::dispense("expense_account_entry");
     $accountpath = $accountid ? getFieldValue("expense_account", "path", "id=$accountid") : '';
     $entry->accountid = $accountid;
@@ -147,15 +150,24 @@ function accountEntry($accountid, $particulars, $amount, $type, $data = []){
     $entry->branch_id = $branch_id;
     $entry->particulars = $particulars;
     $entry->tran_type = $type;
-    if(isset($data->remarks)) $entry->remarks = $data->remarks;
-    if(isset($data->entry_type)) $entry->entry_type = $data->entry_type;
-    if(isset($data->entry_id)) $entry->entry_id = $data->entry_id;
-    if(isset($data->url)) $entry->url = $data->url;
-    if(isset($data->month)) $entry->month = $data->month;
-    if(isset($data->hotel)) $entry->hotel = $data->hotel;
-    if(isset($data->bank) && nn($data->bank)) $entry->bank = $data->bank;
-    if(isset($data->expense_date)) $entry->expense_date = $data->expense_date;
-    if(isset($data->payment_method)) $entry->payment_method = $data->payment_method;
+    if (isset($data->remarks))
+        $entry->remarks = $data->remarks;
+    if (isset($data->entry_type))
+        $entry->entry_type = $data->entry_type;
+    if (isset($data->entry_id))
+        $entry->entry_id = $data->entry_id;
+    if (isset($data->url))
+        $entry->url = $data->url;
+    if (isset($data->month))
+        $entry->month = $data->month;
+    if (isset($data->hotel))
+        $entry->hotel = $data->hotel;
+    if (isset($data->bank) && nn($data->bank))
+        $entry->bank = $data->bank;
+    if (isset($data->expense_date))
+        $entry->expense_date = $data->expense_date;
+    if (isset($data->payment_method))
+        $entry->payment_method = $data->payment_method;
     $entry->entry_by = uid();
     $entry->entry_time = now();
     $entry->accountpath = $accountpath;
@@ -202,8 +214,9 @@ function deleteLink($id, $print = false)
 // {
 //     return PAGE . "/$link";
 // }
-function banner(){
-    
+function banner()
+{
+
 }
 function p_image($section, $default = '', $options = [])
 {
@@ -281,7 +294,7 @@ function ext2($filename)
 */
 
 //form-floating mb-0
-function buildForm($formItems = [], $_class='form-group')
+function buildForm($formItems = [], $_class = 'form-group')
 {
     $form = "";
     foreach ($formItems as $key => $fi) {
@@ -307,18 +320,18 @@ function buildForm($formItems = [], $_class='form-group')
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
                     ";
-                    $form .= "<select name='$key' id='$key' class='form-control'{$required}>";
+            $form .= "<select name='$key' id='$key' class='form-control'{$required}>";
             if (isset($fi['table'])) {
                 $valueField = isset($fi['valueField']) ? $fi['valueField'] : 'id';
                 $textField = isset($fi['textField']) ? $fi['textField'] : 'name';
                 $filter = isset($fi['filter']) ? $fi['filter'] : '';
-                if($filter){
+                if ($filter) {
                     $opts = R::find($fi['table'], $filter);
-                } else{
+                } else {
                     $opts = R::find($fi['table']);
                 }
                 foreach ($opts as $key => $op) {
-                    $form .= "<option value='". $op->$valueField . "'";
+                    $form .= "<option value='" . $op->$valueField . "'";
                     if ($fi['value'] == $op->$valueField) {
                         $form .= " selected ";
                     }
@@ -349,24 +362,27 @@ function buildForm($formItems = [], $_class='form-group')
             </div>";
         } elseif ($fi['type'] == 'buttons') {
             $form .= "<div class='col-{$fi['col']}'>";
-            foreach($fi['options'] as $opt) $form .=  "<button class='$class' type='button'>{$opt}</button>";
+            foreach ($fi['options'] as $opt)
+                $form .= "<button class='$class' type='button'>{$opt}</button>";
             $form .= "</div>";
         } elseif ($fi['type'] == 'radios') {
             $form .= "<div class='col-{$fi['col']}'>";
-            foreach($fi['options'] as $opt) $form .=  "<div class='radio-label'><input name='$key' class='$class' type='radio' value='$opt'{$required}><span>{$opt}</span></div>";
+            foreach ($fi['options'] as $opt)
+                $form .= "<div class='radio-label'><input name='$key' class='$class' type='radio' value='$opt'{$required}><span>{$opt}</span></div>";
             $form .= "</div>";
         } elseif ($fi['type'] == 'radio') {
             $form .= "<div class='col-{$fi['col']}'>";
-            foreach($fi['options'] as $opt) $form .=  "<input name='$key' class='$class' type='radio' value='$opt'{$required}>{$opt}".space(3);
+            foreach ($fi['options'] as $opt)
+                $form .= "<input name='$key' class='$class' type='radio' value='$opt'{$required}>{$opt}" . space(3);
             $form .= "</div>";
         } elseif ($fi['type'] == 'date2') {
             $form .= "<div class='col-{$fi['col']}'>
                 <label for='$key'>{$fi['label']}</label><br>
-                ".dateSelector($key)."
+                " . dateSelector($key) . "
             </div>";
-        } elseif($fi['type'] == 'html'){
+        } elseif ($fi['type'] == 'html') {
             $form .= "<div class='col-{$fi['col']}'>{$fi['html']}</div>";
-        } else{
+        } else {
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
@@ -387,33 +403,40 @@ function nf2($number, $decimals = 2)
     }
     return number_format($number, $decimals);
 }
-function dp($name='date', $date = false, $min = false){
-    return "<input type='date' name='$name' class='form-control form-control-fluid dp w120' value='$date' ".($min? "min='$min'":"").">";
+function dp($name = 'date', $date = false, $min = false)
+{
+    return "<input type='date' name='$name' class='form-control form-control-fluid dp w120' value='$date' " . ($min ? "min='$min'" : "") . ">";
 }
-function mf($month){
+function mf($month)
+{
     return date("M Y", strtotime("{$month}-01"));
 }
 
-function dp2($name='date', $date = false){
+function dp2($name = 'date', $date = false)
+{
     return "<input type='date' name='$name' class='datepicker form-control form-control-fluid' value='$date'>";
 }
 
-function isUserIn($users = []){//return true;
-    if(uid() == 1) return true;
+function isUserIn($users = [])
+{//return true;
+    if (uid() == 1)
+        return true;
     return in_array(strtolower(username()), $users);
     // return in_array('lemon', $users);
 }
 
-function isUserIn2($users = []){
+function isUserIn2($users = [])
+{
     return in_array(username(), $users);
     // return in_array('lemon', $users);
 }
 
 
-function getAccountsWithChild($select = '', $parent = 0, $depth = 0, $group = false, $account_selection_only = false) {
-    if(!$parent){
+function getAccountsWithChild($select = '', $parent = 0, $depth = 0, $group = false, $account_selection_only = false)
+{
+    if (!$parent) {
         $filter = "parent IS NULL";
-    } else{
+    } else {
         $filter = "parent = $parent";
     }
     $options = "";
@@ -428,9 +451,9 @@ function getAccountsWithChild($select = '', $parent = 0, $depth = 0, $group = fa
                 if ($select == $category->id) {
                     $options .= " selected";
                 }
-                if($account_selection_only){
-                    if($category->has_child){
-                        $options .= " disabled";        
+                if ($account_selection_only) {
+                    if ($category->has_child) {
+                        $options .= " disabled";
                     }
                 }
                 $options .= ">" . space($depth * 3) . "$category->name</option>" . $subOptions;
@@ -438,4 +461,91 @@ function getAccountsWithChild($select = '', $parent = 0, $depth = 0, $group = fa
         }
     }
     return $options;
+}
+
+
+function invest($data = [])
+{
+    $post = (object) $data;
+    $id = (int) ($post->investment_id ?? 0);
+    $bean = $id > 0 ? R::load('investment', $id) : R::dispense('investment');
+    $bean->amount = (float) ($post->amount ?? 0);
+    $bean->particulars = (string) ($post->particulars ?? '');
+    $bean->payment_method = (string) ($post->payment_method ?? 'Bank');
+    $bean->status = (string) ($post->status ?? 'Pending');
+    $bean->date = (string) ($post->date ?? today());
+    $bean->trans_type = 'Invset';
+    if (isset($post->payment_id)) {
+        $bean->payment_id = $post->payment_id;
+    }
+    if (isset($post->expense_entry_id)) {
+        $bean->expense_entry_id = $post->expense_entry_id;
+    }
+
+    if ($id == 0) {
+        // New record
+        $bean->created_by = uid();
+        $bean->created_at = now();
+        $bean->trash = 0;
+    } else {
+        // Update record
+        $bean->updated_by = uid();
+        $bean->updated_at = now();
+    }
+
+    R::store($bean);
+    return $bean->id;
+}
+
+/**
+ * Calculate Petty Cash and Bank Balance as of a specific date
+ * Used by both dashboard and cash report to ensure consistency
+ * 
+ * @param string $date Date in Y-m-d format (balance will be calculated for records BEFORE this date)
+ * @param int $companyId Company ID for filtering
+ * @return object Object with cash_balance and bank_balance properties
+ */
+if (!function_exists('calculatePettyCashBalance')) {
+    function calculatePettyCashBalance($date, $companyId = null)
+    {
+        // Sanitize date
+        $date = preg_replace('/[^0-9-]/', '', $date);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $date = date('Y-m-d');
+        }
+
+        $companyId = intval($companyId);
+        $companyFilter = $companyId > 0 ? " AND company=$companyId" : "";
+
+        // Cash components
+        $cw_cash = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM cw_cash WHERE date<'$date'$companyFilter");
+        $handover_cash = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM bd_handover WHERE date<'$date'$companyFilter");
+        $withdraw = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM cw_cash_withdraw WHERE date<'$date'$companyFilter");
+        $expense_cash = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM expense_account_entry WHERE payment_method='Cash' AND tran_type='Debit' AND COALESCE(expense_date, DATE(entry_time))<'$date'");
+
+        // Bank components
+        $cw_bank = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM cw_bank WHERE date<'$date'$companyFilter");
+        $handover_bank = (float) R::getCell("SELECT COALESCE(SUM(bank_amount), 0) FROM bd_handover WHERE date<'$date'$companyFilter");
+        $cw_payment = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM cw_payment WHERE amount>0 AND particulars NOT LIKE '%cash%' AND date<'$date'$companyFilter");
+        $expense_bank = (float) R::getCell("SELECT COALESCE(SUM(amount), 0) FROM expense_account_entry WHERE payment_method<>'Cash' AND tran_type='Debit' AND COALESCE(expense_date, DATE(entry_time))<'$date'");
+
+        $cash_balance = $cw_cash + $handover_cash - $withdraw - $expense_cash;
+        $bank_balance = $cw_bank + $handover_bank + $cw_payment - $expense_bank;
+
+        return (object) [
+            'cash_balance' => $cash_balance,
+            'bank_balance' => $bank_balance,
+            // Components for debugging
+            'components' => (object) [
+                'cw_cash' => $cw_cash,
+                'handover_cash' => $handover_cash,
+                'withdraw' => $withdraw,
+                'expense_cash' => $expense_cash,
+                'cw_bank' => $cw_bank,
+                'handover_bank' => $handover_bank,
+                'cw_payment' => $cw_payment,
+                'expense_bank' => $expense_bank
+            ]
+        ];
+    }
 }
