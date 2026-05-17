@@ -266,58 +266,148 @@ unset($inv);
 
 <!-- Add/Edit Modal -->
 <div class="modal fade" id="investmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="post">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Add Investment</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Investment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="investmentForm">
                     <input type="hidden" name="investment_id" id="investment_id" value="0">
-
-                    <div class="mb-3">
-                        <label class="form-label">Date</label>
-                        <input type="date" class="form-control" name="date" id="date" value="<?php echo today(); ?>"
-                            required>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" id="date" value="<?php echo today(); ?>"
+                                required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Amount</label>
+                            <input type="number" step="0.01" class="form-control" name="amount" id="amount" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Quick Amount</label><br>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">100</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">200</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">300</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">500</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">1000</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">1500</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">5000</button>
+                            <button type="button" class="btn btn-success btn-amount me-1 mb-1">10000</button>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Payment Method</label><br>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input payment_method" type="radio" name="payment_method"
+                                    id="pm_cash" value="Cash" required>
+                                <label class="form-check-label" for="pm_cash">Cash</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input payment_method" type="radio" name="payment_method"
+                                    id="pm_bank" value="Bank">
+                                <label class="form-check-label" for="pm_bank">Bank</label>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Source Template</label><br>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note1"
+                                    value="Madam er may bank account theke investment kora hoyese Rm :">
+                                <label class="form-check-label" for="note1">Madam er may bank account theke investment
+                                    kora hoyese Rm :</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note2"
+                                    value="Neat & Clean may bank account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note2">Neat & Clean may bank account theke
+                                    investment kora hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note3"
+                                    value="Neat & Clean RHB bank account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note3">Neat & Clean RHB bank account theke
+                                    investment kora hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note4"
+                                    value="Ddcon may bank account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note4">Ddcon may bank account theke investment kora
+                                    hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note5"
+                                    value="Bdcon may bank account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note5">Bdcon may bank account theke investment kora
+                                    hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note6"
+                                    value="BdpZone May Bank Account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note6">BdpZone May Bank Account theke investment
+                                    kora hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note7"
+                                    value="Ekawin may bank account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note7">Ekawin may bank account theke investment
+                                    kora hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note8"
+                                    value="Khandaker Tajul may bank account theke investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note8">Khandaker Tajul may bank account theke
+                                    investment kora hoyese Rm:</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input notes" type="radio" name="note_template" id="note9"
+                                    value="Petty Cash theke Investment kora hoyese Rm:">
+                                <label class="form-check-label" for="note9">Petty Cash theke Investment kora hoyese
+                                    Rm:</label>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Particulars</label>
+                            <textarea class="form-control" name="particulars" id="particulars" rows="3"
+                                required></textarea>
+                        </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Amount</label>
-                        <input type="number" step="0.01" class="form-control" name="amount" id="amount" required>
+                    <div class="d-grid gap-2 mt-3">
+                        <button class="btn btn-primary" name="save_investment" type="submit">Save Investment</button>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Particulars</label>
-                        <textarea class="form-control" name="particulars" id="particulars" rows="3" required></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Payment Method</label>
-                        <select class="form-control" name="payment_method" id="payment_method">
-                            <option value="Bank">Bank</option>
-                            <option value="Cash">Cash</option>
-                        </select>
-                    </div>
-
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" name="save_investment">Save</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    $(".btn-amount").click(function () {
+        $("#amount").val($(this).text());
+        setParticulars();
+    });
+    $(".notes").click(setParticulars);
+
+    function setParticulars() {
+        const notes = $('input[type="radio"].notes:checked').val().trim();
+        const amount = $("#amount").val();
+
+        if (notes.toLowerCase().includes('bank') || notes.toLowerCase().includes('rhb') || notes.toLowerCase().includes('may bank')) {
+            $('#pm_bank').prop('checked', true);
+        } else {
+            $('#pm_cash').prop('checked', true);
+        }
+        $("#particulars").val(notes + amount);
+    }
+
     function resetForm() {
         document.getElementById('investment_id').value = '0';
         document.getElementById('date').value = '<?php echo today(); ?>';
         document.getElementById('amount').value = '';
         document.getElementById('particulars').value = '';
-        document.getElementById('payment_method').value = 'Bank';
         document.getElementById('modalTitle').textContent = 'Add Investment';
+        $('input[name="note_template"]').prop('checked', false);
+        $('input[name="payment_method"]').prop('checked', false);
     }
 
     function editInvestment(data) {
@@ -325,10 +415,29 @@ unset($inv);
         document.getElementById('date').value = data.date;
         document.getElementById('amount').value = data.amount;
         document.getElementById('particulars').value = data.particulars || '';
-        document.getElementById('payment_method').value = data.payment_method || 'Bank';
         document.getElementById('modalTitle').textContent = 'Edit Investment';
+
+        var pm = data.payment_method || 'Bank';
+        if (pm === 'Cash') {
+            $('#pm_cash').prop('checked', true);
+        } else {
+            $('#pm_bank').prop('checked', true);
+        }
 
         var modal = new bootstrap.Modal(document.getElementById('investmentModal'));
         modal.show();
     }
+
+    $("form").on("submit", function (e) {
+        const paymentMethodChecked = $('input[name="payment_method"]:checked').length > 0;
+
+        if (!paymentMethodChecked) {
+            e.preventDefault();
+            // Swal.fire({
+            //     icon: 'error',
+            //     html: '⚠️ Please select Payment Method'
+            // });
+            return false;
+        }
+    });
 </script>
