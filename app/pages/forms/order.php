@@ -251,7 +251,7 @@ $lorries = R::find('lorry', '1 ORDER BY id DESC');
                   </select>
                 </div>
                 <div class="col-2">
-                  <label class="form-label">Confirm Date</label>
+                  <label class="form-label">Order Date</label>
                   <input type="date" class="form-select" name="confirm_date" required>
                 </div>
                 <!-- <div class="col-2">

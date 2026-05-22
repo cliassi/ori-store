@@ -1,6 +1,11 @@
 <style type="text/css">
   td {
     text-align: left;
+    max-width: 300px;
+    white-space: unset !important;
+  }
+  .datatable-table td, .datatable-table th, .table td, .table th{
+    white-space: unset !important;
   }
 
   .modal th {
@@ -314,7 +319,7 @@ $userList = userList();
       }
       print ">" . $displayParticulars . "</td>
           <td>$official_receipt->name</td>
-          <td><a href='/store/customer/details/$official_receipt->wid'>$official_receipt->company</a></td>
+          <td><a target='_blank' href='/store/customer/details/$official_receipt->wid'>$official_receipt->company</a></td>
           <td title='$official_receipt->created_by: $official_receipt->created_at' style='text-align: center; vertical-align:middle; padding: 0px'>$avatar</td>";
       if ($official_receipt->payment_method == 'Cash') {
         $total += $official_receipt->amount;

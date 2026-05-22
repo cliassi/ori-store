@@ -177,6 +177,17 @@ if (isset($get->delivered)) {
   R::store($order);
 }
 
+if (isset($post->update_order_date)) {
+  $order = R::load('order', $post->order_id);
+  if ($post->date_type === 'entry') {
+    $order->created_at = $post->new_date . ' ' . $post->new_time;
+  } else {
+    $order->confirm_date = $post->new_date;
+  }
+  R::store($order);
+  redir("?id=" . ID);
+}
+
 print "
 <div class='row'>
   <div class='col-sm-12'>
@@ -283,7 +294,7 @@ $trans = select("SELECT * FROM (SELECT * FROM (
   SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE supplier_id=$obj->id
   UNION
   SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE supplier_id=$obj->id
-) a order by ccreated_at  DESC $limit) b  order by created_at ");
+) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b  order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
 //New added for balance
 $transForTotal = select("SELECT * FROM (SELECT * FROM (
   SELECT 'order' src, id, created_at date, confirm_date, created_by, created_at, orderItems(id) particulars, delivered_by, (SELECT SUM(cost * quantity) FROM `order_item` ii WHERE ii.order_id=order.id) amount FROM `order` WHERE supplier_id=$obj->id
@@ -291,7 +302,7 @@ $transForTotal = select("SELECT * FROM (SELECT * FROM (
   SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE supplier_id=$obj->id
   UNION
   SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE supplier_id=$obj->id
-) a order by created_at  DESC) b  order by created_at ");
+) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC) b  order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
 
 // balance
 $i = 1;
@@ -318,7 +329,7 @@ $trans = select("SELECT * FROM (SELECT * FROM (
   SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE $payWhere
   UNION
   SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `refund` WHERE $refundWhere
-) a order by created_at DESC $limit) b order by created_at ");
+) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
 
 $balance = 0;
 
@@ -332,7 +343,7 @@ if ($limit) {
     SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE $payWhere
     UNION
     SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `refund` WHERE $refundWhere
-  ) a order by created_at DESC) b order by created_at ");
+  ) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC) b order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
   $opening = mysqli_fetch_object($otrans);
   $balance = $opening->order + $opening->goods_return + $opening->payment + $opening->refund;
 
@@ -371,7 +382,7 @@ if ($limit) {
     SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE $payWhere
     UNION
     SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `refund` WHERE $refundWhere
-  ) a order by created_at DESC $limit) b order by created_at ");
+  ) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
 
 }
 $orderItemSummary = [];
@@ -394,8 +405,20 @@ $totalQty = 0;
 while ($item = mysqli_fetch_object($trans)) {
   print "<tr>";
   print "<td>$i</td>";
-  if (nn($item->confirm_date)) {
-    print "<td><div style='border-bottom: solid 1px #555;'>" . df($item->date) . "</div>" . df($item->confirm_date) . "</td>";
+  if ($item->src == 'order') {
+    $entryDate = df($item->date);
+    $entryDateRaw = date('Y-m-d', strtotime($item->date));
+    $entryTimeRaw = date('H:i:s', strtotime($item->date));
+    $confirmDateRaw = nn($item->confirm_date) ? date('Y-m-d', strtotime($item->confirm_date)) : '';
+    $confirmDisplay = nn($item->confirm_date) ? df($item->confirm_date) : '';
+    print "<td>";
+    // print "<div style='border-bottom: solid 1px #555; cursor: pointer;' class='editable-entry-date' data-order-id='{$item->id}' data-date='{$entryDateRaw}' data-time='{$entryTimeRaw}'>{$entryDate}</div>";
+    if ($confirmDisplay) {
+      print "<span class='editable-confirm-date' style='cursor: pointer;' data-order-id='{$item->id}' data-date='{$confirmDateRaw}'>{$confirmDisplay}</span>";
+    } else {
+      print "<span class='editable-confirm-date' style='cursor: pointer; color: #999;' data-order-id='{$item->id}' data-date='' title='Click to set'>—</span>";
+    }
+    print "</td>";
   } else {
     print "<td>" . df($item->date) . "</td>";
   }
@@ -728,6 +751,68 @@ while ($remark = mysqli_fetch_object($remarks)) {
     }
   });
 
+  $(".editable-entry-date").click(function () {
+    var orderId = $(this).data('order-id');
+    var currentDate = $(this).data('date');
+    var currentTime = $(this).data('time');
+    Swal.fire({
+      title: 'Update Entry Date',
+      html: '<input id="swal-date" type="date" class="swal2-input" value="' + currentDate + '">' +
+        '<input id="swal-time" type="time" class="swal2-input" value="' + currentTime + '" step="1">',
+      showCancelButton: true,
+      confirmButtonText: 'Update',
+      preConfirm: () => {
+        var newDate = document.getElementById('swal-date').value;
+        var newTime = document.getElementById('swal-time').value;
+        if (!newDate) {
+          Swal.showValidationMessage('Date is required');
+          return false;
+        }
+        return { date: newDate, time: newTime };
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        var form = $('<form method="post"></form>');
+        form.append('<input type="hidden" name="update_order_date" value="1">');
+        form.append('<input type="hidden" name="order_id" value="' + orderId + '">');
+        form.append('<input type="hidden" name="date_type" value="entry">');
+        form.append('<input type="hidden" name="new_date" value="' + result.value.date + '">');
+        form.append('<input type="hidden" name="new_time" value="' + result.value.time + '">');
+        $('body').append(form);
+        form.submit();
+      }
+    });
+  });
+
+  $(".editable-confirm-date").click(function () {
+    var orderId = $(this).data('order-id');
+    var currentDate = $(this).data('date');
+    Swal.fire({
+      title: 'Update Confirm Date',
+      html: '<input id="swal-confirm-date" type="date" class="swal2-input" value="' + currentDate + '">',
+      showCancelButton: true,
+      confirmButtonText: 'Update',
+      preConfirm: () => {
+        var newDate = document.getElementById('swal-confirm-date').value;
+        if (!newDate) {
+          Swal.showValidationMessage('Date is required');
+          return false;
+        }
+        return { date: newDate };
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        var form = $('<form method="post"></form>');
+        form.append('<input type="hidden" name="update_order_date" value="1">');
+        form.append('<input type="hidden" name="order_id" value="' + orderId + '">');
+        form.append('<input type="hidden" name="date_type" value="confirm">');
+        form.append('<input type="hidden" name="new_date" value="' + result.value.date + '">');
+        $('body').append(form);
+        form.submit();
+      }
+    });
+  });
+
 
 
 </script>
@@ -747,12 +832,12 @@ while ($remark = mysqli_fetch_object($remarks)) {
             <?php
             $allProducts = select('id, name', 'product', '1 ORDER BY name');
             $currentProducts = [];
-            $currentProductsRs = select('product_id', 'product_supplier', 'supplier_id = ' . (int)$obj->id);
+            $currentProductsRs = select('product_id', 'product_supplier', 'supplier_id = ' . (int) $obj->id);
             while ($cp = mysqli_fetch_object($currentProductsRs)) {
-              $currentProducts[(int)$cp->product_id] = true;
+              $currentProducts[(int) $cp->product_id] = true;
             }
             while ($p = mysqli_fetch_object($allProducts)) {
-              $checked = isset($currentProducts[(int)$p->id]) ? 'checked' : '';
+              $checked = isset($currentProducts[(int) $p->id]) ? 'checked' : '';
               echo "<div class='form-check'>
                 <input class='form-check-input' type='checkbox' name='product_ids[]' value='{$p->id}' id='product_{$p->id}' $checked>
                 <label class='form-check-label' for='product_{$p->id}'>" . htmlspecialchars($p->name, ENT_QUOTES) . "</label>
@@ -773,19 +858,19 @@ while ($remark = mysqli_fetch_object($remarks)) {
 <?php
 // Handle product mapping POST
 if (isset($post->map_products) && isset($post->product_ids)) {
-  $productIds = array_map('intval', (array)$post->product_ids);
-  
+  $productIds = array_map('intval', (array) $post->product_ids);
+
   // Delete existing mappings for this supplier
-  del('product_supplier', 'supplier_id = ' . (int)$obj->id);
-  
+  del('product_supplier', 'supplier_id = ' . (int) $obj->id);
+
   // Insert new mappings using direct SQL
   foreach ($productIds as $pid) {
     if ($pid > 0) {
-      $c->query("INSERT INTO product_supplier (product_id, supplier_id) VALUES ($pid, " . (int)$obj->id . ")");
+      $c->query("INSERT INTO product_supplier (product_id, supplier_id) VALUES ($pid, " . (int) $obj->id . ")");
     }
   }
-  
-  redir('?id=' . (int)$obj->id);
+
+  redir('?id=' . (int) $obj->id);
   exit;
 }
 ?>

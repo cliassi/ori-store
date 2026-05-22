@@ -593,8 +593,6 @@ if(isset($get->cw)){
 			SELECT '' se, 'payment_cash' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Cash'
 			UNION
 			SELECT '' se, 'payment_bank' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Bank'
-			UNION
-			SELECT payment_method se, 'investment' source, id, amount, `date`, created_at entry_time, created_by entry_by, particulars, '' `status`, '' ref, '' done_by, '' done_time, 0 checked FROM investment WHERE COALESCE(trash,0)=0 AND date BETWEEN '$d' AND '$t'
 		) t ORDER BY date");
 
 // print "SELECT 'hotel_statement_worker_payment' source, p.id, p.amount, p.date, p.entry_time, CONCAT('<u>', h.name, '</u> er staff <u>', w.name, '</u>, ', DATE_FORMAT(CONCAT(s.month,'-01'), '%b %Y'), ' maser salary ', p.particulars), IFNULL(p.approved_by, 'Pending') status, '' ref FROM `hotel_statement_worker_payment` p, `hotel_statement_worker` w, `hotel_statement` s, `hotel` h WHERE p.worker=w.id AND w.statement=s.id AND s.hotel=h.id AND p.date>'$hotel_start_date' AND (p.date BETWEEN '$d' AND '$t') AND (p.particulars LIKE 'Petty Cash theke%' OR p.particulars LIKE 'Me2 te%')";
