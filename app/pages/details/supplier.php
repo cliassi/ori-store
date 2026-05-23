@@ -2,8 +2,25 @@
   a.btn {
     color: #fff !important;
   }
+
+  .verify-icon {
+    font-size: 30px;
+    margin-right: 8px;
+    cursor: pointer;
+  }
+
+  .verify-icon.verified {
+    color: #2196F3;
+    cursor: default;
+  }
+
+  .verify-icon.unverified {
+    color: #9E9E9E;
+  }
 </style>
 <?php
+ensureMysqlColumn('order_item', 'is_verify', "BOOLEAN NOT NULL DEFAULT FALSE AFTER `product_variance_id`");
+ensureMysqlColumn('payment', 'is_verify', "BOOLEAN NOT NULL DEFAULT FALSE AFTER `supplier_id`");
 $obj = R::dispense('supplier');
 if (defined('ID')) {
   $obj = R::load('supplier', ID);
@@ -100,6 +117,17 @@ if (isset($post->idToDelete3)) {
 if (isset($post->idToDelete4)) {
   $col = R::load("refund", $post->idToDelete4);
   R::trash($col);
+}
+
+if (isset($post->verify_item)) {
+  $type = $post->verify_type;
+  $id = (int) $post->verify_id;
+  if ($type === 'order') {
+    $c->query("UPDATE order_item SET is_verify = NOT is_verify WHERE order_id = $id");
+  } elseif ($type === 'payment') {
+    $c->query("UPDATE payment SET is_verify = NOT is_verify WHERE id = $id");
+  }
+  exit;
 }
 
 if (isset($post->file_to_remove) && isset($post->pin)) {
@@ -401,6 +429,18 @@ if ($f_variance) {
     ];
   }
 }
+$orderVerifyMap = [];
+$orderVerifyRs = select("SELECT order_id, MIN(CAST(is_verify AS UNSIGNED)) as verified FROM order_item WHERE order_id IN (SELECT id FROM `order` WHERE supplier_id = $obj->id) GROUP BY order_id");
+while ($row = mysqli_fetch_object($orderVerifyRs)) {
+  $orderVerifyMap[(int) $row->order_id] = (int) $row->verified;
+}
+
+$paymentVerifyMap = [];
+$paymentVerifyRs = select("SELECT id, is_verify FROM payment WHERE supplier_id = $obj->id");
+while ($row = mysqli_fetch_object($paymentVerifyRs)) {
+  $paymentVerifyMap[(int) $row->id] = (int) $row->is_verify;
+}
+
 $totalQty = 0;
 while ($item = mysqli_fetch_object($trans)) {
   print "<tr>";
@@ -489,14 +529,23 @@ while ($item = mysqli_fetch_object($trans)) {
   }
   print "<td class='text-right'>" . nf(sum('balance')) . "</td>";
 
+  $isVerified = 0;
   if ($item->src == 'order') {
-    print "<td><button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button></button>";
+    $isVerified = isset($orderVerifyMap[(int) $item->id]) ? $orderVerifyMap[(int) $item->id] : 0;
+  } elseif ($item->src == 'payment') {
+    $isVerified = isset($paymentVerifyMap[(int) $item->id]) ? $paymentVerifyMap[(int) $item->id] : 0;
+  }
+  $verifyClass = $isVerified ? 'verified' : 'unverified';
+  print "<td style='display: flex; align-items: center; gap: 6px;'><i class='fas fa-check-circle verify-icon $verifyClass' onclick='verifyItem(\"$item->src\", $item->id, this)'></i>";
+
+  if ($item->src == 'order') {
+    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button></button>";
   } elseif ($item->src == 'goods_return') {
-    print "<td><button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button></td>";
+    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button></td>";
   } elseif ($item->src == 'refund') {
-    print "<td><button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation4($item->id)'><i class='fas fa-trash'></i></button></td>";
+    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation4($item->id)'><i class='fas fa-trash'></i></button></td>";
   } else {
-    print "<td><button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation3($item->id)'><i class='fas fa-trash'></i></button></td>";
+    print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation3($item->id)'><i class='fas fa-trash'></i></button></td>";
   }
   print "</tr>";
   $i++;
@@ -666,6 +715,14 @@ while ($remark = mysqli_fetch_object($remarks)) {
 
 
 <script type="text/javascript">
+
+  function verifyItem(type, id, el) {
+    var $el = $(el);
+    var wasVerified = $el.hasClass('verified');
+    $.post('', { verify_item: 1, verify_type: type, verify_id: id }, function () {
+      $el.toggleClass('verified unverified');
+    });
+  }
 
   function addRemarks() {
 
