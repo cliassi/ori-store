@@ -17,10 +17,27 @@
   .verify-icon.unverified {
     color: #9E9E9E;
   }
+
+  tr.dragging {
+    opacity: 0.4;
+  }
+  tr.drop-above td {
+    border-top: 3px solid #0d6efd !important;
+  }
+  tr.drop-below td {
+    border-bottom: 3px solid #0d6efd !important;
+  }
 </style>
 <?php
 ensureMysqlColumn('order_item', 'is_verify', "BOOLEAN NOT NULL DEFAULT FALSE AFTER `product_variance_id`");
 ensureMysqlColumn('payment', 'is_verify', "BOOLEAN NOT NULL DEFAULT FALSE AFTER `supplier_id`");
+$c->query("CREATE TABLE IF NOT EXISTS supplier_custom_sort (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  supplier_id INT NOT NULL,
+  sort_key VARCHAR(50) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  KEY (supplier_id, sort_key)
+)");
 $obj = R::dispense('supplier');
 if (defined('ID')) {
   $obj = R::load('supplier', ID);
@@ -127,6 +144,21 @@ if (isset($post->verify_item)) {
   } elseif ($type === 'payment') {
     $c->query("UPDATE payment SET is_verify = NOT is_verify WHERE id = $id");
   }
+  exit;
+}
+
+if (isset($post->ajax_reorder_supplier)) {
+  $order = isset($post->order) && is_array($post->order) ? $post->order : [];
+  $supplierId = (int) $obj->id;
+  $c->query("DELETE FROM supplier_custom_sort WHERE supplier_id = $supplierId");
+  $i = 1;
+  foreach ($order as $key) {
+    $safeKey = mysqli_real_escape_string($c, $key);
+    $c->query("INSERT INTO supplier_custom_sort (supplier_id, sort_key, sort_order) VALUES ($supplierId, '$safeKey', $i)");
+    $i++;
+  }
+  header("Content-Type: application/json");
+  echo json_encode(["status" => "ok"]);
   exit;
 }
 
@@ -274,7 +306,7 @@ print "
             </thead>
             <tbody>";
 
-print "<table class='table table-striped table-bordered w-auto nowrap'>";
+print "<table id='transaction-table' class='table table-striped table-bordered w-auto nowrap'>";
 print "<thead>";
 print "<tr>";
 print "<th># </th>
@@ -441,9 +473,33 @@ while ($row = mysqli_fetch_object($paymentVerifyRs)) {
   $paymentVerifyMap[(int) $row->id] = (int) $row->is_verify;
 }
 
-$totalQty = 0;
+// Load custom sort order
+$customSort = [];
+$sortRs = $c->query("SELECT sort_key, sort_order FROM supplier_custom_sort WHERE supplier_id = $obj->id ORDER BY sort_order ASC");
+if ($sortRs) {
+  while ($s = mysqli_fetch_object($sortRs)) {
+    $customSort[$s->sort_key] = (int)$s->sort_order;
+  }
+}
+
+$allItems = [];
 while ($item = mysqli_fetch_object($trans)) {
-  print "<tr>";
+  $allItems[] = $item;
+}
+
+if (!empty($customSort)) {
+  usort($allItems, function ($a, $b) use ($customSort) {
+    $ka = $a->src . '_' . $a->id;
+    $kb = $b->src . '_' . $b->id;
+    $sa = isset($customSort[$ka]) ? $customSort[$ka] : 999999;
+    $sb = isset($customSort[$kb]) ? $customSort[$kb] : 999999;
+    return $sa - $sb;
+  });
+}
+
+$totalQty = 0;
+foreach ($allItems as $item) {
+  print "<tr draggable='true' data-src='$item->src' data-id='$item->id'>";
   print "<td>$i</td>";
   if ($item->src == 'order') {
     $entryDate = df($item->date);
@@ -872,6 +928,86 @@ while ($remark = mysqli_fetch_object($remarks)) {
 
 
 
+  // Drag-and-drop reorder for transaction table
+  (function() {
+    const tbody = document.querySelector('#transaction-table tbody');
+    if (!tbody) return;
+
+    function getDragAfterElement(container, y) {
+      const rows = [...container.querySelectorAll('tr[draggable="true"]:not(.dragging)')];
+      let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+      for (const row of rows) {
+        const rect = row.getBoundingClientRect();
+        const offset = y - (rect.top + rect.height / 2);
+        if (offset < 0 && offset > closest.offset) {
+          closest = { offset, element: row };
+        }
+      }
+      return closest.element;
+    }
+
+    function clearDropIndicators() {
+      tbody.querySelectorAll('.drop-above, .drop-below').forEach(function(r) {
+        r.classList.remove('drop-above', 'drop-below');
+      });
+    }
+
+    function renumber() {
+      var n = 1;
+      tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
+        var td = tr.querySelector('td:first-child');
+        if (td) td.textContent = n++;
+      });
+    }
+
+    function saveOrder() {
+      var rows = [...tbody.querySelectorAll('tr[data-id]')];
+      var order = rows.map(function(r) { return r.dataset.src + '_' + r.dataset.id; });
+      if (!order.length) return;
+
+      var params = new URLSearchParams();
+      params.append('ajax_reorder_supplier', '1');
+      order.forEach(function(key) { params.append('order[]', key); });
+
+      fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      }).catch(function(err) { console.error('Reorder error', err); });
+    }
+
+    var draggingRow = null;
+
+    tbody.addEventListener('dragstart', function(e) {
+      var tr = e.target.closest('tr[draggable="true"]');
+      if (!tr) return;
+      draggingRow = tr;
+      tr.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    tbody.addEventListener('dragend', function() {
+      if (!draggingRow) return;
+      draggingRow.classList.remove('dragging');
+      clearDropIndicators();
+      renumber();
+      saveOrder();
+      draggingRow = null;
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (!draggingRow) return;
+      var after = getDragAfterElement(tbody, e.clientY);
+      clearDropIndicators();
+      if (after == null) {
+        tbody.appendChild(draggingRow);
+      } else {
+        tbody.insertBefore(draggingRow, after);
+        after.classList.add('drop-above');
+      }
+    });
+  })();
 </script>
 
 <!-- Map Products Modal -->
