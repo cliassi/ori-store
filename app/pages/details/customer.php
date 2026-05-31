@@ -28,6 +28,13 @@
   tr.odd {
     background: rgba(21, 108, 214, 0.2);
   }
+
+  table tr.collection td,
+  table tr.collection.odd td,
+  table tr.collection.even td {
+    color: #5cb85c !important;
+    font-weight: bold !important;
+  }
 </style>
 <?php
 $obj = R::dispense('customer');
@@ -235,7 +242,7 @@ if (METHOD == 'pending_delivery') {
     SELECT 'invoice' src, '' pm, '' ab, i.id, ii.id id2, IFNULL(ii.delivery_date,i.invoice_date) dd, i.created_at sort_date, i.invoice_date date, '' payment_date, i.created_at, i.delivered_by, i.created_by, (SELECT particulars FROM product_variance WHERE product_variance.id=ii.product_variance_id) particulars, ii.price * ii.quantity amount FROM `invoice` i, `invoice_item` ii WHERE i.id=ii.invoice_id AND i.customer_id=$obj->id
     UNION
     SELECT 'collection' src, payment_method pm, approved_by ab, id, 0 id2, '' dd, created_at sort_date, date, payment_date, created_at, approved_by delivered_by, created_by, description particulars, amount FROM `collection` WHERE customer_id=$obj->id
-  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY date, src, created_at");
+  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY date, src DESC, created_at");
 
   // $opq = select("SELECT SUMT() ");
 }
@@ -346,7 +353,7 @@ while ($item = mysqli_fetch_object($trans)) {
       $particularText = trim($displayDate . " " . $particularText);
       print "<td class='text-wrap w-25'> $particularText</td>";
       print "<td></td>"; // Delivery (empty for collections)
-      print "<td></td>"; // Invoice By (empty for collections)
+      print "<td class='text-center'>" . ($users[$item->created_by]) . "</td>";
     } else {
       print "<td class='text-wrap w-25'> $item->particulars</td>";
       // print "<td class='text-center'>".($users[$item->created_by])."</td>";
@@ -383,6 +390,7 @@ while ($item = mysqli_fetch_object($trans)) {
     sum('balance', $item->amount);
     sum('debit', $item->amount);
   } else {
+    //print "<td class='text-center'>" . ($users[$item->created_by]) . "</td>";
     print "<td></td>"; // no radio for collections
     print "<td></td>"; // Debit empty
     print "<td class='text-right'>" . nf($item->amount) . "</td>"; // Credit

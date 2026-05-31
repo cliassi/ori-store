@@ -235,6 +235,11 @@ if(isset($post->save_delivery)){
     $i = 1;
     $customer_colors = []; // Track customer to color mapping
     $color_index = 1;
+    $delivery_staff_map = [];
+    $ds_rows = select("SELECT invoice_id, delivered_by, delivery_staff FROM invoice_item WHERE delivered_by IS NOT NULL AND delivered_by!=''");
+    while ($ds = mysqli_fetch_object($ds_rows)) {
+      $delivery_staff_map[$ds->invoice_id] = $ds->delivery_staff;
+    }
 
     while ($item = mysqli_fetch_object($trans)) {
       if (!isset($customer_colors[$item->customer_id])) {
@@ -253,7 +258,8 @@ if(isset($post->save_delivery)){
       print "<td>INV".zerofill($item->id, 5)."</td>";
       print "<td><a href='/store/customer/details/$item->customer_id'>".$customers[$item->customer_id]."</a></td>";
       print "<td>$item->particulars</td>";
-      print "<td>".($item->delivered_by ? "<a class='btn btn-success'>Received</a>" : "<form method='post'><input type='hidden' name='delivered' value='$item->id'><a class='btn btn-warning' data-bs-toggle='modal' data-bs-target='.deliver' onclick='setInvoice($item->id)'>Ordered</a>")."</td>";
+      $ds_name = isset($delivery_staff_map[$item->id]) ? $delivery_staff_map[$item->id] : '';
+      print "<td>".($ds_name ? "<button class='btn btn-sm btn-success' title='Delivered by $ds_name'><i class='fas fa-shipping-fast'></i> $ds_name</button>" : "<form method='post' style='display:inline'><input type='hidden' name='delivered' value='$item->id'><button type='button' class='btn btn-sm btn-warning' data-bs-toggle='modal' data-bs-target='.deliver' onclick='setInvoice($item->id)'>Ordered</button></form>")."</td>";
       print "<td class='text-right'>".nf0($item->quantity)."</td>";
       print "<td class='text-right'>".nf($item->total)."</td>";
       print "<td class='text-right' title='$item->total - $item->cost'>".nf($item->profit)."</td>";
