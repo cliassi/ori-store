@@ -23,6 +23,15 @@ $hotel_start_date = '2023-01-18 23:59:59';
 $d = isset($get->d) ? $get->d : today();
 $t = isset($get->t) ? $get->t : today();
 
+if (isset($get->shift)) {
+  $shift = (string) $get->shift;
+  if ($shift === 'prev' || $shift === 'next') {
+    $delta = $shift === 'prev' ? '-1 day' : '+1 day';
+    $d = date('Y-m-d', strtotime($delta, strtotime($d)));
+    $t = date('Y-m-d', strtotime($delta, strtotime($t)));
+  }
+}
+
 if (!isUserIn(['apple', 'superadmin', 'melon', 'lemon', 'orange', 'mango', 'berry', 'Olive'])) {
   // exit;
 }
@@ -215,7 +224,9 @@ print "<input type='hidden' name='pm' value='$pm'> Collection" . space(2);
 print "<input type='checkbox' name='collection' value='1' " . ($_collection ? "checked" : '') . "> Collection" . space(2);
 print "<input type='checkbox' name='expense' value='1' " . ($_expense ? "checked" : '') . "> Expense" . space(2);
 print "<input type='checkbox' name='handover' value='1' " . ($_handover ? "checked" : '') . "> Handover " . space(8);
+print "<button type='submit' name='shift' value='prev' class='btn btn-sm btn-outline-secondary'>Prev</button>";
 print "Date " . dp('d', $d, !$canPickPast ? prevDay() : false) . " - " . dp('t', $t, !$canPickPast ? prevDay() : false);
+print "<button type='submit' name='shift' value='next' class='btn btn-sm btn-outline-secondary'>Next</button>";
 // print "Company " . sop2("company", $com, ["class" => 'w150', "extra" => "ORDER BY seq", 'optional' => true]);
 print "Entry By " . sop2("sys_user", $createdBy, ["class" => 'w150', "extra" => "ORDER BY u_username", 'optional' => true, 'dataField' => 'u_username']);
 // print "Expense Category " . sop2("expense_category", $ec, ["filter" => "hidden=0", "class" => 'w150', "extra" => "ORDER BY name", 'dataField' => "CONCAT(name,' - ', type)", 'optional' => true]);

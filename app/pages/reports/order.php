@@ -33,6 +33,15 @@ $hotel_start_date = '2023-01-18 23:59:59';
 $d = isset($get->d)?$get->d:today();
 $t = isset($get->t)?$get->t:today();
 
+if (isset($get->shift)) {
+  $shift = (string) $get->shift;
+  if ($shift === 'prev' || $shift === 'next') {
+    $delta = $shift === 'prev' ? '-1 day' : '+1 day';
+    $d = date('Y-m-d', strtotime($delta, strtotime($d)));
+    $t = date('Y-m-d', strtotime($delta, strtotime($t)));
+  }
+}
+
 // dd($_SESSION);
 if(!isUserIn(['apple','superadmin','melon','lemon','orange','mango', 'berry', 'Olive','Sagor'])){
   // exit;
@@ -174,8 +183,10 @@ if(isset($post->save_delivery)){
 
 
   openFilterForm("get");
-  // print "<input type='hidden' name='pm' value='$pm'> Order  Date ".dp('d', $d, uid()!=1 ? prevDay() : false)." - ".dp('t', $t, uid()!=1 ? prevDay() : false);
-  print "<input type='hidden' name='pm' value='$pm'> Order Date ".dp('d', $d)." - ".dp('t', $t);
+  print "<input type='hidden' name='pm' value='$pm'>";
+  print "<button type='submit' name='shift' value='prev' class='btn btn-sm btn-outline-secondary'>Prev</button>";
+  print " Order Date ".dp('d', $d)." - ".dp('t', $t);
+  print "<button type='submit' name='shift' value='next' class='btn btn-sm btn-outline-secondary'>Next</button>";
   print " Product ".sop2("prod", $prod, ['optional'=>true], "product");
   print " Variance ".sop2("pv", $pv, ['optional'=>true, 'dataField'=>'particulars', 'extraFields'=>'product_id', 'class'=>'w150',], "product_variance");
   print " Deliveryman <span><select class='form-select supplier-select inline-block w150' name='salesman'>
