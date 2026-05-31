@@ -235,7 +235,7 @@ if (METHOD == 'pending_delivery') {
     SELECT 'invoice' src, '' pm, '' ab, i.id, ii.id id2, IFNULL(ii.delivery_date,i.invoice_date) dd, i.created_at sort_date, i.invoice_date date, '' payment_date, i.created_at, i.delivered_by, i.created_by, (SELECT particulars FROM product_variance WHERE product_variance.id=ii.product_variance_id) particulars, ii.price * ii.quantity amount FROM `invoice` i, `invoice_item` ii WHERE i.id=ii.invoice_id AND i.customer_id=$obj->id
     UNION
     SELECT 'collection' src, payment_method pm, approved_by ab, id, 0 id2, '' dd, created_at sort_date, date, payment_date, created_at, approved_by delivered_by, created_by, description particulars, amount FROM `collection` WHERE customer_id=$obj->id
-  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY sort_date");
+  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY date, src, created_at");
 
   // $opq = select("SELECT SUMT() ");
 }
@@ -282,7 +282,7 @@ while ($item = mysqli_fetch_object($trans)) {
     print "</td>";
   } else {
     print "<td class='text-center'>
-      <div>OR" . zerofill($item->id, 5) . "</div>";
+      <div>OR" . zerofill($item->id, 5) . "</div></td>";
   }
   if ($item->src == 'invoice') {
     $oi = R::load("invoice_item", $item->id2);
@@ -344,10 +344,11 @@ while ($item = mysqli_fetch_object($trans)) {
       $actualPaymentDate = nn($item->payment_date) ? $item->payment_date : $item->date;
       $displayDate = (nn($actualPaymentDate) && strtotime($actualPaymentDate)) ? date('d M, Y', strtotime($actualPaymentDate)) : '';
       $particularText = trim($displayDate . " " . $particularText);
-      print "<td> $particularText</td>";
-      // print "<td class='text-center'>".($users[$item->created_by])."</td>";
+      print "<td class='text-wrap w-25'> $particularText</td>";
+      print "<td></td>"; // Delivery (empty for collections)
+      print "<td></td>"; // Invoice By (empty for collections)
     } else {
-      print "<td> $item->particulars</td>";
+      print "<td class='text-wrap w-25'> $item->particulars</td>";
       // print "<td class='text-center'>".($users[$item->created_by])."</td>";
     }
     // print "<td></td>";
@@ -382,11 +383,9 @@ while ($item = mysqli_fetch_object($trans)) {
     sum('balance', $item->amount);
     sum('debit', $item->amount);
   } else {
-    print "<td class='text-center'>" . ($users[$item->created_by]) . "</td>";
-    print "<td></td>";
-    print "<td></td>";
-    print "<td></td>";
-    print "<td class='text-right'>" . nf($item->amount) . "</td>";
+    print "<td></td>"; // no radio for collections
+    print "<td></td>"; // Debit empty
+    print "<td class='text-right'>" . nf($item->amount) . "</td>"; // Credit
     sum('balance', 0 - $item->amount);
     sum('credit', $item->amount);
   }

@@ -8,10 +8,14 @@ ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
 if (isset($post->save)) {
   try {
     $obj->customer_id = $post->customer_id;
-    // "date" is treated as entry date.
+    // "date" is treated as entry date — preserve original value on edit.
+    if (!defined('ID')) {
+      // $obj->date = (isset($post->date) && nn($post->date)) ? date('Y-m-d', strtotime($post->date)) : date('Y-m-d');
+      // $obj->created_at = (isset($post->date) && nn($post->date)) ? date('Y-m-d H:i:s', strtotime($post->date)) : date('Y-m-d H:i:s');
+    }
     $obj->date = (isset($post->date) && nn($post->date)) ? date('Y-m-d', strtotime($post->date)) : date('Y-m-d');
-    // $obj->created_at = (isset($post->date) && nn($post->date)) ? date('Y-m-d', strtotime($post->date)) : date('Y-m-d');
-    $obj->created_at = now(); //(isset($post->date) && nn($post->date)) ? date('Y-m-d', strtotime($post->date)) : date('Y-m-d');
+    $obj->created_at = (isset($post->date) && nn($post->date)) ? date('Y-m-d H:i:s', strtotime($post->date)) : date('Y-m-d H:i:s');
+
     $obj->payment_date = (isset($post->payment_date) && nn($post->payment_date)) ? date('Y-m-d', strtotime($post->payment_date)) : $obj->date;
     $obj->amount = $post->amount;
     $obj->payment_method = $post->payment_method;
@@ -49,7 +53,7 @@ if (isset($post->save)) {
   <div class="col-md-6">
     <div class="card">
       <div class="card-header">
-        <h5>New Collection</h5>
+        <h5><?= defined('ID') ? 'Edit' : 'New' ?> Collection</h5>
       </div>
       <div class="card-body">
         <form class="forms-sample" method="post" enctype="multipart/form-data">
@@ -57,7 +61,7 @@ if (isset($post->save)) {
             <?php
             $formItems = [
               'customer_id' => ['col' => 12, 'label' => 'Customer', 'type' => 'dropdown', 'value' => ($obj->customer_id ? $obj->customer_id : (isset($get->customer) ? $get->customer : 0)), 'table' => 'customer', 'textField' => 'company'],
-              'date' => ['col' => 6, 'label' => 'Entry Date', 'type' => 'date2', 'value' => ($obj->date ? $obj->date : date('Y-m-d'))],
+              'date' => ['col' => 6, 'label' => 'Entry Date', 'type' => 'date2', 'value' => ($obj->date ? $obj->date : date('Y-m-d'))], //'disabled' => defined('ID')
               'payment_date' => ['col' => 6, 'label' => 'Payment Date', 'type' => 'date2', 'value' => ($obj->payment_date ? $obj->payment_date : date('Y-m-d'))],
               'amount' => ['col' => 6, 'label' => 'Amount', 'type' => 'text', 'value' => $obj->amount, 'required' => true],
               'payment_method' => ['col' => 6, 'label' => 'Payment Method', 'type' => 'radio', 'value' => $obj->payment_method, 'class' => 'payment_method', 'options' => ['Cash', 'Bank'], 'required' => true],
@@ -143,4 +147,4 @@ if (isset($post->save)) {
       }
 
     });
-</script>
+  </script>
