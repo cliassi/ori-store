@@ -209,7 +209,7 @@ print "</th>
 print "<table class='table table-bordered nowrap'>";
 print "<thead>";
 print "<tr>";
-print "<th width='20px'># </th>
+print "<th width='20px'>No. </th>
 <th width='50px'>D&D</th>
         <th width='50px'>Ref No. </th>
         <th>Particulars</th>
@@ -262,13 +262,13 @@ while ($item = mysqli_fetch_object($trans)) {
   $lastDate = $item->sort_date;
   if (isset($get->show) && $get->show == "all") {
     print "<tr class='$item->src $class'>"; //$counter--;
-    print "<td title='$item->sort_date'>$i</td>";
+    print "<td class='text-center' title='$item->sort_date'>$i</td>";
   } else {
     print "<tr class='$item->src $class " . ($i <= ($counter - 10) ? 'hidden' : '') . "'>"; //$counter--;
-    print "<td title='$item->sort_date'>" . ($i - $counter + 10) . "</td>";
+    print "<td class='text-center' title='$item->sort_date'>" . ($i - $counter + 10) . "</td>";
   }
   // print "<td>".df($item->sort_date).(date('Ymd', strtotime($item->date)) != date('Ymd', strtotime($item->created_at)) ? " (".df($item->date).")":"")."</td>";
-  print "<td>" . df($item->sort_date) . "" . (($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'><a href='javascript:void(0)' onclick='openDeliveryDateModal(" . $item->id . ", " . $item->id2 . ", \"" . $item->dd . "\")' style='color: #0066cc; cursor: pointer;'>" . df($item->dd) . "</a></div>" : '')) . "</td>";
+  print "<td class='text-center'>" . df($item->sort_date) . "" . (($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'><a href='javascript:void(0)' onclick='openDeliveryDateModal(" . $item->id . ", " . $item->id2 . ", \"" . $item->dd . "\")' style='color: #0066cc; cursor: pointer;'>" . df($item->dd) . "</a></div>" : '')) . "</td>";
   if ($item->src == 'invoice') {
     $delivered_by = "Select";
     if ($item->delivered_by) {
@@ -351,11 +351,11 @@ while ($item = mysqli_fetch_object($trans)) {
       $actualPaymentDate = nn($item->payment_date) ? $item->payment_date : $item->date;
       $displayDate = (nn($actualPaymentDate) && strtotime($actualPaymentDate)) ? date('d M, Y', strtotime($actualPaymentDate)) : '';
       $particularText = trim($displayDate . " " . $particularText);
-      print "<td class='text-wrap w-25'> $particularText</td>";
+      print "<td class='text-wrap' width='30%'> $particularText</td>";
       print "<td></td>"; // Delivery (empty for collections)
       print "<td class='text-center'>" . ($users[$item->created_by]) . "</td>";
     } else {
-      print "<td class='text-wrap w-25'> $item->particulars</td>";
+      print "<td class='text-wrap' width='30%'> $item->particulars</td>";
       // print "<td class='text-center'>".($users[$item->created_by])."</td>";
     }
     // print "<td></td>";
