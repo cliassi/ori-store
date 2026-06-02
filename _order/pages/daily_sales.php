@@ -138,7 +138,7 @@ if($_collection){
   while($official_receipt = mysqli_fetch_object($official_receipts)){
     $avatar = getName("sys_user", $official_receipt->created_by, 'u_avatar');
     if(file_exists("uploads/user/avatar/$avatar") && nn($avatar)){
-      $avatar = "<img src='$appurl/uploads/user/avatar/$avatar' style='width:27px'>";
+      $avatar = "<img src='" . BASEURL . APP . "/uploads/user/avatar/$avatar' style='width:27px'>";
     } else{
       $avatar = $userList[$official_receipt->created_by];
     }
@@ -235,7 +235,7 @@ if($_collection){
                         while($official_receipt = mysqli_fetch_object($official_receipts)){
                             $avatar = getName("sys_user", $official_receipt->created_by, 'u_avatar');
                             if(file_exists("uploads/user/avatar/$avatar") && nn($avatar)){
-                                $avatar = "<img src='$appurl/uploads/user/avatar/$avatar' style='width:20px'>";
+                                $avatar = "<img src='" . BASEURL . APP . "/uploads/user/avatar/$avatar' style='width:20px'>";
                             } else{
                                 $avatar = $userList[$official_receipt->created_by];
                             }

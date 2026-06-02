@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="<?php print ROOT; ?>/assets/fonts/fontawesome.css" />
     <!-- [Material Icons] https://fonts.google.com/icons -->
     <link rel="stylesheet" href="<?php print ROOT; ?>/assets/fonts/material.css" />
+    <link rel="stylesheet" href="<?php print ROOT; ?>/assets/css/plugins/jquery.qtip.min.css" />
     <!-- [Template CSS Files] -->
     <link rel="stylesheet" href="<?php print ROOT; ?>/assets/css/style.css?v=1" id="main-style-link" />
     <link rel="stylesheet" href="<?php print ROOT; ?>/assets/css/style-preset.css" />
@@ -33,12 +34,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <!-- Tippy.js CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
-
-    <!-- Tippy.js JS -->
-    <script src="https://unpkg.com/@popperjs/core@2"></script>
-    <script src="https://unpkg.com/tippy.js@6"></script>
 
     <style type="text/css">
         .opacity-50{
@@ -264,20 +259,14 @@
     <script src="<?php print ROOT; ?>/assets/js/pcoded.js"></script>
     <script src="<?php print ROOT; ?>/assets/js/plugins/feather.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="<?php print ROOT; ?>/assets/js/plugins/jquery.qtip.min.js"></script>
     <script>
-        
-    tippy('[data-tippy-content]', {
-        placement: 'top',
-        animation: 'shift-away',
-        theme: 'light-border',
-        delay: [100, 100],  // [show, hide] delay in ms
-    });
-    
+        $("[title]").qtip();
+
         $(".menu-toggle").click(function(){
             $(".pc-sidebar").removeClass("d-none").css('display', "block").css("left", 0);
         });
         localStorage.setItem('layout', 'horizontal');
-        // layout_change('false');
     </script>
     <script src="<?php print ROOT; ?>/assets/js/pages/calendar.js"></script>
 

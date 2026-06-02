@@ -195,7 +195,7 @@ openForm();
 			<td class='w150 description description-$t->id' title='$t->description'><small>$t->description</small></td>";
 		// if($tab == 'i'){
 			// if($t->worker || !isUserIn(['lemon', 'orange'])){
-			// 	print "<td class='w120'><a href='$appurl/worker/statement/{$t->worker}'>".getName("worker", $t->worker)."</a></td>";
+			// 	print "<td class='w120'><a href='" . BASEURL . APP . "/worker/statement/{$t->worker}'>".getName("worker", $t->worker)."</a></td>";
 			// 	print "<td class='w120'>$t->passport</td>";
 			// 	print "<td class='w120'>$t->company_name</td>";
 			// } else{

@@ -4,7 +4,11 @@
     max-width: 300px;
     white-space: unset !important;
   }
-  .datatable-table td, .datatable-table th, .table td, .table th{
+
+  .datatable-table td,
+  .datatable-table th,
+  .table td,
+  .table th {
     white-space: unset !important;
   }
 
@@ -297,7 +301,7 @@ $userList = userList();
   // if((isset($get->d)?(isset($get->collection)?true:false):true) && !$ec){
   if ($_collection) {
     ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
-    $createdByFilter = nn($createdBy) ? "AND o.created_by = " . (int)$createdBy : "";
+    $createdByFilter = nn($createdBy) ? "AND o.created_by = " . (int) $createdBy : "";
     $whereClause = "(w.branch_id = $branch_id OR w.branch_id IS NULL) AND o.customer_id=w.id AND o.deleted_by IS NULL AND (o.created_at BETWEEN '$d 00:00:00' AND '$t 23:59:59') $createdByFilter";
     // Debug: print the query
     // print "<pre>DEBUG createdBy: " . var_export($createdBy, true) . "</pre>";
@@ -306,8 +310,9 @@ $userList = userList();
     $official_receipts = select("o.*, w.contact name, w.company, w.id wid", "collection o, customer w", $whereClause);
     while ($official_receipt = mysqli_fetch_object($official_receipts)) {
       $avatar = getName("sys_user", $official_receipt->created_by, 'u_avatar');
+      $createdByName = getName("sys_user", $official_receipt->created_by, 'u_fullname');
       if (file_exists("uploads/user/avatar/$avatar") && nn($avatar)) {
-        $avatar = "<img src='$appurl/uploads/user/avatar/$avatar' style='width:27px'>";
+        $avatar = "<img src='" . BASEURL . APP . "/uploads/user/avatar/$avatar' style='width:27px'>";
       } else {
         $avatar = $userList[$official_receipt->created_by];
       }
@@ -331,7 +336,7 @@ $userList = userList();
       print ">" . $displayParticulars . "</td>
           <td>$official_receipt->name</td>
           <td><a target='_blank' href='/store/customer/details/$official_receipt->wid'>$official_receipt->company</a></td>
-          <td title='$official_receipt->created_by: $official_receipt->created_at' style='text-align: center; vertical-align:middle; padding: 0px'>$avatar</td>";
+          <td title='$createdByName: $official_receipt->created_at' style='text-align: center; vertical-align:middle; padding: 0px'>$avatar</td>";
       if ($official_receipt->payment_method == 'Cash') {
         $total += $official_receipt->amount;
         $credit += $official_receipt->amount;
@@ -359,9 +364,9 @@ $userList = userList();
     while($expense = mysqli_fetch_object($expenses)){
       print "<tr title='exp'>";
       print "<td>$i</td>";
-      // print "<td colspan='3'><a class='lighbox' href='$appurl/uploads/receipts/$expense->file' data-lightbox='roundtrip'>$expense->particulars ($expense->category)</a></td>";
+      // print "<td colspan='3'><a class='lighbox' href='" . BASEURL . APP . "/uploads/receipts/$expense->file' data-lightbox='roundtrip'>$expense->particulars ($expense->category)</a></td>";
       if($expense->worker){
-        print "<td colspan='2'><a href='/store/customer/statement/{$expense->worker}'>{$expense->particulars} ({$expense->category}) - $expense->name/$expense->mobile</a></td>";
+        print "<td colspan='2'><a href='" . BASEURL . APP . "/customer/statement/{$expense->worker}'>{$expense->particulars} ({$expense->category}) - $expense->name/$expense->mobile</a></td>";
       } else{
         print "<td colspan='2'>{$expense->particulars}</td>";
       }

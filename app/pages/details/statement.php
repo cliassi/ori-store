@@ -124,7 +124,7 @@ $limit = isset($get->showall) ? 1000 : 10;
 			while ($tran = mysqli_fetch_object($trans)) {
 				$avatar = "";
 				if(file_exists("uploads/user/avatar/{$userAvatars[$tran->entry_by]}") && nn($userAvatars[$tran->entry_by])){
-					$avatar = "<img src='$appurl/uploads/user/avatar/{$userAvatars[$tran->entry_by]}' class='w30'>";
+					$avatar = "<img src='" . BASEURL . APP . "/uploads/user/avatar/{$userAvatars[$tran->entry_by]}' class='w30'>";
 				} else{
 					$avatar = $users[$tran->entry_by];
 				}

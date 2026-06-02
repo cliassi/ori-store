@@ -224,7 +224,7 @@ if(isset($post->delete_outsource_expense)){
       while($official_receipt = mysqli_fetch_object($official_receipts)){
         $avatar = getName("sys_user", $official_receipt->created_by, 'u_avatar');
         if(file_exists("uploads/user/avatar/$avatar") && nn($avatar)){
-          $avatar = "<img src='$appurl/uploads/user/avatar/$avatar' style='width:27px'>";
+          $avatar = "<img src='" . BASEURL . APP . "/uploads/user/avatar/$avatar' style='width:27px'>";
         } else{
           $avatar = $userList[$official_receipt->created_by];
         }
@@ -270,7 +270,7 @@ if(isset($post->delete_outsource_expense)){
       while($expense = mysqli_fetch_object($expenses)){
         print "<tr title='exp'>";
         print "<td>$i</td>";
-        // print "<td colspan='3'><a class='lighbox' href='$appurl/uploads/receipts/$expense->file' data-lightbox='roundtrip'>$expense->particulars ($expense->category)</a></td>";
+        // print "<td colspan='3'><a class='lighbox' href='" . BASEURL . APP . "/uploads/receipts/$expense->file' data-lightbox='roundtrip'>$expense->particulars ($expense->category)</a></td>";
         if($expense->worker){
           print "<td colspan='2'><a href='/store/customer/statement/{$expense->worker}'>{$expense->particulars} ({$expense->category}) - $expense->name/$expense->mobile</a></td>";
         } else{
