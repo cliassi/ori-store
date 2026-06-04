@@ -1,33 +1,39 @@
 <?php
 // vd($post);
 // Handle Return to Order first (before deliver) ONLY when button clicked
-if (isset($post->return_to_order) && isset($post->return_to_order_ids) && !empty($post->return_to_order_ids)) {
-  // var_dump($post);
-  $invoiceItemIds = explode(',', (string)$post->return_to_order_ids);
+if (isset($post->return_to_order) && isset($post->return_to_order_invoice_ids) && !empty($post->return_to_order_invoice_ids)) {
+  // Sanitize: only digits and commas
+  $rawIds = preg_replace('/[^0-9,]/', '', (string)$post->return_to_order_invoice_ids);
+  $invoiceIds = array_filter(array_map('intval', explode(',', $rawIds)));
 
-  foreach ($invoiceItemIds as $iid) {
-    $iid = (int)$iid;
-    if ($iid <= 0) continue;
-    
-    // Remove stock collect entries for this invoice item
-    $stockCollects = R::find('stock_collect_item', 'invoice_item_id = ?', [$iid]);
-    foreach ($stockCollects as $sci) {
-      R::trash($sci);
+  if (!empty($invoiceIds)) {
+    $invoiceIdsStr = implode(',', $invoiceIds);
+
+    // Find all invoice items for these specific invoices
+    $iiRows = select("SELECT id FROM invoice_item WHERE invoice_id IN ($invoiceIdsStr)");
+    $iids = [];
+    while ($row = mysqli_fetch_object($iiRows)) {
+      $iids[] = (int)$row->id;
     }
-    
-    // Clear assigned_to for the invoice item
-    $ii = R::load('invoice_item', $iid);
-    if ($ii && $ii->id) {
-      $ii->assigned_to = null;
-      $ii->collected_by = null;
-      $ii->collected_at = null;
-      $ii->assigned_at = null;
-      $ii->assigned_by = null;
-      $ii->delivery_staff = null;
-      R::store($ii);
+
+    if (!empty($iids)) {
+      $iidsStr = implode(',', $iids);
+
+      // Delete all stock_collect_item entries for these invoice items
+      $c->query("DELETE FROM stock_collect_item WHERE invoice_item_id IN ($iidsStr)");
+
+      // Clear assignment fields on all invoice items
+      $c->query("UPDATE invoice_item SET
+        assigned_to = NULL,
+        collected_by = NULL,
+        collected_at = NULL,
+        assigned_at = NULL,
+        assigned_by = NULL,
+        delivery_staff = NULL
+        WHERE id IN ($iidsStr)");
     }
   }
-  
+
   redir("?");
   exit;
 }

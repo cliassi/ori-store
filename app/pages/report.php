@@ -8,8 +8,9 @@ if (!empty($_SERVER['QUERY_STRING'])) {
 if (!defined('ID')) {
     $pathParts = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
     $lastSegment = end($pathParts);
-
-    if (is_numeric($lastSegment)) {
+    if(isset($get->product_variance)){
+        define('ID', (int)$get->product_variance);
+    } elseif (is_numeric($lastSegment)) {
         define('ID', (int)$lastSegment);
     } elseif (isset($_GET['id']) && is_numeric($_GET['id'])) {
         define('ID', (int)$_GET['id']);

@@ -325,10 +325,11 @@ function buildForm($formItems = [], $_class = 'form-group')
                 $valueField = isset($fi['valueField']) ? $fi['valueField'] : 'id';
                 $textField = isset($fi['textField']) ? $fi['textField'] : 'name';
                 $filter = isset($fi['filter']) ? $fi['filter'] : '';
+                $sort = isset($fi['sort']) ? $fi['sort'] : '';
                 if ($filter) {
-                    $opts = R::find($fi['table'], $filter);
+                    $opts = R::find($fi['table'], $filter . ($sort ? " ORDER BY $sort" : ""));
                 } else {
-                    $opts = R::find($fi['table']);
+                    $opts = R::find($fi['table'] . ($sort ? "1 = 1 ORDER BY $sort" : ""));
                 }
                 foreach ($opts as $key => $op) {
                     $form .= "<option value='" . $op->$valueField . "'";

@@ -554,22 +554,28 @@ $customers = select($query);
       print "</tbody>
             </table>";
       
-      // Collect invoice item IDs for Return to Order button
+      // Collect all iid and invoice IDs from this block for Return to Order
       $invoiceItemIds = [];
+      $invoiceIds = [];
       foreach ($customerItems as $i) {
-        if ($i->quantity - (isset($allItemsData[$customer->id]) ? 0 : 0) > 0) {
-          $invoiceItemIds[] = $i->iid;
-        }
+        $invoiceItemIds[] = (int)$i->iid;
+        $invoiceIds[] = (int)$i->id;
       }
-      
+      $invoiceIds = array_unique($invoiceIds);
+
       // Add Return to Order button directly under table
-      if (!empty($invoiceItemIds) && $ic > 0) {
-        $iidStr = implode(',', $invoiceItemIds);
+      if ($ic > 0) {
+        $custId = (int)$customer->id;
+        $iidStr = implode(',', array_unique($invoiceItemIds));
+        $invStr = implode(',', $invoiceIds);
         print "<div style='padding: 10px; text-align: center; border: 1px solid #ddd; border-top: none;'>
-          <input type='hidden' name='return_to_order_ids' value='$iidStr'>
-          <button type='submit' class='btn btn-warning btn-sm return-to-order-btn' name='return_to_order' value='1'>
-            <i class='fas fa-undo'></i> Return to Order
-          </button>
+          <form method='post' style='display:inline;'>
+            <input type='hidden' name='return_to_order_customer_id' value='$custId'>
+            <input type='hidden' name='return_to_order_invoice_ids' value='$invStr'>
+            <button type='submit' class='btn btn-warning btn-sm return-to-order-btn' name='return_to_order' value='1'>
+              <i class='fas fa-undo'></i> Return to Order
+            </button>
+          </form>
         </div>";
       }
       

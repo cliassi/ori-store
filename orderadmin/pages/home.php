@@ -78,14 +78,25 @@
 $categories = select('*', 'product', '1=1 ORDER BY sort_order');
 // Product variants data - ready for database integration
 
+// Pre-load customer-specific prices if a customer is selected
+$customerPriceMap = [];
+if (isset($get->customer) && (int)$get->customer > 0) {
+  $customerId = (int)$get->customer;
+  $cpResult = select('product_variance_id, price', 'customer_product_variance', "customer_id = $customerId");
+  while ($cp = mysqli_fetch_object($cpResult)) {
+    $customerPriceMap[(int)$cp->product_variance_id] = (float)$cp->price;
+  }
+}
+
 $variance = select('*', 'product_variance', 'visible=1 ORDER BY sort_order');
 $variants = [];
 while ($v = mysqli_fetch_object($variance)) {
+  $price = isset($customerPriceMap[$v->id]) ? $customerPriceMap[$v->id] : $v->price;
   $v = [
     'id' => $v->id,
     'product_id' => $v->product_id,
     'name' => $v->particulars,
-    'price' => $v->price,
+    'price' => $price,
     'size' => $v->size,
     'pack' => $v->unit,
     'image' => getImageOrPlaceholder($v->image, $v->particulars)

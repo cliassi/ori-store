@@ -38,7 +38,11 @@ if (isset($get->q)) {
     }
     if (count($params) > 2) {
         define('PARAM1', $params[1]);
-        define('ID', $params[2]);
+        if($page == 'report' && isset($get->product_variance) && $get->product_variance > 0){
+            define('ID', $get->product_variance + 0);
+        } else{
+            define('ID', $params[2]);
+        }
     }
     if (!file_exists('app/pages/' . $page . '.php')) {
         $page = '404';

@@ -44,6 +44,34 @@
 	tr.expense_account_entry td {
 		border: solid 1px lightgreen !important;
 	}
+
+	tr.cw_cash_withdraw td {
+		color: #dc3545 !important;
+		font-weight: 700 !important;
+	}
+
+	tr.cw_cash_withdraw .cash-out-amount {
+		color: #dc3545 !important;
+		font-weight: 700 !important;
+	}
+
+	tr.cw_cash_withdraw .particulars {
+		color: #dc3545 !important;
+		font-weight: 700 !important;
+	}
+
+	.select-cell {
+		cursor: pointer;
+		background: #fff;
+	}
+
+	.select-cell:hover {
+		background: #e9ecef;
+	}
+
+	tr.row-selected {
+		background: #d1e7ff !important;
+	}
 </style>
 <style type="text/css">
 	.large {
@@ -170,21 +198,21 @@
 	}
 
 	.cash-out-amount {
-		color: #dc3545 !important;
+		color: black !important;
 		font-weight: 700;
 	}
 
 	.bank-out-amount {
-		color: #f08080 !important;
+		color: black !important;
 		font-weight: 700;
 	}
 
 	tr.cash-out-row .particulars {
-		color: #dc3545;
+		color: black;
 	}
 
 	tr.bank-out-row .particulars {
-		color: #f08080;
+		color: black;
 	}
 
 	.decided-action-link {
@@ -222,6 +250,11 @@
 
 	.cash-inline-delete:hover {
 		color: #a94442;
+	}
+
+	.total-sum {
+		font-size: 1.5rem;
+		font-weight: 700;
 	}
 </style>
 <?php
@@ -713,7 +746,7 @@ if (isset($get->copy) && $get->copy > 0) {
 }
 
 if (isset($get->cw)) {
-	$company = R::load("cw_company", $get->cw); 
+	$company = R::load("cw_company", $get->cw);
 	print "<div style='padding: 0 20px;'>";
 	print "<h3><strong>$company->name</strong> Petty Cash Report</h3>";
 	$d = isset($get->d) ? $get->d : addDay(-5);
@@ -831,13 +864,13 @@ if (isset($get->cw)) {
 	// print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Cash In</th><th class='w120'></th><th>Cash Out</th><th class='w120'></th><th>Balance</th><th></th>";
 
 	//<th><a href='add_cash'>Add Cash</a><br><a href='widthdraw'>Cash Withdraw</a></th><th>Invested Capital</th>
-	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th>Cash Out</th><th>Balance</th><th>Manager</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Status</th><th>Approval</th>";
+	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th width='80px'></th><th>Cash Out</th><th>Balance</th><th>Manager</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Status</th><th>Approval</th>";
 	if (uid() == 1) {
 		print "<th>Del</th>";
 	}
 	print "</tr>";
 	$openingTailColspan = 6 + (uid() == 1 ? 1 : 0);
-	print "<tr><th colspan='5'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
+	print "<tr><th colspan='6'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
 	$i = 1;
 	// vd($opening);
 	$userList = userList();
@@ -960,6 +993,7 @@ if (isset($get->cw)) {
 		$cashOutClass = 'right' . ($cashDelta < 0 ? ' cash-out-amount' : '');
 		$bankOutClass = 'right' . ($bankDelta < 0 ? ' bank-out-amount' : '');
 		$r .= "<td class='$cashInClass'>" . $cashIn . "</td>";
+		$r .= "<td class='center select-cell' data-cashout='" . ($cashDelta < 0 ? abs($cashDelta) : 0) . "'></td>";
 		$r .= "<td class='$cashOutClass'>" . $cashOut . "</td>";
 		$r .= "<td class='rht'>" . nf($cashAfter) . "</td>";
 		$r .= "<td title='$tr->source'><small>" . $userList[$tr->entry_by] . "</small></td>";
@@ -1001,15 +1035,16 @@ if (isset($get->cw)) {
 
 	$investment_period_total = getSum("investment", "amount", "date BETWEEN '$d' AND '$t' AND trash=0");
 
-	print "<tr><th colspan='2' class='text-right'>Total Investment</th><th class='right text-danger' colspan='1'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>" . nf($cashInTotal) . "</th><th class='right'>" . nf($cashOutTotal) . "</th><th class='right'>" . nf($total) . "</th><th></th><th class='right'>" . nf($bankInTotal) . "</th><th class='right'>" . nf($bankOutTotal) . "</th><th class='right'>" . nf(sum('bank')) . "</th>" . (uid() == 1 ? "<th></th>" : "") . "</tr>";
+	print "<tr><th colspan='2' class='text-right'>Total Investment</th><th class='right text-danger' colspan='1'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>" . nf($cashInTotal) . "</th><th></th><th class='right'>" . nf($cashOutTotal) . "</th><th class='right'>" . nf($total) . "</th><th></th><th class='right'>" . nf($bankInTotal) . "</th><th class='right'>" . nf($bankOutTotal) . "</th><th class='right'>" . nf(sum('bank')) . "</th>" . (uid() == 1 ? "<th></th>" : "") . "</tr>";
 
 	if (uid() == 1) {
-		print "<tr><td colspan='13' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";
+		print "<tr><td colspan='14' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";
 	}
 
-	if (uid() != 1 && isUserIn(['orange'])) {
-		print "<tr><td colspan='12' class='cntr'><button class='btn btn-success'>Done Selected</button>  <span class='alert alert-warning'>TOTAL SELECTED : <span class='total-selected'></span></span></td></tr>";
+	if (uid() != 1 && isUserIn(['orange', 'lemon'])) {
+		print "<tr><td colspan='13' class='cntr'><button class='btn btn-success'>Done Selected</button>  <span class='alert alert-warning'>TOTAL SELECTED : <span class='total-selected'></span></span></td></tr>";
 	}
+	print "<tr><td colspan='13' class='cntr'><span class='total-sum'>Total Cash Out Selected : <strong class='total-cashout-selected'>0.00</strong></span></td></tr>";
 	print "</table>";
 	print "<div class='text-center fs-2 fw-bold mb-3'>Total Petty Cash Amount: " . nf($total) . "</div>";
 	print "</form>";
@@ -1348,6 +1383,29 @@ if (isset($get->cw)) {
 	function setOutletPart() {
 		$("#outlet-particulars").val("Petty Cash Exchcange to Outlet Account Rm " + $("#outlet-amount").val());
 	}
+</script>
+<script type="text/javascript">
+	$(document).ready(function () {
+		$('.select-cell').each(function () {
+			if (parseFloat($(this).data('cashout')) === 0) {
+				$(this).qtip({
+					content: 'No Cash Out Balance',
+					position: { my: 'top center', at: 'bottom center' },
+					style: { classes: 'qtip-bootstrap', color: '#FDDC62' }
+				});
+			}
+		});
+		$(document).on('click', '.select-cell', function () {
+			var $td = $(this);
+			var $row = $td.closest('tr');
+			$row.toggleClass('row-selected');
+			var total = 0;
+			$('.row-selected .select-cell').each(function () {
+				total += parseFloat($(this).data('cashout')) || 0;
+			});
+			$('.total-cashout-selected').text(total > 0 ? total.toFixed(2) : '0.00');
+		});
+	});
 </script>
 
 <div class="modal fade outlet" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
