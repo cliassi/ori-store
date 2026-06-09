@@ -552,3 +552,53 @@ if (!function_exists('calculatePettyCashBalance')) {
         ];
     }
 }
+if (!function_exists('ensureMysqlTableWithColumn')) {
+    function ensureMysqlTableWithColumn($table, $columnDef)
+    {
+        global $c;
+        $c->query("CREATE TABLE IF NOT EXISTS `$table` ($columnDef) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+        $cols = $c->query("SHOW COLUMNS FROM `$table`")->fetch_all(MYSQLI_ASSOC);
+        $existing = array_column($cols, 'Field');
+        preg_match_all('/`(\w+)`\s+(\w[\w\s(),]*)/', $columnDef, $matches);
+        for ($i = 0; $i < count($matches[1]); $i++) {
+            $col = $matches[1][$i];
+            $def = $matches[2][$i];
+            if (!in_array($col, $existing) && $col !== 'PRIMARY') {
+                $c->query("ALTER TABLE `$table` ADD COLUMN `$col` $def");
+            }
+        }
+    }
+}
+
+if (!function_exists('ensurePettyCashCurrencyTables')) {
+    function ensurePettyCashCurrencyTables()
+    {
+        ensureMysqlTableWithColumn('petty_cash_currency_data', "
+		`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+		`month` int(2) NOT NULL,
+		`year` int(4) NOT NULL,
+		`label` varchar(50) NOT NULL,
+		`denomination` decimal(10,2) NOT NULL DEFAULT 0,
+		`count` decimal(10,2) NOT NULL DEFAULT 0,
+		`entry_by` int(10) unsigned NOT NULL,
+		`entry_time` datetime NOT NULL,
+		`modify_by` int(10) unsigned DEFAULT NULL,
+		`modify_time` datetime DEFAULT NULL,
+		PRIMARY KEY (`id`),
+		UNIQUE KEY `month_year_label` (`month`, `year`, `label`)
+	");
+        ensureMysqlTableWithColumn('petty_cash_currency_notes', "
+		`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+		`month` int(2) NOT NULL,
+		`year` int(4) NOT NULL,
+		`note_text` text NOT NULL,
+		`note_amount` decimal(12,2) NOT NULL DEFAULT 0,
+		`sort_order` int(3) NOT NULL DEFAULT 0,
+		`entry_by` int(10) unsigned NOT NULL,
+		`entry_time` datetime NOT NULL,
+		`trash` tinyint(1) unsigned NOT NULL DEFAULT 0,
+		PRIMARY KEY (`id`),
+		KEY `month_year` (`month`, `year`)
+	");
+    }
+}

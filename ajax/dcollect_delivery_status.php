@@ -375,7 +375,8 @@ $customers = select($query);
   }
 </style>
 <form method='post'>
-  <div class="customer-container text-center">
+  <div style='display:flex; align-items:flex-start; gap:16px; overflow:hidden;'>
+  <div class="customer-container text-center" style='flex:1; min-width:0;'>
     <?php
     $pending = $pending == "true";
     $delivery = $delivery == "true";
@@ -591,6 +592,62 @@ $customers = select($query);
         break;
     }
     ?>
+    <?php
+    // Build read-only summary: aggregate all visible items across all customers
+    $summaryMap = [];
+    foreach ($allItemsData as $custId => $items) {
+      foreach ($items as $i) {
+        $qty = $i->quantity - $i->delivered;
+        if ($qty <= 0) continue;
+        $vid = (int)$i->vid;
+        if (!isset($summaryMap[$vid])) {
+          $summaryMap[$vid] = ['name' => $i->particulars, 'price' => (float)$i->price, 'qty' => 0];
+        }
+        $summaryMap[$vid]['qty'] += $qty;
+      }
+    }
+    uasort($summaryMap, function($a, $b) { return strcmp($a['name'], $b['name']); });
+    $summaryTotalQty = array_sum(array_column($summaryMap, 'qty'));
+    $summaryTotalPrice = array_sum(array_map(function($r) { return $r['price'] * $r['qty']; }, $summaryMap));
+    ?>
+  </div><!-- end customer-container -->
+    <?php if (!empty($summaryMap)): ?>
+    <!-- Read-only summary panel: hidden until a customer is selected -->
+    <div id='delivery-summary-panel' style='display:none; width:280px; flex-shrink:0; position:sticky; top:80px; align-self:normal;'>
+      <table class='table table-bordered table-sm mb-0' style='font-size: .7rem; table-layout:fixed; width:100%;'>
+        <thead class='table-light'>
+          <tr>
+            <th style='width:28px; text-align:center;'>#</th>
+            <th>NAME</th>
+            <th style='width:60px; text-align:right;'>PRICE</th>
+            <th style='width:52px; text-align:center;'>QTY</th>
+          </tr>
+        </thead>
+        <tbody id='delivery-summary-body'>
+          <?php $sn = 1; foreach ($summaryMap as $vid => $row): ?>
+          <tr data-vid='<?= $vid ?>'
+              data-name='<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>'
+              data-price='<?= $row['price'] ?>'
+              data-qty='<?= $row['qty'] ?>'>
+            <td class='text-center'><?= $sn++ ?></td>
+            <td style='word-break:break-word; white-space:normal;'><?= htmlspecialchars($row['name']) ?></td>
+            <td class='text-right'><?= number_format($row['price'] * $row['qty'], 2) ?></td>
+            <td class='text-center'><?= $row['qty'] ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan='2' class='text-right'>Total</th>
+            <th class='text-right' id='delivery-summary-total-price'><?= number_format($summaryTotalPrice, 2) ?></th>
+            <th class='text-center' id='delivery-summary-total'><?= $summaryTotalQty ?></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <?php endif; ?>
+  </div><!-- end flex row -->
+
     <div style='position: fixed; right: 20px; bottom: 20px; padding-left: 30px; padding-right: 30px'>
       <table align="center">
         <tr>
@@ -657,8 +714,69 @@ $customers = select($query);
               item.style.display = custMatch ? '' : 'none';
             });
           }
+
+          // Update summary panel visibility and content
+          updateDeliverySummary(checkedBoxes);
         }
       });
+
+      function updateDeliverySummary(checkedBoxes) {
+        var panel = document.getElementById('delivery-summary-panel');
+        if (!panel) return;
+
+        if (!checkedBoxes || checkedBoxes.length === 0) {
+          panel.style.display = 'none';
+          return;
+        }
+
+        // Aggregate qty per vid from selected customers' rows
+        var map = {};
+        checkedBoxes.forEach(function(cb) {
+          var custId = cb.getAttribute('data-cust');
+          if (!custId) return;
+          var custItem = document.querySelector('.customer-item.customer-' + custId);
+          if (!custItem) return;
+          custItem.querySelectorAll('tr[data-vid]').forEach(function(row) {
+            var vid = row.getAttribute('data-vid');
+            var qty = parseFloat(row.getAttribute('data-qty') || '0') || 0;
+            var price = parseFloat(row.getAttribute('data-unit-price') || '0') || 0;
+            var name = row.getAttribute('data-particulars') || '';
+            if (!vid || qty <= 0) return;
+            if (!map[vid]) {
+              map[vid] = { name: name, price: price, qty: 0 };
+            }
+            map[vid].qty += qty;
+          });
+        });
+
+        var tbody = document.getElementById('delivery-summary-body');
+        var totalEl = document.getElementById('delivery-summary-total');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        var totalQty = 0;
+        var serial = 1;
+        var entries = Object.values(map).sort(function(a, b) {
+          return (a.name || '').localeCompare(b.name || '');
+        });
+
+        var totalPrice = 0;
+        entries.forEach(function(item) {
+          totalQty += item.qty;
+          totalPrice += item.price * item.qty;
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td class="text-center">' + (serial++) + '</td>'
+            + '<td>' + item.name + '</td>'
+            + '<td class="text-right">' + (item.price * item.qty).toFixed(2) + '</td>'
+            + '<td class="text-center">' + item.qty + '</td>';
+          tbody.appendChild(tr);
+        });
+
+        if (totalEl) totalEl.textContent = totalQty;
+        var totalPriceEl = document.getElementById('delivery-summary-total-price');
+        if (totalPriceEl) totalPriceEl.textContent = totalPrice.toFixed(2);
+        panel.style.display = entries.length ? '' : 'none';
+      }
 
       document.addEventListener('click', function (e) {
         var toggleEl = e.target.closest('.cust-toggle');

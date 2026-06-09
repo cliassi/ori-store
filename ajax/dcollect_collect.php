@@ -361,9 +361,9 @@ $customers = select($query);
         if ($filter) {
           $filter .= " AND ";
         }
-        $filter .= " ii.delivered < ii.quantity AND IFNULL(ii.delivery_date,i.invoice_date) <= curdate() AND IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-25'";
+        $filter .= " ii.delivered < ii.quantity AND IFNULL(ii.delivery_date,i.invoice_date) = curdate() AND IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-25'";
         if ($delivery || $collection) {
-          $filter = "IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
+          $filter = "IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
         }
 
         if (nn($cities)) {
@@ -433,7 +433,7 @@ $customers = select($query);
           $asFilter[] = "i.customer_id={$customer->id}";
           $asFilter[] = "ii.delivered < ii.quantity";
           // Date window depends on delivery/collection toggle (same behavior as items list)
-          $asFilter[] = "IFNULL(ii.delivery_date,i.invoice_date) <= curdate()";
+          $asFilter[] = "IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
           if (!($delivery || $collection)) {
             $asFilter[] = "IFNULL(ii.delivery_date,i.invoice_date) >= '2026-03-25'";
           }

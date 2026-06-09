@@ -47,7 +47,7 @@ if (!$summary) {
 
 $summary2 = mysqli_fetch_object(select("SELECT 
   (SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE branch_id=$branch_id) add_cash, 
-  (SELECT SUM(IFNULL(amount,0)) FROM `bd_handover` WHERE branch_id=$branch_id) cash_handover, 
+  (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE branch_id=$branch_id GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover, 
   (SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
   (SELECT SUM(IFNULL(amount,0)) FROM `payment` WHERE payment_method='Cash' AND $filter) cash_payment, 
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id) cash, 

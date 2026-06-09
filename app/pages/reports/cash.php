@@ -745,10 +745,382 @@ if (isset($get->copy) && $get->copy > 0) {
 
 }
 
-if (isset($get->cw)) {
+if (isset($get->petty_cash_currency)) {
+	ensurePettyCashCurrencyTables();
+
+	$cwId = isset($get->cw) ? intval($get->cw) : 0;
+	$bId = isset($branch_id) ? intval($branch_id) : 0;
+
+	$startDate = isset($get->start_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $get->start_date) ? $get->start_date : date('Y-m-d');
+	$endDate = isset($get->end_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $get->end_date) ? $get->end_date : date('Y-m-d');
+
+	$startDay = isset($get->start_day) ? str_pad(intval($get->start_day), 2, '0', STR_PAD_LEFT) : date('d', strtotime($startDate));
+	$startMonth = isset($get->start_month) ? str_pad(intval($get->start_month), 2, '0', STR_PAD_LEFT) : date('m', strtotime($startDate));
+	$startYear = isset($get->start_year) ? intval($get->start_year) : intval(date('Y', strtotime($startDate)));
+	$startDate = "$startYear-$startMonth-$startDay";
+
+	$endDay = isset($get->end_day) ? str_pad(intval($get->end_day), 2, '0', STR_PAD_LEFT) : date('d', strtotime($endDate));
+	$endMonth = isset($get->end_month) ? str_pad(intval($get->end_month), 2, '0', STR_PAD_LEFT) : date('m', strtotime($endDate));
+	$endYear = isset($get->end_year) ? intval($get->end_year) : intval(date('Y', strtotime($endDate)));
+	$endDate = "$endYear-$endMonth-$endDay";
+
+	if ($startDate > $endDate) {
+		$temp = $startDate;
+		$startDate = $endDate;
+		$endDate = $temp;
+	}
+
+	if (isset($get->shift)) {
+		$shift = $get->shift;
+		if ($shift === 'prev' || $shift === 'next') {
+			$delta = $shift === 'prev' ? '-1 day' : '+1 day';
+			$startDate = date('Y-m-d', strtotime($delta, strtotime($startDate)));
+			$endDate = date('Y-m-d', strtotime($delta, strtotime($endDate)));
+			if ($startDate > $endDate) {
+				$temp = $startDate;
+				$startDate = $endDate;
+				$endDate = $temp;
+			}
+		}
+	}
+
+	list($startYear, $startMonth, $startDay) = explode('-', $startDate);
+	list($endYear, $endMonth, $endDay) = explode('-', $endDate);
+
+	$cm = intval(date('m', strtotime($endDate)));
+	$cy = intval(date('Y', strtotime($endDate)));
+
+	$d = date('Y-m-d', strtotime($endDate . ' +1 day'));
+
+	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND amount>0 AND date<'$d'");
+	$cash_handover = getSum("bd_handover", "amount", "(branch_id = $bId OR branch_id IS NULL) AND amount>0 AND date<'$d'");
+	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
+	$cash_payment = getSum("payment", "amount", "(branch_id = $bId OR branch_id IS NULL) AND payment_method='Cash' AND date<'$d'");
+	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
+
+	$petty_cash_value = $cash_handover + $add_cash - abs($withdraw) - $cash_payment - $cash_expense;
+	$petty_cash_value_str = number_format($petty_cash_value, 2, '.', ',');
+	$cData = [];
+	$cRows = R::find("petty_cash_currency_data", "month=? AND year=?", [$cm, $cy]);
+	foreach ($cRows as $row) {
+		$cData[strtolower($row->label)] = $row->count;
+	}
+	$notes = R::find("petty_cash_currency_notes", "month=? AND year=? AND trash=0 ORDER BY sort_order ASC, id ASC", [$cm, $cy]);
+	$denomDefs = [
+		['label' => '1', 'value' => 1, 'type' => 'currency'],
+		['label' => '5', 'value' => 5, 'type' => 'currency'],
+		['label' => '10', 'value' => 10, 'type' => 'currency'],
+		['label' => '20', 'value' => 20, 'type' => 'currency'],
+		['label' => '50', 'value' => 50, 'type' => 'currency'],
+		['label' => '100', 'value' => 100, 'type' => 'currency'],
+		['label' => 'Coin', 'value' => 0, 'type' => 'Coin'],
+		['label' => 'fd_1', 'value' => 100, 'type' => 'fd', 'display' => 'Fixed Deposit x 1'],
+		['label' => 'fd_5', 'value' => 500, 'type' => 'fd', 'display' => 'Fixed Deposit x 5'],
+		['label' => 'fd_10', 'value' => 1000, 'type' => 'fd', 'display' => 'Fixed Deposit x 10'],
+		['label' => 'fd_20', 'value' => 2000, 'type' => 'fd', 'display' => 'Fixed Deposit x 20'],
+		['label' => 'fd_50', 'value' => 5000, 'type' => 'fd', 'display' => 'Fixed Deposit x 50'],
+		['label' => 'fd_100', 'value' => 10000, 'type' => 'fd', 'display' => 'Fixed Deposit x 100'],
+	];
+	$monthsList = ['01' => 'Jan', '02' => 'Feb', '03' => 'Mar', '04' => 'Apr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Aug', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dec'];
+	print "<div class='container'>";
+	print "<div class='row' style='margin-bottom:5px;'>";
+	print "<div class='col-md-12'>";
+	print "<a href='?page=18&petty_cash_details&cw=$cwId' class='btn btn-danger btn-sm float-end'><i class='fa fa-arrow-left' style='font-size: 24px;'></i></a>";
+	print "</div></div>";
+	print "<form method='get' style='margin-bottom:15px;'>";
+	print "<input type='hidden' name='page' value='18'>";
+	print "<input type='hidden' name='petty_cash_currency' value=''>";
+	print "<input type='hidden' name='cw' value='$cwId'>";
+	print "<div style='display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap;'>";
+	print "<button type='submit' name='shift' value='prev' class='btn btn-sm btn-outline-secondary'>&laquo; Prev</button>";
+	print "<div style='text-align:center'>";
+	print "<div style='display:flex; gap:4px;'>";
+	print "<select name='start_day' class='form-control input-sm' style='width:70px; display:inline-block;'>";
+	for ($d = 1; $d <= 31; $d++) {
+		$sel = ($startDay == str_pad($d, 2, '0', STR_PAD_LEFT)) ? 'selected' : '';
+		print "<option value='" . str_pad($d, 2, '0', STR_PAD_LEFT) . "' $sel>" . str_pad($d, 2, '0', STR_PAD_LEFT) . "</option>";
+	}
+	print "</select>";
+	print "<select name='start_month' class='form-control input-sm' style='width:90px; display:inline-block;'>";
+	foreach ($monthsList as $mv => $mn) {
+		$sel = ($startMonth == $mv) ? 'selected' : '';
+		print "<option value='$mv' $sel>$mn</option>";
+	}
+	print "</select>";
+	print "<select name='start_year' class='form-control input-sm' style='width:90px; display:inline-block;'>";
+	$curYear = date('Y');
+	for ($y = $curYear - 5; $y <= $curYear + 5; $y++) {
+		$sel = ($startYear == $y) ? 'selected' : '';
+		print "<option value='$y' $sel>$y</option>";
+	}
+	print "</select>";
+	print "</div></div>";
+	print "<div style='text-align:center'>";
+	print "<div style='display:flex; gap:4px;'>";
+	print "<select name='end_day' class='form-control input-sm' style='width:70px; display:inline-block;'>";
+	for ($d = 1; $d <= 31; $d++) {
+		$sel = ($endDay == str_pad($d, 2, '0', STR_PAD_LEFT)) ? 'selected' : '';
+		print "<option value='" . str_pad($d, 2, '0', STR_PAD_LEFT) . "' $sel>" . str_pad($d, 2, '0', STR_PAD_LEFT) . "</option>";
+	}
+	print "</select>";
+	print "<select name='end_month' class='form-control input-sm' style='width:90px; display:inline-block;'>";
+	foreach ($monthsList as $mv => $mn) {
+		$sel = ($endMonth == $mv) ? 'selected' : '';
+		print "<option value='$mv' $sel>$mn</option>";
+	}
+	print "</select>";
+	print "<select name='end_year' class='form-control input-sm' style='width:90px; display:inline-block;'>";
+	for ($y = $curYear - 5; $y <= $curYear + 5; $y++) {
+		$sel = ($endYear == $y) ? 'selected' : '';
+		print "<option value='$y' $sel>$y</option>";
+	}
+	print "</select>";
+	print "</div></div>";
+	print "<button type='submit' name='shift' value='next' class='btn btn-sm btn-outline-secondary'>Next &raquo;</button>";
+	print "<button type='submit' class='btn btn-sm btn-primary'>Filter</button>";
+	print "</div>";
+	print "</form>";
+	print "<div class='row'><div style='max-width:550px; margin:0 auto;'>";
+	print "<a href='#' onclick='openAddNote(); return false;' style='cursor:pointer; font-size:20px; color:#5cb85c; float:right;'><i class='fa fa-plus-circle'></i></a>";
+	print "<table class='table table-bordered' id='currencyTable' style='text-align:center;'>";
+	print "<colgroup><col style='width:20%'><col style='width:10%'><col style='width:10%'></colgroup>";
+	print "<tr style='font-weight:bold;'><td style='color:#0066cc !important;'>Petty Cash Currency Balance</td><td colspan='2' id='pettyCashBalance' style='color:#0066cc !important;'>" . $petty_cash_value_str . "</td></tr>";
+	print "<tr style='font-weight:bold;'><td style='color:#009900 !important;'>Cash Available Balance</td><td colspan='2' id='cashAvailableBalance' style='color:#009900 !important;'>0.00</td></tr>";
+	print "<tr style='font-weight:bold;'><td style='color:#cc0000 !important;'>Difference Balance</td><td colspan='2' id='diffBalance' style='color:#cc0000 !important;'>0.00</td></tr>";
+	foreach ($denomDefs as $d) {
+		$cnt = isset($cData[strtolower($d['label'])]) ? $d['type'] === 'Coin' ? number_format($cData[strtolower($d['label'])], 2, '.', '') : intval($cData[strtolower($d['label'])]) : ($d['type'] === 'Coin' ? '0.00' : '0');
+		$displayLabel = isset($d['display']) ? $d['display'] : $d['label'];
+		$rowClass = $d['type'] === 'fd' ? 'fd-row' : ($d['type'] === 'Coin' ? 'coin-row' : 'denom-row');
+		if ($d['type'] === 'Coin') {
+			print "<tr class='$rowClass' style='font-weight:bold;'><td style='color:#009900 !important;'>$displayLabel</td><td class='editable-coin' data-label='Coin' data-coin='$cnt' onclick='editcoin(this)' style='color:#009900 !important;'>$cnt</td><td class='coin-total' style='color:#009900 !important;'>$cnt</td></tr>";
+		} else {
+			$total = $d['value'] * intval($cnt);
+			$totalStr = number_format($total, 0, '.', ',');
+			print "<tr class='$rowClass' style='font-weight:bold;'><td style='color:#009900 !important;'>$displayLabel</td><td class='editable-count' data-label='{$d['label']}' data-value='{$d['value']}' data-count='$cnt' onclick='editCount(this)' style='color:#009900 !important;'>$cnt</td><td class='total-cell' style='color:#009900 !important;'>$totalStr</td></tr>";
+		}
+	}
+	print "<tbody id='notesBody'>";
+	foreach ($notes as $note) {
+		$nid = intval($note->id);
+		$ntext = htmlspecialchars($note->note_text);
+		$namt = floatval($note->note_amount);
+		$namtStr = $namt != 0 ? number_format($namt, 2, '.', ',') : '';
+		print "<tr class='note-row' data-note-id='$nid'>";
+		print "<td colspan='2' style='text-align:center; font-weight:bold;'>$ntext</td>";
+		print "<td style='text-align:center; font-weight:bold;'>$namtStr <a href='#' onclick='deleteNote($nid, this); return false;' style='cursor:pointer; color:#d9534f; margin-left:6px;'><i class='fa fa-minus-circle'></i></a><a href='#' onclick='editNote($nid, this); return false;' style='cursor:pointer; color:#337ab7; margin-left:6px;'><i class='fa fa-file'></i></a></td>";
+		print "</tr>";
+	}
+	print "</tbody>";
+	print "<tr style='font-weight:bold; font-size:18px;'><td style='color:#0066cc !important;' colspan='2'>Total Amount Rm :</td><td style='color:#0066cc !important;' id='totalAmount'>0.00</td></tr>";
+	print "</table>";
+	print "</div></div>";
+	print "</div>";
+	print "
+	<div class='modal fade' id='countModal' tabindex='-1' role='dialog'>
+		<div class='modal-dialog modal-sm' role='document'>
+			<div class='modal-content'>
+				<div class='modal-header'>
+					<button type='button' class='close' data-dismiss='modal'><span aria-hidden='true'>&times;</span></button>
+					<h4 class='modal-title' id='countModalTitle'>Edit Count</h4>
+				</div>
+				<div class='modal-body'>
+					<input type='number' class='form-control' id='countModalInput' min='0' step='1' value='0'>
+				</div>
+				<div class='modal-footer'>
+				<button type='button' class='btn btn-secondary' data-dismiss='modal'>Cancel</button>
+				<button type='button' class='btn btn-primary' onclick='saveCount()'>Save</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class='modal fade' id='coinModal' tabindex='-1' role='dialog'>
+		<div class='modal-dialog modal-sm' role='document'>
+			<div class='modal-content'>
+				<div class='modal-header'>
+					<button type='button' class='close' data-dismiss='modal'><span aria-hidden='true'>&times;</span></button>
+					<h4 class='modal-title'>Edit coin Amount</h4>
+				</div>
+				<div class='modal-body'>
+					<input type='number' class='form-control' id='coinModalInput' min='0' step='0.01' value='0'>
+				</div>
+				<div class='modal-footer'>
+				<button type='button' class='btn btn-secondary' data-dismiss='modal'>Cancel</button>
+				<button type='button' class='btn btn-primary' onclick='savecoin()'>Save</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class='modal fade' id='noteModal' tabindex='-1' role='dialog'>
+		<div class='modal-dialog' role='document'>
+			<div class='modal-content'>
+				<div class='modal-header'>
+					<button type='button' class='close' data-dismiss='modal'><span aria-hidden='true'>&times;</span></button>
+					<h4 class='modal-title' id='noteModalTitle'>Add Note</h4>
+				</div>
+				<div class='modal-body'>
+					<input type='hidden' id='editingNoteId' value=''>
+					<textarea class='form-control' id='noteModalInput' rows='3' placeholder='Enter note'></textarea>
+					<input type='number' class='form-control' id='noteModalAmount' min='0' step='0.01' value='0' placeholder='Amount (optional)' style='margin-top:10px;'>
+				</div>
+				<div class='modal-footer'>
+				<button type='button' class='btn btn-secondary' data-dismiss='modal'>Cancel</button>
+				<button type='button' class='btn btn-primary' onclick='saveNote()' id='noteModalSaveBtn'>Save</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+	var currentEditCell = null;
+	var ajaxMonth = $cm;
+	var ajaxYear = $cy;
+	var ajaxUrl = '/store/ajax/';
+	function editCount(cell) {
+		currentEditCell = cell;
+		var count = parseInt(cell.getAttribute('data-count')) || 0;
+		var value = cell.getAttribute('data-value');
+		$('#countModalTitle').text('Edit count for RM ' + value);
+		$('#countModalInput').val(count);
+		$('#countModal').modal('show');
+	}
+	function saveCount() {
+		var count = parseInt($('#countModalInput').val()) || 0;
+		var value = parseInt(currentEditCell.getAttribute('data-value'));
+		var label = currentEditCell.getAttribute('data-label');
+		currentEditCell.setAttribute('data-count', count);
+		currentEditCell.textContent = count;
+		currentEditCell.nextElementSibling.textContent = (value * count).toLocaleString('en-US');
+		$('#countModal').modal('hide');
+		recalcAll();
+		$.post(ajaxUrl + 'petty_cash_currency_save.php', {month: ajaxMonth, year: ajaxYear, label: label, denomination: value, count: count});
+	}
+	function editcoin(cell) {
+		currentEditCell = cell;
+		var coin = parseFloat(cell.getAttribute('data-coin')) || 0;
+		$('#coinModalInput').val(coin);
+		$('#coinModal').modal('show');
+	}
+	function savecoin() {
+		var coin = parseFloat($('#coinModalInput').val()) || 0;
+		currentEditCell.setAttribute('data-coin', coin);
+		currentEditCell.textContent = coin.toFixed(2);
+		currentEditCell.nextElementSibling.textContent = coin.toFixed(2);
+		$('#coinModal').modal('hide');
+		recalcAll();
+		$.post(ajaxUrl + 'petty_cash_currency_save.php', {month: ajaxMonth, year: ajaxYear, label: 'Coin', denomination: 0, count: coin});
+	}
+	function openAddNote() {
+		$('#noteModalInput').val('');
+		$('#noteModalAmount').val('0');
+		$('#editingNoteId').val('');
+		$('#noteModalTitle').text('Add Note');
+		$('#noteModalSaveBtn').text('Save');
+		$('#noteModal').modal('show');
+	}
+	function saveNote() {
+		var text = $('#noteModalInput').val().trim();
+		var amount = parseFloat($('#noteModalAmount').val()) || 0;
+		var editId = $('#editingNoteId').val();
+		$('#noteModal').modal('hide');
+		if (editId) {
+			$.post(ajaxUrl + 'petty_cash_currency_note_edit.php', {id: editId, note_text: text, note_amount: amount}, function(resp) {
+				try {
+					var data = JSON.parse(resp);
+				} catch(e) {
+					console.error('Edit note: JSON parse error', resp);
+					return;
+				}
+				if (data.ok) {
+					var row = $('tr.note-row[data-note-id=\"' + editId + '\"]');
+					var amtStr = amount != 0 ? amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '';
+					row.find('td:eq(0)').html('<strong>' + $('<span>').text(text).html() + '</strong>');
+					row.find('td:eq(1)').html(amtStr + ' <a href=\"#\" onclick=\"deleteNote(\'' + editId + '\', this); return false;\" style=\"cursor:pointer; color:#d9534f; margin-left:6px;\"><i class=\"fa fa-minus-circle\"></i></a><a href=\"#\" onclick=\"editNote(\'' + editId + '\', this); return false;\" style=\"cursor:pointer; color:#337ab7; margin-left:6px;\"><i class=\"fa fa-file\"></i></a>');
+					recalcAll();
+				}
+			}).fail(function(jqXHR, textStatus) {
+				console.error('Edit note AJAX error:', textStatus, jqXHR.responseText);
+			});
+		} else {
+			$.post(ajaxUrl + 'petty_cash_currency_note_add.php', {month: ajaxMonth, year: ajaxYear, note_text: text, note_amount: amount}, function(resp) {
+				try {
+					var data = JSON.parse(resp);
+				} catch(e) {
+					console.error('Add note: JSON parse error', resp);
+					return;
+				}
+				if (data.ok) {
+					var id = data.id;
+					var amtStr = amount != 0 ? amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '';
+					var tr = document.createElement('tr');
+					tr.className = 'note-row';
+					tr.setAttribute('data-note-id', id);
+					tr.innerHTML = '<td colspan=\"2\" style=\"text-align:center; font-weight:bold;\">' + $('<span>').text(text).html() + '</td><td style=\"text-align:center; font-weight:bold;\">' + amtStr + ' <a href=\"#\" onclick=\"deleteNote(' + id + ', this); return false;\" style=\"cursor:pointer; color:#d9534f; margin-left:6px;\"><i class=\"fa fa-minus-circle\"></i></a><a href=\"#\" onclick=\"editNote(' + id + ', this); return false;\" style=\"cursor:pointer; color:#337ab7; margin-left:6px;\"><i class=\"fa fa-file\"></i></a></td>';
+					$('#notesBody').append(tr);
+					recalcAll();
+				}
+			}).fail(function(jqXHR, textStatus) {
+				console.error('Add note AJAX error:', textStatus, jqXHR.responseText);
+			});
+		}
+	}
+	function editNote(id, el) {
+		var row = $(el).closest('tr.note-row');
+		var text = row.find('td:eq(0)').text().trim();
+		var amtText = row.find('td:eq(1)').clone().children().remove().end().text().replace(/,/g, '').trim();
+		var amount = parseFloat(amtText) || 0;
+		$('#editingNoteId').val(id);
+		$('#noteModalInput').val(text);
+		$('#noteModalAmount').val(amount);
+		$('#noteModalTitle').text('Edit Note');
+		$('#noteModalSaveBtn').text('Update');
+		$('#noteModal').modal('show');
+	}
+	function deleteNote(id, el) {
+		if (!confirm('Delete this note?')) return;
+		$.post(ajaxUrl + 'petty_cash_currency_note_delete.php', {id: id}, function(resp) {
+			try {
+				var data = JSON.parse(resp);
+			} catch(e) {
+				console.error('Delete note: JSON parse error', resp);
+				return;
+			}
+			if (data.ok) {
+				$(el).closest('tr').remove();
+				recalcAll();
+			}
+		}).fail(function(jqXHR, textStatus) {
+			console.error('Delete note AJAX error:', textStatus, jqXHR.responseText);
+		});
+	}
+	function recalcAll() {
+		var cashTotal = 0;
+		$('#currencyTable .denom-row, #currencyTable .fd-row').each(function() {
+			var count = parseInt($(this).find('.editable-count').attr('data-count')) || 0;
+			var value = parseInt($(this).find('.editable-count').attr('data-value'));
+			var total = value * count;
+			$(this).find('.total-cell').text(total.toLocaleString('en-US'));
+			cashTotal += total;
+		});
+		var coin = parseFloat($('#currencyTable .coin-row .editable-coin').attr('data-coin')) || 0;
+		cashTotal += coin;
+		$('#currencyTable .note-row').each(function() {
+			var amtText = $(this).find('td:eq(1)').text().replace(/,/g, '').trim();
+			if (amtText !== '') {
+				cashTotal += parseFloat(amtText) || 0;
+			}
+		});
+		$('#cashAvailableBalance').text(cashTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+		var pettyCash = " . $petty_cash_value . ";
+		var diff = cashTotal - pettyCash;
+		$('#diffBalance').text(diff.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+		$('#totalAmount').text(cashTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+	}
+	$(document).ready(function() { recalcAll(); });
+	</script>";
+	print "<hr>";
+} elseif (isset($get->cw)) {
 	$company = R::load("cw_company", $get->cw);
 	print "<div style='padding: 0 20px;'>";
-	print "<h3><strong>$company->name</strong> Petty Cash Report</h3>";
+	print "<h3><strong><a href='?page=18&petty_cash_currency=&cw=$get->cw'>$company->name Petty Cash Report</a></strong></h3>";
 	$d = isset($get->d) ? $get->d : addDay(-5);
 	$t = isset($get->t) ? $get->t : today();
 	print "<div class='row'>";
@@ -796,10 +1168,12 @@ if (isset($get->cw)) {
           AND `date` < '$d'
     ) add_cash,
 
-    (SELECT IFNULL(SUM(amount),0)
-        FROM bd_handover
-        WHERE (branch_id = $branch_id OR branch_id IS NULL)
-          AND `date` < '$d'
+    (SELECT IFNULL(SUM(h.amount),0)
+        FROM (SELECT MAX(id) id FROM bd_handover
+              WHERE (branch_id = $branch_id OR branch_id IS NULL)
+                AND `date` < '$d'
+              GROUP BY `date`) latest
+        JOIN bd_handover h ON h.id = latest.id
     ) cash_handover,
 
     (SELECT IFNULL(SUM(amount),0)
@@ -836,7 +1210,7 @@ if (isset($get->cw)) {
 	//CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) 
 	//CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) 
 	$trans = select("SELECT * FROM (
-			SELECT '' se, 'bd_handover' source, id, amount, concat(`date`, ' 23:59:59') `date`, created_at entry_time, created_by entry_by, 'Bank & Cash Handover from Daily Collection' particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM bd_handover WHERE branch_id=$branch_id AND (amount>0 OR bank_amount > 0) AND date BETWEEN '$d' AND '$t'
+			SELECT '' se, 'bd_handover' source, h.id, h.amount, concat(h.`date`, ' 23:59:59') `date`, h.created_at entry_time, h.created_by entry_by, 'Bank & Cash Handover from Daily Collection' particulars, h.`status`, '' ref, '' done_by, '' done_time, 0 checked FROM bd_handover h JOIN (SELECT MAX(id) id FROM bd_handover WHERE branch_id=$branch_id AND (amount>0 OR bank_amount > 0) AND date BETWEEN '$d' AND '$t' GROUP BY `date`) latest ON h.id = latest.id
 			UNION
 			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE branch_id=$branch_id AND amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
 			UNION
@@ -1044,7 +1418,7 @@ if (isset($get->cw)) {
 	if (uid() != 1 && isUserIn(['orange', 'lemon'])) {
 		print "<tr><td colspan='13' class='cntr'><button class='btn btn-success'>Done Selected</button>  <span class='alert alert-warning'>TOTAL SELECTED : <span class='total-selected'></span></span></td></tr>";
 	}
-	print "<tr><td colspan='13' class='cntr'><span class='total-sum'>Total Cash Out Selected : <strong class='total-cashout-selected'>0.00</strong></span></td></tr>";
+	print "<tr id='totalCashOutRow'><td colspan='13' class='cntr'><span class='total-sum'>Total Cash Out Selected : <strong class='total-cashout-selected'>0.00</strong></span></td></tr>";
 	print "</table>";
 	print "<div class='text-center fs-2 fw-bold mb-3'>Total Petty Cash Amount: " . nf($total) . "</div>";
 	print "</form>";
@@ -1079,12 +1453,12 @@ if (isset($get->cw)) {
 
 
 			print "<span style='float:right'>
-		<a class='pointer btn btn-default'  href='?page=18&company=&mon=" . subMonth(1, $date) . "$bt_url'><i class='fa fa-chevron-left'></i>Prev</a>" . space(5);
+		<a class='pointer btn btn-outline-secondary'  href='?page=18&company=&mon=" . subMonth(1, $date) . "$bt_url'><i class='fa fa-chevron-left'></i>Prev</a>" . space(5);
 			//."<b>";
 			// print date("M Y", strtotime($mon."-01"))."</b>";
 			print monthSelector('mon', date("Y-m-d", strtotime($mon . "-01")));
 			print space(5) .
-				"<a class='pointer btn btn-default' href='?page=18&company=&mon=" . addMonth(1, $date) . "$bt_url'>Next <i class='fa fa-chevron-right'></i></a>
+				"<a class='pointer btn btn-outline-secondary' href='?page=18&company=&mon=" . addMonth(1, $date) . "$bt_url'>Next <i class='fa fa-chevron-right'></i></a>
 		</span>";
 			print "<br><br>";
 
@@ -1386,6 +1760,7 @@ if (isset($get->cw)) {
 </script>
 <script type="text/javascript">
 	$(document).ready(function () {
+		$('#totalCashOutRow').hide();
 		$('.select-cell').each(function () {
 			if (parseFloat($(this).data('cashout')) === 0) {
 				$(this).qtip({
@@ -1396,14 +1771,14 @@ if (isset($get->cw)) {
 			}
 		});
 		$(document).on('click', '.select-cell', function () {
-			var $td = $(this);
-			var $row = $td.closest('tr');
+			var $row = $(this).closest('tr');
 			$row.toggleClass('row-selected');
 			var total = 0;
 			$('.row-selected .select-cell').each(function () {
 				total += parseFloat($(this).data('cashout')) || 0;
 			});
 			$('.total-cashout-selected').text(total > 0 ? total.toFixed(2) : '0.00');
+			$('#totalCashOutRow').toggle(total > 0);
 		});
 	});
 </script>

@@ -611,10 +611,12 @@ $collected = 0;
             tbody.appendChild(tr);
           });
 
-        // Build consolidated totals footer (Qty only)
+        // Build consolidated totals footer (Price + Qty)
         var totalQty = 0;
+        var totalPrice = 0;
         map.forEach(function (item) {
           totalQty += (parseFloat(item.qty) || 0);
+          totalPrice += (parseFloat(item.unitPrice) || 0) * (parseFloat(item.qty) || 0);
         });
 
         var table = container.querySelector('table');
@@ -625,15 +627,20 @@ $collected = 0;
           var trf = document.createElement('tr');
 
           var thLabel = document.createElement('th');
-          thLabel.colSpan = 3; // #, Name, Price
+          thLabel.colSpan = 2; // #, Name
           thLabel.className = 'text-end';
           thLabel.textContent = 'Total';
+
+          var thPrice = document.createElement('th');
+          thPrice.className = 'text-center';
+          thPrice.textContent = fmt.format(totalPrice);
 
           var thQty = document.createElement('th');
           thQty.className = 'text-center order-qty-col';
           thQty.textContent = fmt.format(totalQty);
 
           trf.appendChild(thLabel);
+          trf.appendChild(thPrice);
           trf.appendChild(thQty);
           tfoot.appendChild(trf);
           table.appendChild(tfoot);
