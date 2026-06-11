@@ -792,8 +792,8 @@ if (isset($get->petty_cash_currency)) {
 
 	$d = date('Y-m-d', strtotime($endDate . ' +1 day'));
 
-	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND amount>0 AND date<'$d'");
-	$cash_handover = getSum("bd_handover", "amount", "(branch_id = $bId OR branch_id IS NULL) AND amount>0 AND date<'$d'");
+	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
+	$cash_handover = (float) R::getCell("SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM bd_handover WHERE (branch_id = $bId OR branch_id IS NULL) AND date<'$d' GROUP BY date) latest JOIN bd_handover h ON h.id = latest.id");
 	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
 	$cash_payment = getSum("payment", "amount", "(branch_id = $bId OR branch_id IS NULL) AND payment_method='Cash' AND date<'$d'");
 	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");

@@ -650,6 +650,7 @@ $customers = select($query);
 
     <div style='position: fixed; right: 20px; bottom: 20px; padding-left: 30px; padding-right: 30px'>
       <table align="center">
+        <?php if (uid() == 1 || uid() == 47): ?>
         <tr>
           <td>
             <?php
@@ -670,6 +671,7 @@ $customers = select($query);
           print "<td><button class='btn btn-success' type='submit' name='deliver'>Deliver</button></td>";
           ?>
         </tr>
+        <?php endif; ?>
       </table>
     </div>
 
