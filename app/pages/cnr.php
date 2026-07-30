@@ -180,6 +180,7 @@ if (isset($get->h)) {
     $collectSql = "SELECT 
         sci.stock_collect_id,
         sci.id AS stock_collect_item_id,
+        ii.id AS invoice_item_id,
         i.id AS invoice_id,
         DATE(IFNULL(sc.date, sc.created_at)) AS collect_date,
         ii.product_id,
@@ -199,17 +200,24 @@ if (isset($get->h)) {
       INNER JOIN invoice i ON i.id=ii.invoice_id
       LEFT JOIN customer c ON c.id=i.customer_id
       WHERE sc.delivery_staff='$staffNameSql' AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')
-      ORDER BY DATE(IFNULL(sc.date, sc.created_at)) ASC, IFNULL(sci.name, p.name) ASC";
+      ORDER BY c.code ASC, DATE(IFNULL(sc.date, sc.created_at)) ASC";
     $collectRows = select($collectSql);
     // echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Collect Query:</strong> " . htmlspecialchars($collectSql) . " <br><strong>Rows Found:</strong> " . ($collectRows ? mysqli_num_rows($collectRows) : 0) . "</div>";
 
     // Build collect data array from query results
     $collectData = [];
+    $invoiceItemCount = [];
     if ($collectRows && mysqli_num_rows($collectRows) > 0) {
       mysqli_data_seek($collectRows, 0);
       while ($cRow = mysqli_fetch_object($collectRows)) {
         $cKey = $cRow->stock_collect_id . '_' . $cRow->product_id . '_' . $cRow->product_variance_id . '_' . $cRow->customer_id;
         $collectData[$cKey] = $cRow;
+        if ($cRow->invoice_item_id) {
+          if (!isset($invoiceItemCount[$cRow->invoice_item_id])) {
+            $invoiceItemCount[$cRow->invoice_item_id] = 0;
+          }
+          $invoiceItemCount[$cRow->invoice_item_id]++;
+        }
       }
       mysqli_data_seek($collectRows, 0);
     }
@@ -218,26 +226,16 @@ if (isset($get->h)) {
     $deliveryData = [];
     if ($collectRows && mysqli_num_rows($collectRows) > 0) {
       $deliverySql = "SELECT 
-        sci.stock_collect_id,
-        ii.product_id,
-        ii.product_variance_id,
-        i.customer_id,
-        iid.quantity as delivered_qty
+        iid.invoice_item_id,
+        SUM(iid.quantity) as delivered_qty
         FROM invoice_item_delviery iid
-        INNER JOIN invoice_item ii ON ii.id=iid.invoice_item_id
-        INNER JOIN invoice i ON i.id=ii.invoice_id
-        INNER JOIN stock_collect_item sci ON sci.invoice_item_id=ii.id
         WHERE iid.delivery_staff='$staffNameSql' AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'
-        ORDER BY sci.stock_collect_id, ii.product_id, ii.product_variance_id, i.customer_id";
+        GROUP BY iid.invoice_item_id";
       $deliveryRows = select($deliverySql);
-      // echo "<div style='background:#fff3cd; padding:10px; margin:10px 0; border:1px solid #ffc107; border-radius:4px;'><strong>DEBUG - Delivery Query:</strong> " . htmlspecialchars($deliverySql) . " <br><strong>Rows Found:</strong> " . ($deliveryRows ? mysqli_num_rows($deliveryRows) : 0) . "</div>";
       if ($deliveryRows) {
         while ($dRow = mysqli_fetch_object($deliveryRows)) {
-          $key = $dRow->stock_collect_id . '_' . $dRow->product_id . '_' . $dRow->product_variance_id . '_' . $dRow->customer_id;
-          // Set value directly instead of accumulating to avoid duplicates
-          $deliveryData[$key] = (float) $dRow->delivered_qty;
+          $deliveryData[$dRow->invoice_item_id] = (float) $dRow->delivered_qty;
         }
-        // echo "<div style='background:#d1ecf1; padding:10px; margin:10px 0; border:1px solid #0c5460; border-radius:4px;'><strong>DEBUG - Delivery Data Array:</strong> <pre>" . htmlspecialchars(print_r($deliveryData, true)) . "</pre></div>";
       }
     }
   }
@@ -286,6 +284,37 @@ if (isset($get->h)) {
       background-color: #ffeaa7 !important;
     }
 
+    .cnr-main-table td.no-col {
+      background: rgba(21, 108, 214, 0.2);
+    }
+
+    .cnr-main-table td.date-col {
+      background: rgba(21, 108, 214, 0.2);
+    }
+
+    .cnr-main-table td.code-col {
+      background: rgba(21, 108, 214, 0.2);
+    }
+
+    .cnr-main-table td.product-col {
+      background: rgba(21, 108, 214, 0.2);
+    }
+
+    .cnr-main-table tr:nth-child(even) td.no-col,
+    .cnr-main-table tr:nth-child(even) td.date-col,
+    .cnr-main-table tr:nth-child(even) td.code-col,
+    .cnr-main-table tr:nth-child(even) td.product-col {
+      background: rgba(24, 204, 99, 0.2);
+    }
+
+    .cnr-main-table tr:nth-child(even) td.balance-col {
+      background: rgba(24, 204, 99, 0.2);
+    }
+
+    .cnr-main-table td.balance-col {
+      background: rgba(21, 108, 214, 0.2);
+    }
+
     .staff-select-wrapper .select2-container {
       display: inline-block !important;
       width: auto !important;
@@ -314,6 +343,14 @@ if (isset($get->h)) {
 
     .table a:hover {
       text-decoration: underline;
+    }
+
+    tr.odd {
+      background: rgba(21, 108, 214, 0.2);
+    }
+
+    tr.even {
+      background: rgba(24, 204, 99, 0.2);
     }
   </style>
 
@@ -481,22 +518,25 @@ if (isset($get->h)) {
             $rowClass = "date-group-$dateGroupIndex";
             ?>
             <tr class="<?= $rowClass ?>">
-              <td
+              <td class="no-col"
                 title='<?= htmlspecialchars($row->stock_collect_id) ?> | <?= htmlspecialchars($row->stock_collect_item_id) ?>'
                 style="cursor: pointer; color: #007bff; text-decoration: underline;"
                 onclick="window.location.href='/store/invoice/edit/<?= (int) $row->invoice_id ?>'">
                 <?= $no ?>
               </td>
-              <td><?= df($row->collect_date) ?></td>
-              <td title='<?= htmlspecialchars($row->invoice_id) ?>'><a
+              <td class="date-col"><?= df($row->collect_date) ?></td>
+              <td class="code-col" title='<?= htmlspecialchars($row->invoice_id) ?>'><a
                   href="/store/customer/details/<?= (int) $row->customer_id ?>"><?= htmlspecialchars($row->customer_code) ?></a>
               </td>
-              <td class="text-start"><?= htmlspecialchars($row->product_particulars) ?></td>
+              <td class="text-start product-col"><?= htmlspecialchars($row->product_particulars) ?></td>
               <td class="collect-col"><?= nf2((float) $row->collected_qty) ?></td>
               <td class="delivery-col">
                 <?php
-                $deliveryKey = $row->stock_collect_id . '_' . $row->product_id . '_' . $row->product_variance_id . '_' . $row->customer_id;
-                $deliveredQty = isset($deliveryData[$deliveryKey]) ? $deliveryData[$deliveryKey] : 0;
+                $invItemId = $row->invoice_item_id;
+                $deliveredQty = 0;
+                if ($invItemId && isset($deliveryData[$invItemId]) && isset($invoiceItemCount[$invItemId])) {
+                  $deliveredQty = $deliveryData[$invItemId] / $invoiceItemCount[$invItemId];
+                }
                 echo $deliveredQty > 0 ? nf2($deliveredQty) : '';
                 ?>
               </td>
@@ -514,8 +554,11 @@ if (isset($get->h)) {
               </td>
               <?php
               $collectedQty = (float) $row->collected_qty;
-              $deliveryKey = $row->stock_collect_id . '_' . $row->product_id . '_' . $row->product_variance_id . '_' . $row->customer_id;
-              $deliveredQty = isset($deliveryData[$deliveryKey]) ? $deliveryData[$deliveryKey] : 0;
+              $invItemId = $row->invoice_item_id;
+              $deliveredQty = 0;
+              if ($invItemId && isset($deliveryData[$invItemId]) && isset($invoiceItemCount[$invItemId])) {
+                $deliveredQty = $deliveryData[$invItemId] / $invoiceItemCount[$invItemId];
+              }
               $returnedQty = (float) (isset($row->returned_qty) ? $row->returned_qty : 0);
               $balanceQty = $collectedQty - $deliveredQty - $returnedQty;
 
@@ -524,7 +567,7 @@ if (isset($get->h)) {
               $totalDeliveryQty += $deliveredQty;
               $totalReturnQty += $returnedQty;
               ?>
-              <td><?= $balanceQty != 0 ? nf2($balanceQty) : '' ?></td>
+              <td class="balance-col"><?= $balanceQty != 0 ? nf2($balanceQty) : '' ?></td>
             </tr>
           <?php endforeach; ?>
           <?php if ($visibleRows === 0): ?>
@@ -839,15 +882,15 @@ if (isset($get->h)) {
             $rowColors = ['#fadbd8', '#d4e6f1', '#d5f5e3', '#e8daef', '#fdebd0', '#d1f2eb', '#f5b7b1', '#d5d8dc', '#f5cba7'];
             $ci = $staffId % count($nameColors);
             ?>
-          <tr style="background-color: <?= $rowColors[$ci] ?>;">
-            <td style='max-width: 5px; overflow: hidden; white-space: nowrap; font-weight: bold;'><?= $obj->id ?></td>
-            <td style='min-width: 15px;'><a style="color: #000; text-decoration: none; font-weight: bold;"
+            <tr style="background-color: <?= $rowColors[$ci] ?>;">
+              <td style='max-width: 5px; overflow: hidden; white-space: nowrap; font-weight: bold;'><?= $obj->id ?></td>
+              <td style='min-width: 15px;'><a style="color: #000; text-decoration: none; font-weight: bold;"
                   href="?h=<?= $obj->id ?>&start_date=<?= htmlspecialchars($startDate) ?>&end_date=<?= htmlspecialchars($endDate) ?>"><?= $obj->name ?></a>
               </td>
-            <td class='text-right' style="font-weight: bold;"><?= nf2($totalCollected, 0) ?></td>
-            <td class='text-right' style="font-weight: bold;"><?= nf2($totalDelivered, 0) ?></td>
-            <td class='text-right' style="font-weight: bold;"><?= nf2($totalReturned, 0) ?></td>
-            <td class='text-right' style="font-weight: bold;"><?= nf2($balanceQty, 0) ?></td>
+              <td class='text-right' style="font-weight: bold;"><?= nf2($totalCollected, 0) ?></td>
+              <td class='text-right' style="font-weight: bold;"><?= nf2($totalDelivered, 0) ?></td>
+              <td class='text-right' style="font-weight: bold;"><?= nf2($totalReturned, 0) ?></td>
+              <td class='text-right' style="font-weight: bold;"><?= nf2($balanceQty, 0) ?></td>
             </tr>
           <?php endwhile; ?>
         </tbody>

@@ -128,6 +128,7 @@ $menus = [
     'children' => [
       // 'staff'=>'Staff +',
       'salary' => 'Staff Salary',
+      'meal' => 'Staff Meal',
       // 'Purchase'=>'Purchase Persons ',
       // 'Order'=>'Order Person ',
       // 'salesman'=>'Sales Persons +',

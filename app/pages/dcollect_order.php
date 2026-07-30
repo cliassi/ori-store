@@ -409,11 +409,15 @@ if (isset($post->save)) {
 
 
 <script type="text/javascript">
+  var __restrictedUser = <?php echo (uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar')) ? 'true' : 'false'; ?>;
+
   function setItemId(id) {
+    if (__restrictedUser) return;
     $('#invoice_item_id').val(id);
   }
 
   function setItemIdPrice(id, price) {
+    if (__restrictedUser) return;
     $('#new-price').val(price);
     setItemId(id);
   }
@@ -496,6 +500,7 @@ if (isset($post->save)) {
 
   // Function to call and show modal with ID
   function setDate(el, id) {
+    if (__restrictedUser) return;
     var checked = $(".iid-date:checked");
     if (checked.length > 0) {
       // map values into array, join with commas
@@ -519,6 +524,7 @@ if (isset($post->save)) {
   }
 
   $("#update_quantity_button").click(function() {
+    if (__restrictedUser) return;
     const quantity = $('#new-quantity').val();
     const invoice_item_id = $('#invoice_item_id').val();
     $.post('/store/ajax/update_invoice_item_quantity.php', {
@@ -538,6 +544,7 @@ if (isset($post->save)) {
       .fail(() => {});
   });
   $("#update_price_button").click(function() {
+    if (__restrictedUser) return;
     const price = $('#new-price').val();
     const invoice_item_id = $('#invoice_item_id').val();
     $.post('/store/ajax/update_invoice_item_price.php', {

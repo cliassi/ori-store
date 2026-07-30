@@ -7,10 +7,13 @@ require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
 
+$restrictedUser = (uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
+
 extract($_POST);
 
 
 if(isset($update_price)){
+	if ($restrictedUser) { print ""; exit; }
 	$item = R::load("invoice_item", $invoice_item_id);
 	// if($item->price < $price){
 		$item->old_price = $item->price;

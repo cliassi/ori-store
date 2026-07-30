@@ -453,7 +453,7 @@ if (isset($post->save)) {
                                             SELECT 'collection' src, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, 
                                             oi.quantity quantity, o.invoice_date `date`, oi.created_at, COALESCE(oi.created_by, o.created_by) created_by,
                                             COALESCE(NULLIF(sc_latest.delivery_staff, ''), NULLIF(oi.delivery_staff, ''), NULLIF(o.salesman, '')) staff,
-                                            '' `remarks`, '' status, o.customer_id AS customer_id, c.code AS customer_code,
+                                            '' `remarks`, '' status, o.customer_id AS customer_id, c.code AS customer_code, NULL AS supplier_id,
                                             oi.id AS row_ref_id, 'invoice_item' AS row_ref_table
                                             FROM `product` p
                                             JOIN `product_variance` v ON p.id = v.product_id
@@ -478,7 +478,7 @@ if (isset($post->save)) {
 
                                             -- Stock Collect Return (IN)
                                             SELECT 'ret' src, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, 
-                                            oi.returned_quantity quantity, o.date `date`, oi.created_at, oi.created_by, o.delivery_staff staff, '' `remarks`, '' status, NULL AS customer_id, NULL AS customer_code,
+                                            oi.returned_quantity quantity, o.date `date`, oi.created_at, oi.created_by, o.delivery_staff staff, '' `remarks`, '' status, NULL AS customer_id, NULL AS customer_code, NULL AS supplier_id,
                                             oi.id AS row_ref_id, 'stock_collect_item' AS row_ref_table
                                             FROM `product` p
                                             JOIN `product_variance` v ON p.id = v.product_id
@@ -492,7 +492,7 @@ if (isset($post->save)) {
 
                                             -- Stock Collect Damage (OUT)
                                             SELECT 'damage' src, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, 
-                                            oi.damaged_quantity quantity, o.date `date`, oi.created_at, oi.created_by, o.delivery_staff staff, '' `remarks`, '' status, NULL AS customer_id, NULL AS customer_code,
+                                            oi.damaged_quantity quantity, o.date `date`, oi.created_at, oi.created_by, o.delivery_staff staff, '' `remarks`, '' status, NULL AS customer_id, NULL AS customer_code, NULL AS supplier_id,
                                             oi.id AS row_ref_id, 'stock_collect_item' AS row_ref_table
                                             FROM `product` p
                                             JOIN `product_variance` v ON p.id = v.product_id
@@ -506,7 +506,7 @@ if (isset($post->save)) {
 
                                             -- Purchase/Inbound Order (IN)
                                             SELECT 'order' src, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, 
-                                            oi.quantity quantity, COALESCE(o.confirm_date, o.order_date) `date`, oi.created_at, oi.created_by, '' staff, 'Warehouse' `remarks`, '' status, NULL AS customer_id, NULL AS customer_code,
+                                            oi.quantity quantity, COALESCE(o.confirm_date, o.order_date) `date`, oi.created_at, oi.created_by, '' staff, 'Warehouse' `remarks`, '' status, NULL AS customer_id, NULL AS customer_code, o.supplier_id AS supplier_id,
                                             oi.id AS row_ref_id, 'order_item' AS row_ref_table
                                             FROM `product` p
                                             JOIN `product_variance` v ON p.id = v.product_id
@@ -519,7 +519,7 @@ if (isset($post->save)) {
 
                                             -- Warehouse Damaged Item (OUT)
                                             SELECT 'damage' src, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image_single vimage, size, unit, 
-                                            oi.quantity quantity, DATE(oi.created_at) `date`, oi.created_at, oi.created_by, '' staff, 'Damage' `remarks`, oi.status, NULL AS customer_id, NULL AS customer_code,
+                                            oi.quantity quantity, DATE(oi.created_at) `date`, oi.created_at, oi.created_by, '' staff, 'Damage' `remarks`, oi.status, NULL AS customer_id, NULL AS customer_code, NULL AS supplier_id,
                                             oi.id AS row_ref_id, 'damaged_item' AS row_ref_table
                                             FROM `product` p
                                             JOIN `product_variance` v ON p.id = v.product_id
@@ -673,7 +673,13 @@ if (isset($post->save)) {
                             if ($var->src == 'order') {
                                 $bal += $var->quantity;
                                 $total_order += $var->quantity;
-                                echo "<td class='text-center bg-purchase'>$var->quantity</td><td></td><td></td><td></td>";
+                                echo "<td class='text-center bg-purchase'>";
+                                if ((int) $var->supplier_id > 0) {
+                                    echo "<a href='" . ROOT . "/supplier/details/$var->supplier_id'>$var->quantity</a>";
+                                } else {
+                                    echo $var->quantity;
+                                }
+                                echo "</td><td></td><td></td><td></td>";
                             } elseif ($var->src == 'ret') {
                                 $bal += $var->quantity;
                                 $total_return += $var->quantity;
@@ -711,7 +717,7 @@ if (isset($post->save)) {
                                          SELECT oi.id iid, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, oi.quantity, o.confirm_date `date`
                                          FROM `product` p, `product_variance` v, `order_item` oi, `order` o WHERE p.id=v.product_id AND v.id=oi.product_variance_id AND o.id=oi.order_id
                                          UNION
-                                         SELECT oi.id iid, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, oi.quantity / unit, o.confirm_date `date`
+                                          SELECT oi.id iid, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, oi.quantity / unit, oi.created_at `date`
                                          FROM `product` p, `product_variance` v, `damaged_item` oi WHERE p.id=v.product_id AND v.id=oi.product_variance_id
                                          UNION
                                          SELECT oi.id iid, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, oi.returned_quantity quantity, o.confirm_date `date`

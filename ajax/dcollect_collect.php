@@ -7,8 +7,10 @@ $branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
+
+$restrictedUser = (uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
 $staff_name = '';
-if(rolename() == 'Delivery Staff'){
+if (function_exists('rolename') && rolename() == 'Delivery Staff') {
   $staff_name = getFieldValue('staff_salary', 'name', "user_id=" . uid());
 }
 
@@ -502,7 +504,7 @@ $customers = select($query);
             }
             $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
             print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> <a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a></div></td>
-                            <td>$i->particulars ( <a data-id='$i->iid' class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>$i->price</a>)</td>";
+                            <td>$i->particulars ( " . ($restrictedUser ? "<span>$i->price</span>" : "<a data-id='$i->iid' class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>$i->price</a>") . ")</td>";
 
             if ($delivery) {
               $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
@@ -528,12 +530,14 @@ $customers = select($query);
               $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
               $collected = $i->quantity;
               print "<td class='price-col'>";
-              if ($i->old_price && false) {
+              if ($restrictedUser) {
+                print nf($i->price * $i->quantity);
+              } elseif ($i->old_price && false) {
                 print nf($i->price * $i->quantity);
               } else {
                 print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . nf($i->price * $i->quantity) . "</a>";
               }
-              print "</td><td class='text-center order-qty-col'><a data-id='$i->iid' class='invoice-item-$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a></td>";
+              print "</td><td class='text-center order-qty-col'>" . ($restrictedUser ? "<span>$collected</span>" : "<a data-id='$i->iid' class='invoice-item-$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a>") . "</td>";
             }
             print "</tr>";
             $ic++;

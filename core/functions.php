@@ -602,3 +602,29 @@ if (!function_exists('ensurePettyCashCurrencyTables')) {
 	");
     }
 }
+
+if (!function_exists('accMan')) {
+    function accMan($parent, $name, $data = [])
+    {
+        $data = (object) $data;
+        $parent_object = R::load("expense_account", $parent);
+        if ($parent_object && $parent_object->id) {
+            $object = R::dispense("expense_account");
+            $object->name = $name;
+            $object->parent = $parent;
+            if (isset($data->contexttype))
+                $object->contexttype = $data->contexttype;
+            if (isset($data->contextid))
+                $object->contextid = $data->contextid;
+            $object->entry_by = uid();
+            $object->entry_time = now();
+            R::store($object);
+            $object->path = $parent_object->path . $object->id . "/";
+            $object->depth = substr_count($object->path, "/") - 1;
+            $object->sortorder = $object->id;
+            $object->breadcrumbs = $parent_object->breadcrumbs . ' > ' . $object->name;
+            R::store($object);
+            return $object;
+        }
+    }
+}

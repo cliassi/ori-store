@@ -41,9 +41,40 @@
 		padding-left: 20px;
 	}
 
-	tr.expense_account_entry td {
-		border: solid 1px lightgreen !important;
+	tr.expense_account_entry td,
+	tr.expense_account_entry_bank td {
+		border: solid 1px #7eca7e !important;
 	}
+
+	.bd_handover td {
+		border: solid 1px #7eca7e !important;
+	}
+
+	.bd_handover .particulars {
+		font-weight: 700 !important;
+	}
+
+	.cw_cash td {
+		border: solid 1px #7eca7e !important;
+	}
+
+	.cw_cash_withdraw td {
+		border: solid 1px #7eca7e !important;
+	}
+
+	.opening-balance-row th,
+	.opening-balance-row td {
+		border: solid 1px #7eca7e !important;
+	}
+
+	.cash-table-fixed th {
+		border: solid 1px #7eca7e !important;
+	}
+
+	.payment_cash td {
+		border: solid 1px #7eca7e !important;
+	}
+
 
 	tr.cw_cash_withdraw td {
 		color: #dc3545 !important;
@@ -792,8 +823,9 @@ if (isset($get->petty_cash_currency)) {
 
 	$d = date('Y-m-d', strtotime($endDate . ' +1 day'));
 
-	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
-	$cash_handover = (float) R::getCell("SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM bd_handover WHERE (branch_id = $bId OR branch_id IS NULL) AND date<'$d' GROUP BY date) latest JOIN bd_handover h ON h.id = latest.id");
+	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND amount>0 AND date<'$d'");
+	$handoverResult = $c->query("SELECT IFNULL(SUM(h.amount),0) cash_handover FROM (SELECT MAX(id) id FROM bd_handover WHERE (branch_id = $bId OR branch_id IS NULL) AND amount>0 AND date<'$d' GROUP BY `date`) latest JOIN bd_handover h ON h.id = latest.id");
+	$cash_handover = $handoverResult->fetch_assoc()['cash_handover'];
 	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
 	$cash_payment = getSum("payment", "amount", "(branch_id = $bId OR branch_id IS NULL) AND payment_method='Cash' AND date<'$d'");
 	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
@@ -1234,7 +1266,7 @@ if (isset($get->petty_cash_currency)) {
 	// print "SELECT 'hotel_statement_worker_payment' source, p.id, p.amount, p.date, p.entry_time, CONCAT('<u>', h.name, '</u> er staff <u>', w.name, '</u>, ', DATE_FORMAT(CONCAT(s.month,'-01'), '%b %Y'), ' maser salary ', p.particulars), IFNULL(p.approved_by, 'Pending') status, '' ref FROM `hotel_statement_worker_payment` p, `hotel_statement_worker` w, `hotel_statement` s, `hotel` h WHERE p.worker=w.id AND w.statement=s.id AND s.hotel=h.id AND p.date>'$hotel_start_date' AND (p.date BETWEEN '$d' AND '$t') AND (p.particulars LIKE 'Petty Cash theke%' OR p.particulars LIKE 'Me2 te%')";
 
 	print "<form method='post'>";
-	print "<table class='table table-bordered'>";
+	print "<table class='table table-bordered cash-table-fixed mt-3'>";
 	// print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Cash In</th><th class='w120'></th><th>Cash Out</th><th class='w120'></th><th>Balance</th><th></th>";
 
 	//<th><a href='add_cash'>Add Cash</a><br><a href='widthdraw'>Cash Withdraw</a></th><th>Invested Capital</th>
@@ -1244,7 +1276,7 @@ if (isset($get->petty_cash_currency)) {
 	}
 	print "</tr>";
 	$openingTailColspan = 6 + (uid() == 1 ? 1 : 0);
-	print "<tr><th colspan='6'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
+	print "<tr class='opening-balance-row'><th colspan='6'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
 	$i = 1;
 	// vd($opening);
 	$userList = userList();
@@ -1409,7 +1441,7 @@ if (isset($get->petty_cash_currency)) {
 
 	$investment_period_total = getSum("investment", "amount", "date BETWEEN '$d' AND '$t' AND trash=0");
 
-	print "<tr><th colspan='2' class='text-right'>Total Investment</th><th class='right text-danger' colspan='1'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>" . nf($cashInTotal) . "</th><th></th><th class='right'>" . nf($cashOutTotal) . "</th><th class='right'>" . nf($total) . "</th><th></th><th class='right'>" . nf($bankInTotal) . "</th><th class='right'>" . nf($bankOutTotal) . "</th><th class='right'>" . nf(sum('bank')) . "</th>" . (uid() == 1 ? "<th></th>" : "") . "</tr>";
+	print "<tr><th colspan='2' class='text-right'>Total Investment</th><th class='right text-danger' colspan='1'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>" . nf($cashInTotal) . "</th><th></th><th class='right'>" . nf($cashOutTotal) . "</th><th class='right'>" . nf($total) . "</th><th></th><th class='right'>" . nf($bankInTotal) . "</th><th class='right'>" . nf($bankOutTotal) . "</th><th class='right'>" . nf(sum('bank')) . "</th>" . (uid() == 1 ? "<th></th>" : "") . "<th></th><th></th></tr>";
 
 	if (uid() == 1) {
 		print "<tr><td colspan='14' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";

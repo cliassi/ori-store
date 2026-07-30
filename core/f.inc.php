@@ -1177,7 +1177,8 @@
 		}
 	}
 	function bid(){
-		return $_SESSION[APP.'_branch'];
+		// return $_SESSION[APP.'_branch'];
+		return isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 0;
 	}
 	function username($id = FALSE){
 		if($id){
@@ -2904,8 +2905,11 @@
 	}
 	function getSum($tables, $field, $criteria = "", $options=""){
 		$recordset = select("IFNULL(SUM($field),0) value", $tables, $criteria, $options);
-		$record = mysqli_fetch_object($recordset);
-		if($record) {$fields = explode(".", $field); if(count($fields)>1) {return $record->value;} else{return $record->value;}} else {return '';}
+		if ($recordset) {
+			$record = mysqli_fetch_object($recordset);
+			if($record) {$fields = explode(".", $field); if(count($fields)>1) {return $record->value;} else{return $record->value;}} else {return '';}
+		}
+		return 0;
 	}
 	function getSump($tables, $field, $criteria = "", $options=""){
 		$recordset = selectp("IFNULL(SUM($field),0) value", $tables, $criteria, $options);

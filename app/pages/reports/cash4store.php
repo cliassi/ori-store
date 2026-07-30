@@ -223,7 +223,7 @@ if (!function_exists('cash_is_admin_approver')) {
 	function cash_is_admin_approver()
 	{
 		$user = R::load('sys_user', (int) uid());
-		$username = strtolower(trim((string) ($user->u_username ?? '')));
+		$username = strtolower(trim((string) ($user->u_username ? $user->u_username : '')));
 		return (int) uid() === 1 || $username === 'adminn';
 	}
 }
@@ -427,8 +427,8 @@ if (isset($post->approve_with_color)) {
 		echo json_encode(['success' => false, 'message' => 'Only admin can change approval status']);
 		exit;
 	}
-	$status = strtolower(trim((string) ($post->status ?? 'approved'))) === 'pending' ? 'Pending' : 'Approved';
-	$updated = cash_update_entry_status((string) ($post->source ?? ''), (int) ($post->id ?? 0), $status);
+	$status = strtolower(trim((string) ($post->status ? 'approved' : 'pending'))) === 'pending' ? 'Pending' : 'Approved';
+	$updated = cash_update_entry_status((string) ($post->source ? $post->source : ''), (int) ($post->id ? $post->id : 0), $status);
 	if (!$updated) {
 		echo json_encode(['success' => false, 'message' => 'Invalid row selected for approval']);
 		exit;
@@ -648,7 +648,7 @@ if (isset($post->cash_expense_edit_save)) {
 				$acc = R::load('expense_account', $editAccountId);
 				if ($acc && $acc->id) {
 					$bean->accountid = (int) $acc->id;
-					$bean->accountpath = (string) ($acc->path ?? '');
+					$bean->accountpath = (string) ($acc->path ? $acc->path : '');
 				}
 			}
 			if ($editAmount > 0) {
@@ -675,7 +675,7 @@ if ($canApproveStatus && isset($get->approve) && isset($get->id)) {
 
 if ($canApproveStatus && isset($post->approvem)) {
 	foreach ($post->approvem as $data) {
-		[$approveSource, $approveId] = cash_parse_approval_value($data);
+		list($approveSource, $approveId) = cash_parse_approval_value($data);
 		cash_update_entry_status((string) $approveSource, (int) $approveId, 'Approved');
 	}
 	redir("?d=$d&t=$t");
@@ -721,7 +721,7 @@ if (isset($get->token)) {
 		if ($canManageManagerNotes && isset($get->del_petty_note)) {
 			$relation = R::load('expense_petty_cash_manager', (int) $get->del_petty_note);
 			if ($relation->id) {
-				cash_delete_stored_file((string) ($relation->file_path ?? ''));
+				cash_delete_stored_file((string) ($relation->file_path ? $relation->file_path : ''));
 				R::trash($relation);
 			}
 			redir("?d=$d&t=$t");
@@ -729,7 +729,7 @@ if (isset($get->token)) {
 		if ($canManageManagerNotes && isset($get->del_petty_file)) {
 			$relation = R::load('expense_petty_cash_manager', (int) $get->del_petty_file);
 			if ($relation->id) {
-				cash_delete_stored_file((string) ($relation->file_path ?? ''));
+				cash_delete_stored_file((string) ($relation->file_path ? $relation->file_path : ''));
 				$relation->file_path = null;
 				$relation->file_name = null;
 				$relation->note = null;
@@ -921,12 +921,12 @@ if (isset($get->cw)) {
 		$particularsHtml = str_ireplace('exchcange', '<span class="highlight-exchange">exchcange</span>', (string) $tr->particulars);
 		if (in_array((string) $tr->source, ['expense_account_entry', 'expense_account_entry_bank'], true)) {
 			$expenseEntry = R::load('expense_account_entry', (int) $tr->id);
-			$entryType = strtolower(trim((string) ($expenseEntry->entry_type ?? '')));
-			$paymentId = (int) ($expenseEntry->entry_id ?? 0);
+			$entryType = strtolower(trim((string) ($expenseEntry->entry_type ? $expenseEntry->entry_type : '')));
+			$paymentId = (int) ($expenseEntry->entry_id ? $expenseEntry->entry_id : 0);
 			if ($paymentId > 0 && strpos($entryType, 'payment') !== false) {
 				$payment = R::load('payment', $paymentId);
-				$supplierId = (int) ($payment->supplier_id ?? 0);
-				$contractorId = (int) ($payment->contractor_id ?? 0);
+				$supplierId = (int) ($payment->supplier_id ? $payment->supplier_id : 0);
+				$contractorId = (int) ($payment->contractor_id ? $payment->contractor_id : 0);
 				if ($supplierId > 0) {
 					$href = '/store/supplier/details/' . $supplierId;
 					$particularsHtml = "<a href='" . htmlspecialchars($href, ENT_QUOTES) . "' target='_blank'>" . $particularsHtml . "</a>";
@@ -964,12 +964,12 @@ if (isset($get->cw)) {
 		$cashOut = 0.0;
 		$bankIn = 0.0;
 		$bankOut = 0.0;
-		$amount = (float) ($tr->amount ?? 0);
+		$amount = (float) ($tr->amount ? $tr->amount : 0);
 
 		if ((string) $tr->source === 'bd_handover') {
 			$handover = R::load("bd_handover", (int) $tr->id);
 			$cashIn = (float) $amount;
-			$bankIn = (float) ($handover->bank_amount ?? 0);
+			$bankIn = (float) ($handover->bank_amount ? $handover->bank_amount : 0);
 		} elseif ((string) $tr->source === 'cw_cash') {
 			// cw_cash: cash added; if se exists it's bank->cash transfer
 			$cashIn = (float) $amount;
@@ -1027,7 +1027,7 @@ if (isset($get->cw)) {
 			$managerList = R::find('expense_petty_cash_manager', 'expense_id = ? ORDER BY id DESC', [(int) $tr->id]);
 			$managerCount = 0;
 			foreach ($managerList as $managerRow) {
-				if ((int) ($managerRow->petty_cash_manager_id ?? 0) > 0) {
+				if ((int) ($managerRow->petty_cash_manager_id ? $managerRow->petty_cash_manager_id : 0) > 0) {
 					$managerCount++;
 				}
 				if (
@@ -1072,8 +1072,8 @@ if (isset($get->cw)) {
 						. "data-edit-date='" . htmlspecialchars(date('Y-m-d', strtotime((string) $tr->date)), ENT_QUOTES) . "' "
 						. "data-edit-particulars='" . htmlspecialchars((string) $rawParticulars, ENT_QUOTES) . "' "
 						. "data-edit-amount='" . htmlspecialchars((string) $amount, ENT_QUOTES) . "' "
-						. "data-edit-opex-or-capex='" . htmlspecialchars((string) ($tr->opex_or_capex ?? ''), ENT_QUOTES) . "' "
-						. "data-edit-accountid='" . (int) ($tr->accountid ?? 0) . "'"
+						. "data-edit-opex-or-capex='" . htmlspecialchars((string) ($tr->opex_or_capex ? $tr->opex_or_capex : ''), ENT_QUOTES) . "' "
+						. "data-edit-accountid='" . (int) ($tr->accountid ? $tr->accountid : 0) . "'"
 						. "><i class='fa fa-edit decided-action-icon'></i></a>";
 				} else {
 					$editHtml = "<a class='decided-action-link mx-2' href='javascript:void(0)' title='Edit' "
@@ -1083,7 +1083,7 @@ if (isset($get->cw)) {
 						. "data-edit-date='" . htmlspecialchars(date('Y-m-d', strtotime((string) $tr->date)), ENT_QUOTES) . "' "
 						. "data-edit-particulars='" . htmlspecialchars((string) $rawParticulars, ENT_QUOTES) . "' "
 						. "data-edit-amount='" . htmlspecialchars((string) $amount, ENT_QUOTES) . "' "
-						. "data-edit-opex-or-capex='" . htmlspecialchars((string) ($tr->opex_or_capex ?? ''), ENT_QUOTES) . "'"
+						. "data-edit-opex-or-capex='" . htmlspecialchars((string) ($tr->opex_or_capex ? $tr->opex_or_capex : ''), ENT_QUOTES) . "'"
 						. "><i class='fa fa-edit decided-action-icon'></i></a>";
 				}
 			} else {
@@ -1170,14 +1170,14 @@ if (isset($get->cw)) {
 			if ($managers) {
 				print "<ul>";
 				foreach ($managers as $manager) {
-					$managerId = (int) ($manager->petty_cash_manager_id ?? 0);
+					$managerId = (int) ($manager->petty_cash_manager_id ? $manager->petty_cash_manager_id : 0);
 					$isManagerAssigned = $managerId > 0;
 					$managerName = '';
 					if ($isManagerAssigned) {
 						$pcm = R::load('petty_cash_managers', $managerId);
-						$managerName = trim((string) ($pcm->name ?? ''));
+						$managerName = trim((string) ($pcm->name ? $pcm->name : ''));
 					}
-					$noteText = trim((string) ($manager->note ?? ''));
+					$noteText = trim((string) ($manager->note ? $manager->note : ''));
 					$hasUploadedFile = isset($manager->file_path) && trim((string) $manager->file_path) !== '';
 					if (!$isManagerAssigned && $noteText === '' && !$hasUploadedFile) {
 						continue;
@@ -1194,7 +1194,7 @@ if (isset($get->cw)) {
 						$displayName = $managerName !== '' ? $managerName : 'Unknown Manager';
 						print "<li><strong>" . htmlspecialchars($displayName) . "</strong>: " . htmlspecialchars($noteText) . $noteDeleteHtml . $fileDeleteHtml . "</li>";
 					} else {
-						$uploadedFileName = trim((string) ($manager->file_name ?? ''));
+						$uploadedFileName = trim((string) ($manager->file_name ? $manager->file_name : ''));
 						$uploadText = $noteText !== '' ? $noteText : ($uploadedFileName !== '' ? $uploadedFileName : 'File uploaded');
 						print "<li><strong>Uploaded file</strong>: " . htmlspecialchars($uploadText) . $fileDeleteHtml . "</li>";
 					}

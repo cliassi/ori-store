@@ -94,7 +94,9 @@ foreach($products as $product){
 	<input type='hidden' id='id-to-delete-4' name='idToDelete4'>
 </form>
 <div id="search-result-wrapper"></div>
-<div id="content-wrapper" style="padding-top: 5px; background-color: #fff;">
+
+<!-- <div id="content-wrapper" style="padding-top: 5px; background-color: #fff;"> -->
+<div id="content-wrapper" style="padding: 10px; background-color: #fff;">
 	<div class='text-center mt-1 mb-2'>
 		<strong>
 			<?php
