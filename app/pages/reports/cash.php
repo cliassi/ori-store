@@ -1293,21 +1293,86 @@ if (isset($get->petty_cash_currency)) {
 		$r = "<td title='$tr->entry_time > $tr->status'>" . df($tr->date) . "</td>";
 		$r .= "<td class='particulars pre-wrap'>";
 
-		if ($tr->source == 'hotel_statement_worker_payment') {
-			$r .= '<img src="assets/verified.png" width="32px">';
-		} elseif ($tr->source == 'expenditure' && in_array($tr->ref, [91, 92])) {
-			$r .= '<img src="assets/verified2.png" width="32px">';
+		$particularsHtml = $tr->particulars;
+		$applyVerified = false;
+		$verifiedHref = '#';
+
+		if (in_array((string) $tr->source, ['expense_account_entry', 'expense_account_entry_bank'], true)) {
+			$expenseEntry = R::load('expense_account_entry', (int) $tr->id);
+			if ($expenseEntry && $expenseEntry->id) {
+				$entryType = trim((string) (isset($expenseEntry->entry_type) ? $expenseEntry->entry_type : ''));
+				$entryId = (int) (isset($expenseEntry->entry_id) ? $expenseEntry->entry_id : 0);
+				$expenseAccountId = (int) (isset($expenseEntry->accountid) ? $expenseEntry->accountid : 0);
+
+				if (in_array($expenseAccountId, [1, 694, 695], true) || in_array($entryType, ['Hotel - Expense', 'Hotel - Income', 'Factory - Salary Payment', 'Factory - Meal Payment'], true)) {
+					if ($entryType === 'Hotel - Expense' && $entryId > 0) {
+						$hotelExpense = R::load('hotel_expense', $entryId);
+						if ($hotelExpense && $hotelExpense->id && $hotelExpense->statement > 0) {
+							$verifiedHref = "/store/salary?page=18&h={$hotelExpense->statement}";
+							$applyVerified = true;
+						}
+					} elseif ($entryType === 'Factory - Salary Payment' && $entryId > 0) {
+						$hswPayment = R::load('hotel_statement_worker_payment', $entryId);
+						if ($hswPayment && $hswPayment->id) {
+							$worker = R::load('hotel_statement_worker', $hswPayment->worker);
+							if ($worker && $worker->id && $worker->statement > 0) {
+								$verifiedHref = "/store/salary?page=18&h={$worker->statement}";
+								$applyVerified = true;
+							}
+						}
+					} elseif ($entryType === 'Factory - Meal Payment' && $entryId > 0) {
+						$hsmPayment = R::load('hotel_statement_meal_payment', $entryId);
+						if ($hsmPayment && $hsmPayment->id) {
+							$meal = R::load('hotel_statement_meal', $hsmPayment->worker);
+							if ($meal && $meal->id && $meal->statement > 0) {
+								$verifiedHref = "/store/meal?page=18&h={$meal->statement}";
+								$applyVerified = true;
+							}
+						}
+					}
+					if (!$applyVerified && in_array($expenseAccountId, [1, 694, 695], true)) {
+						$verifiedHref = "/store/salary";
+						$applyVerified = true;
+					}
+				}
+
+				if (!$applyVerified && $entryId > 0 && stripos($entryType, 'payment') !== false) {
+					$payment = R::load('payment', $entryId);
+					if ($payment && $payment->id) {
+						$supplierId = (int) (isset($payment->supplier_id) ? $payment->supplier_id : 0);
+						$contractorId = (int) (isset($payment->contractor_id) ? $payment->contractor_id : 0);
+						if ($supplierId > 0) {
+							$verifiedHref = '/store/supplier/details/' . $supplierId;
+							$applyVerified = true;
+						} elseif ($contractorId > 0) {
+							$verifiedHref = '/store/contractor/details/' . $contractorId;
+							$applyVerified = true;
+						}
+					}
+				}
+			}
 		}
+
+		if ($tr->source == 'hotel_statement_worker_payment') {
+			$particularsHtml = '<img src="' . ROOT . '/assets/verified.png" width="32px"> ' . $particularsHtml;
+		} elseif ($tr->source == 'expenditure' && in_array($tr->ref, [91, 92])) {
+			$particularsHtml = '<img src="' . ROOT . '/assets/verified2.png" width="32px"> ' . $particularsHtml;
+		}
+
+		if ($applyVerified && $verifiedHref !== '#') {
+			$verifiedIconImg = '<img src="' . ROOT . '/assets/verified.png" width="32px">';
+			$particularsHtml = $verifiedIconImg . ' ' . $particularsHtml;
+			$particularsHtml = "<a href='" . htmlspecialchars($verifiedHref, ENT_QUOTES) . "' target='_blank'>" . $particularsHtml . "</a>";
+		}
+
 		if ($tr->source == 'bd_handover') {
 			$petty_cash_report = R::findOne("petty_cash_report", "handover_id=?", [$tr->id]);
 			if ($petty_cash_report) {
-				$r .= "<a href='report/petty_cash/$tr->id' target='_blank'>$tr->particulars</a>";
-			} else {
-				$r .= "$tr->particulars";
+				$particularsHtml = "<a href='report/petty_cash/$tr->id' target='_blank'>" . $particularsHtml . "</a>";
 			}
-		} else {
-			$r .= "$tr->particulars";
 		}
+
+		$r .= $particularsHtml;
 
 		if ($tr->source == 'expenditure') {
 			if (!$tr->checked) {

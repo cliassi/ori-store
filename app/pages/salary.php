@@ -1712,8 +1712,8 @@ if (isset($get->h)) {
 					<table>
 						<tr>
 							<td>Store</td>
-							<td><?php print sop2('hotel', '', ['filter' => "type IN ('salary','both')", 'active' => false]); ?> <a
-									data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
+							<td><?php print sop2('hotel', '', ['filter' => "type IN ('salary','both')", 'active' => false]); ?>
+								<a data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
 							</td>
 						</tr>
 						<tr>
@@ -1749,8 +1749,8 @@ if (isset($get->h)) {
 					<table>
 						<tr>
 							<td>Store</td>
-							<td><?php print sop2('hotel', '', ['filter' => "type IN ('salary','both')", 'active' => false]); ?> <a
-									data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
+							<td><?php print sop2('hotel', '', ['filter' => "type IN ('salary','both')", 'active' => false]); ?>
+								<a data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
 							</td>
 						</tr>
 						<tr>
@@ -2510,9 +2510,12 @@ if (isset($get->h)) {
 									</div>
 									<div class="col-md-6">
 										<select class='form-control' id='salary_type' name='salary_type'
-											style='width: 100%;'>
+											style='width: 100%;' required>
+											<option value=''>Select Salary Type</option>
 											<option value='Salary'>Salary</option>
 											<option value='Advance'>Advance</option>
+											<option value='ME2'>ME2</option>
+											<option value='Permit'>Permit</option>
 										</select>
 									</div>
 								</div>
@@ -3150,7 +3153,14 @@ if (isset($get->h)) {
 				var monthText = '<?php print date("M", strtotime("{$hotel_statement->month}-01")); ?>';
 				if (salaryType === 'Advance') {
 					var workerParticulars = `${workerName} ke ${monthText} Masher Salary Theke Advance ${amt} Taka ${paymentSource} Theke Deoya Hoyese`;
-				} else {
+				}
+				else if (salaryType === 'ME2') {
+					var workerParticulars = `${workerName} er Jul Masher Salary Theke Rm ${amt} Taka ME2 Te Bangladeshe Pathano Hoyece`;
+				}
+				else if (salaryType === 'Permit') {
+					var workerParticulars = `${workerName} er Jul Masher Salary Theke Rm ${amt} Taka Kete Visa Babod Outsource Joma Kora Hoyece`;
+				}
+				else {
 					var workerParticulars = `${workerName} ke ${monthText} Masher Salary ${amt} Taka ${paymentSource} Theke Deoya Hoyese`;
 				}
 				$(e).find('textarea').val(workerParticulars);
