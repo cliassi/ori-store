@@ -182,7 +182,8 @@ ensureMysqlColumn('hotel_statement_worker', 'monthly_working', "INT NOT NULL DEF
 	}
 </style>
 <?php
-$mon = isset($get->mon) ? substr($get->mon, 0, 7) : (date("d", time()) <= 10 ? date("Y-m", strtotime(subMonth(1))) : date("Y-m", time()));
+// $mon = isset($get->mon) ? substr($get->mon, 0, 7) : (date("d", time()) <= 10 ? date("Y-m", strtotime(subMonth(1))) : date("Y-m", time()));
+$mon = isset($get->mon) ? substr($get->mon, 0, 7) : date("Y-m", time());
 
 if (uid() == 1 && isset($get->approve)) {
 	if ($get->approve == 'Income')
@@ -324,11 +325,43 @@ if (isset($post->save_statement)) {
 if (isset($get->delHotel)) {
 	if (isset($get->conf)) {
 		$statement = R::load("hotel_statement", $get->delHotel);
-		// Delete all workers first to avoid foreign key constraint
+
+		// Delete hotel_statement_meal workers + their payments/incomes/expense entries
+		$mealWorkers = R::find("hotel_statement_meal", "statement=?", [$statement->id]);
+		foreach ($mealWorkers as $mw) {
+			$mealIncomes = R::find("hotel_statement_meal_income", "worker=?", [$mw->id]);
+			foreach ($mealIncomes as $mi) R::trash($mi);
+
+			$mealPayments = R::find("hotel_statement_meal_payment", "worker=?", [$mw->id]);
+			foreach ($mealPayments as $mp) {
+				$me = R::findOne("expense_account_entry", "entry_id=? AND entry_type=?", [$mp->id, 'Factory - Meal Payment']);
+				if ($me) R::trash($me);
+				R::trash($mp);
+			}
+			R::trash($mw);
+		}
+
+		// Delete hotel_statement_worker workers + their payments/incomes/expense entries
 		$workers = R::find("hotel_statement_worker", "statement=?", [$statement->id]);
 		foreach ($workers as $w) {
+			$incomes = R::find("hotel_statement_worker_income", "worker=?", [$w->id]);
+			foreach ($incomes as $inc) R::trash($inc);
+
+			$payments = R::find("hotel_statement_worker_payment", "worker=?", [$w->id]);
+			foreach ($payments as $pmt) {
+				$entry = R::findOne("expense_account_entry", "entry_id=? AND entry_type=?", [$pmt->id, 'Factory - Salary Payment']);
+				if ($entry) R::trash($entry);
+				$receipt = R::findOne("official_receipt", "hotel_payment_id=?", [$pmt->id]);
+				if ($receipt) R::trash($receipt);
+				R::trash($pmt);
+			}
 			R::trash($w);
 		}
+
+		// Delete remarks
+		$remarks = R::find("hotel_statement_remarks", "statement=?", [$statement->id]);
+		foreach ($remarks as $rm) R::trash($rm);
+
 		R::trash($statement);
 		redir("?page=$get->page&mon=$mon");
 
@@ -973,17 +1006,26 @@ $date = date("Y-m-d", strtotime("$mon-01"));
 print "<div style='display:flex; align-items:center; justify-content:space-between;'>";
 if (isset($get->h)) {
 	$hotel = R::load("hotel", $hotel_statement->hotel);
-	print "<div><a class='btn btn-info' href='?'>Back</a></div>";
+	print "<div><a class='btn btn-info' href='?page=3'>Back</a></div>";
 	print "<div style='flex:1; text-align:center;'><h1 class='center panel panel-success' style='display:inline-block; margin:0;'><span id='title-hotel'>$hotel->name</span> Statement - <span id='title-month'>" . date("M Y", strtotime("{$hotel_statement->month}-01")) . "</span></h1></div>";
+
+	// Find prev/next hotel_statement for this hotel
+	$prevStmt = R::findOne("hotel_statement", "hotel=? AND id<? ORDER BY id DESC", [$hotel_statement->hotel, $hotel_statement->id]);
+	$nextStmt = R::findOne("hotel_statement", "hotel=? AND id>? ORDER BY id ASC", [$hotel_statement->hotel, $hotel_statement->id]);
+	// If no prev/next statement, fall back to listing view with month navigation
+	$prevLink = $prevStmt && $prevStmt->id ? "?page=3&h={$prevStmt->id}" : "?page=3&mon=" . subMonth(1, $date);
+	$nextLink = $nextStmt && $nextStmt->id ? "?page=3&h={$nextStmt->id}" : "?page=3&mon=" . addMonth(1, $date);
 } else {
 	$hotel = null;
 	print "<div></div><div style='flex:1;'></div>";
+	$prevLink = "?page=3&mon=" . subMonth(1, $date) . "$bt_url";
+	$nextLink = "?page=3&mon=" . addMonth(1, $date) . "$bt_url";
 }
 print "<div>
-	<a class='pointer btn btn-info' href='?page=3&mon=" . subMonth(1, $date) . "$bt_url'><i class='fa fa-chevron-left'></i>Prev</a>" . space(5) .
+	<a class='pointer btn btn-info' href='$prevLink'><i class='fa fa-chevron-left'></i>Prev</a>" . space(5) .
 	monthSelector('mon', date("Y-m-d", strtotime($mon . "-01"))) .
 	space(5) .
-	"<a class='pointer btn btn-info' href='?page=3&mon=" . addMonth(1, $date) . "$bt_url'>Next <i class='fa fa-chevron-right'></i></a>
+	"<a class='pointer btn btn-info' href='$nextLink'>Next <i class='fa fa-chevron-right'></i></a>
 </div>
 </div>";
 print "<br><br>";
@@ -2810,7 +2852,7 @@ if (isset($get->h)) {
 		$("#particulars-container").empty(); // Clear previous textareas
 
 		$($(".worker-payment:checked")).each(function (i, e) {
-			var name = $(e).data('name');
+			var name = $(e).data('name').trim();
 			var id = $(e).data('id');
 			var basic = $(e).data('basic');
 			var total = $(e).data('total');

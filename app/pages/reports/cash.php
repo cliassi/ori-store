@@ -826,7 +826,7 @@ if (isset($get->petty_cash_currency)) {
 	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND amount>0 AND date<'$d'");
 	$handoverResult = $c->query("SELECT IFNULL(SUM(h.amount),0) cash_handover FROM (SELECT MAX(id) id FROM bd_handover WHERE (branch_id = $bId OR branch_id IS NULL) AND amount>0 AND date<'$d' GROUP BY `date`) latest JOIN bd_handover h ON h.id = latest.id");
 	$cash_handover = $handoverResult->fetch_assoc()['cash_handover'];
-	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
+	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND (company=$cwId OR company IS NULL) AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
 	$cash_payment = getSum("payment", "amount", "(branch_id = $bId OR branch_id IS NULL) AND payment_method='Cash' AND date<'$d'");
 	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
 
@@ -1296,6 +1296,8 @@ if (isset($get->petty_cash_currency)) {
 		$particularsHtml = $tr->particulars;
 		$applyVerified = false;
 		$verifiedHref = '#';
+		$entryType = '';
+		$expenseAccountId = 0;
 
 		if (in_array((string) $tr->source, ['expense_account_entry', 'expense_account_entry_bank'], true)) {
 			$expenseEntry = R::load('expense_account_entry', (int) $tr->id);
@@ -1354,13 +1356,37 @@ if (isset($get->petty_cash_currency)) {
 		}
 
 		if ($tr->source == 'hotel_statement_worker_payment') {
-			$particularsHtml = '<img src="' . ROOT . '/assets/verified.png" width="32px"> ' . $particularsHtml;
+			if (stripos($particularsHtml, 'Advance') !== false) {
+				$particularsHtml = '<img src="' . ROOT . '/assets/advance.png" width="32px"> ' . $particularsHtml;
+			} elseif (stripos($particularsHtml, 'ME2') !== false) {
+				$particularsHtml = '<img src="' . ROOT . '/assets/telegram.png" width="32px"> ' . $particularsHtml;
+			} elseif (stripos($particularsHtml, 'Visa Babod') !== false) {
+				$particularsHtml = '<img src="' . ROOT . '/assets/verified.png" width="32px"> ' . $particularsHtml;
+			} else {
+				$particularsHtml = '<img src="' . ROOT . '/assets/advance.png" width="32px"> ' . $particularsHtml;
+			}
+		} elseif ($tr->source == 'hotel_statement_meal_payment') {
+			$particularsHtml = '<img src="' . ROOT . '/assets/meal.jpg" width="32px"> ' . $particularsHtml;
 		} elseif ($tr->source == 'expenditure' && in_array($tr->ref, [91, 92])) {
 			$particularsHtml = '<img src="' . ROOT . '/assets/verified2.png" width="32px"> ' . $particularsHtml;
 		}
 
 		if ($applyVerified && $verifiedHref !== '#') {
-			$verifiedIconImg = '<img src="' . ROOT . '/assets/verified.png" width="32px">';
+			if ($entryType === 'Factory - Meal Payment') {
+				$verifiedIconImg = '<img src="' . ROOT . '/assets/meal.jpg" width="32px">';
+			} elseif ($entryType === 'Factory - Salary Payment') {
+				if (stripos($particularsHtml, 'Advance') !== false) {
+					$verifiedIconImg = '<img src="' . ROOT . '/assets/advance.png" width="32px">';
+				} elseif (stripos($particularsHtml, 'ME2') !== false) {
+					$verifiedIconImg = '<img src="' . ROOT . '/assets/telegram.png" width="32px">';
+				} elseif (stripos($particularsHtml, 'Visa Babod') !== false) {
+					$verifiedIconImg = '<img src="' . ROOT . '/assets/verified.png" width="32px">';
+				} else {
+					$verifiedIconImg = '<img src="' . ROOT . '/assets/advance.png" width="32px">';
+				}
+			} else {
+				$verifiedIconImg = '<img src="' . ROOT . '/assets/advance.png" width="32px">';
+			}
 			$particularsHtml = $verifiedIconImg . ' ' . $particularsHtml;
 			$particularsHtml = "<a href='" . htmlspecialchars($verifiedHref, ENT_QUOTES) . "' target='_blank'>" . $particularsHtml . "</a>";
 		}

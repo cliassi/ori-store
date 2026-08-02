@@ -181,7 +181,8 @@ $get->page = $page; ?>
 <?php
 ensureMysqlColumn('hotel', 'type', "ENUM('meal','salary','both') DEFAULT 'both'");
 ensureMysqlColumn('hotel_statement', 'accountid', "INT NULL DEFAULT NULL COMMENT 'Expense account ID for this statement'");
-$mon = isset($get->mon) ? substr($get->mon, 0, 7) : (date("d", time()) <= 10 ? date("Y-m", strtotime(subMonth(1))) : date("Y-m", time()));
+// $mon = isset($get->mon) ? substr($get->mon, 0, 7) : (date("d", time()) <= 10 ? date("Y-m", strtotime(subMonth(1))) : date("Y-m", time()));
+$mon = isset($get->mon) ? substr($get->mon, 0, 7) : date("Y-m", time());
 
 if (uid() == 1 && isset($get->approve)) {
 	if ($get->approve == 'Income')
@@ -323,11 +324,49 @@ if (isset($post->save_statement)) {
 if (isset($get->delHotel)) {
 	if (isset($get->conf)) {
 		$statement = R::load("hotel_statement", $get->delHotel);
+
 		// Delete all workers first to avoid foreign key constraint
 		$workers = R::find("hotel_statement_meal", "statement=?", [$statement->id]);
 		foreach ($workers as $w) {
+			$incomes = R::find("hotel_statement_meal_income", "worker=?", [$w->id]);
+			foreach ($incomes as $inc)
+				R::trash($inc);
+
+			$payments = R::find("hotel_statement_meal_payment", "worker=?", [$w->id]);
+			foreach ($payments as $pmt) {
+				$entry = R::findOne("expense_account_entry", "entry_id=? AND entry_type=?", [$pmt->id, 'Factory - Meal Payment']);
+				if ($entry)
+					R::trash($entry);
+				R::trash($pmt);
+			}
 			R::trash($w);
 		}
+
+		// Also delete hotel_statement_worker rows to avoid FK on hotel_statement
+		$swWorkers = R::find("hotel_statement_worker", "statement=?", [$statement->id]);
+		foreach ($swWorkers as $sw) {
+			$swIncomes = R::find("hotel_statement_worker_income", "worker=?", [$sw->id]);
+			foreach ($swIncomes as $si)
+				R::trash($si);
+
+			$swPayments = R::find("hotel_statement_worker_payment", "worker=?", [$sw->id]);
+			foreach ($swPayments as $sp) {
+				$se = R::findOne("expense_account_entry", "entry_id=? AND entry_type=?", [$sp->id, 'Factory - Salary Payment']);
+				if ($se)
+					R::trash($se);
+				$sr = R::findOne("official_receipt", "hotel_payment_id=?", [$sp->id]);
+				if ($sr)
+					R::trash($sr);
+				R::trash($sp);
+			}
+			R::trash($sw);
+		}
+
+		// Delete remarks
+		$remarks = R::find("hotel_statement_remarks", "statement=?", [$statement->id]);
+		foreach ($remarks as $rm)
+			R::trash($rm);
+
 		R::trash($statement);
 		redir("?page=$get->page&mon=$mon");
 
@@ -503,6 +542,20 @@ if (isset($post->remove_income)) {
 }
 if (isset($post->remove_worker)) {
 	$remove_worker = R::load("hotel_statement_meal", $post->remove_worker);
+
+	$incomes = R::find("hotel_statement_meal_income", "worker=?", [$remove_worker->id]);
+	foreach ($incomes as $income) {
+		R::trash($income);
+	}
+
+	$payments = R::find("hotel_statement_meal_payment", "worker=?", [$remove_worker->id]);
+	foreach ($payments as $payment) {
+		$entry = R::findOne("expense_account_entry", "entry_id=? AND entry_type=?", [$payment->id, 'Factory - Meal Payment']);
+		if ($entry)
+			R::trash($entry);
+		R::trash($payment);
+	}
+
 	R::trash($remove_worker);
 }
 if (isset($post->save_worker_payment)) {
@@ -1005,16 +1058,23 @@ $date = date("Y-m-d", strtotime("$mon-01"));
 print "<div style='display:flex; align-items:center; justify-content:space-between;'>";
 if (isset($get->h)) {
 	$hotel = R::load("hotel", $hotel_statement->hotel);
-	print "<div><a class='btn btn-info' href='?'>Back</a></div>";
+	print "<div><a class='btn btn-info' href='?page=3'>Back</a></div>";
 	print "<div style='flex:1; text-align:center;'><h1 class='center panel panel-success' style='display:inline-block; margin:0;'><span id='title-hotel'>$hotel->name</span> Statement - <span id='title-month'>" . date("M Y", strtotime("{$hotel_statement->month}-01")) . "</span></h1></div>";
+
+	$prevStmt = R::findOne("hotel_statement", "hotel=? AND id<? ORDER BY id DESC", [$hotel_statement->hotel, $hotel_statement->id]);
+	$nextStmt = R::findOne("hotel_statement", "hotel=? AND id>? ORDER BY id ASC", [$hotel_statement->hotel, $hotel_statement->id]);
+	$prevLink = $prevStmt && $prevStmt->id ? "?page=3&h={$prevStmt->id}" : "?page=3&mon=" . subMonth(1, $date);
+	$nextLink = $nextStmt && $nextStmt->id ? "?page=3&h={$nextStmt->id}" : "?page=3&mon=" . addMonth(1, $date);
 } else {
 	print "<div></div><div style='flex:1;'></div>";
+	$prevLink = "?page=3&mon=" . subMonth(1, $date) . "$bt_url";
+	$nextLink = "?page=3&mon=" . addMonth(1, $date) . "$bt_url";
 }
 print "<div>
-	<a class='pointer btn btn-info'  href='?page=3&mon=" . subMonth(1, $date) . "$bt_url'><i class='fa fa-chevron-left'></i>Prev</a>" . space(5) .
+	<a class='pointer btn btn-info' href='$prevLink'><i class='fa fa-chevron-left'></i>Prev</a>" . space(5) .
 	monthSelector('mon', date("Y-m-d", strtotime($mon . "-01"))) .
 	space(5) .
-	"<a class='pointer btn btn-info' href='?page=3&mon=" . addMonth(1, $date) . "$bt_url'>Next <i class='fa fa-chevron-right'></i></a>
+	"<a class='pointer btn btn-info' href='$nextLink'>Next <i class='fa fa-chevron-right'></i></a>
 </div>
 </div>";
 print "<br><br>";
@@ -2766,7 +2826,7 @@ if (isset($get->h)) {
 		$("#particulars-container").empty(); // Clear previous textareas
 
 		$($(".worker-payment:checked")).each(function (i, e) {
-			var name = $(e).data('name');
+			var name = $(e).data('name').trim();
 			var id = $(e).data('id');
 			var basic = $(e).data('basic');
 			var total = $(e).data('total');
@@ -2780,7 +2840,7 @@ if (isset($get->h)) {
 				$("#worker-list-empty-row").before("<tr class='worker-list-item'><td nowrap class='w-name'>Basic: " + basicFmt + "<input type='hidden' name='workers[]' value='" + id + "'></td><td><input type='number' step='any' name='meal[]' required class='form-control w80 worker-id' value='" + (isNaN(balance) ? '' : balance) + "' data-max='" + total + "' data-worker-name='" + name + "'><input type='hidden' name='meal_hidden[]' value='" + (isNaN(balance) ? '' : balance) + "'></td></tr>");
 
 				// Add individual textarea for this worker in particulars-container
-				$("#particulars-container").append("<div class='worker-particulars-wrapper' data-worker-id='" + id + "' data-worker-name='" + name + "'><textarea name='particulars[]' class='form-control particulars w300 mb-1' rows='2' placeholder='e.g., " + name + " ke <?php print date("M", strtotime("{$hotel_statement->month}-01")); ?> Masher Meal " + (isNaN(balance) ? '' : balance) + " Petty Cash Theke Deoya Hoyese'></textarea></div>");
+				$("#particulars-container").append("<div class='worker-particulars-wrapper' data-worker-id='" + id + "' data-worker-name='" + name + "'><textarea name='particulars[]' class='form-control particulars w300 mb-1' rows='2' placeholder='e.g., " + name + " ke <?php print date("M", strtotime("{$hotel_statement->month}-01")); ?> Masher Khabarer Jonno " + (isNaN(balance) ? '' : balance) + " Petty Cash Theke Deoya Hoyese'></textarea></div>");
 			}
 			$("#modal-worker-payment-2").find(".worker-name").text(names);
 		});
@@ -3085,9 +3145,9 @@ if (isset($get->h)) {
 			if (!isNaN(amt)) {
 				var monthText = '<?php print date("M", strtotime("{$hotel_statement->month}-01")); ?>';
 				if (salaryType === 'Advance') {
-					var workerParticulars = `${workerName} ke ${monthText} Masher Meal theke Advance ${amt} taka ${paymentSource} Theke Deoya Hoyese`;
+					var workerParticulars = `${workerName} ke ${monthText} Masher Khabarer Jonno theke Advance ${amt} taka ${paymentSource} Theke Deoya Hoyese`;
 				} else {
-					var workerParticulars = `${workerName} ke ${monthText} Masher Meal ${amt} taka ${paymentSource} Theke Deoya Hoyese`;
+					var workerParticulars = `${workerName} ke ${monthText} Masher Khabarer Jonno ${amt} taka ${paymentSource} Theke Deoya Hoyese`;
 				}
 				$(e).find('textarea').val(workerParticulars);
 			}
@@ -3171,16 +3231,16 @@ if (isset($get->h)) {
 		$("#resubmit-meal-id").val(id);
 		$("#resubmit-meal-amount").val(totalMeal);
 		$("#resubmit-meal-name").text(name);
-		$("#resubmit-meal-particulars").val(hotelName + ", " + name + " ke " + monthName + " Masher Meal " + totalMeal + " taka Petty Cash Theke Deoya Hoyese");
+		$("#resubmit-meal-particulars").val(hotelName + ", " + name + " ke " + monthName + " Masher Khabarer Jonno " + totalMeal + " taka Petty Cash Theke Deoya Hoyese");
 		$("#modal-resubmit-meal").modal('show');
 	}
 
-	$(document).on("input", "#resubmit-meal-amount", function() {
+	$(document).on("input", "#resubmit-meal-amount", function () {
 		var amt = $(this).val();
 		var name = $("#resubmit-meal-name").text().trim();
 		var hotelName = $("#title-hotel").text().trim();
 		var monthText = $("#title-month").text().trim();
 		var monthName = monthText.split(' ')[0];
-		$("#resubmit-meal-particulars").val(hotelName + ", " + name + " ke " + monthName + " Masher Meal " + amt + " taka Petty Cash Theke Deoya Hoyese");
+		$("#resubmit-meal-particulars").val(hotelName + ", " + name + " ke " + monthName + " Masher Khabarer Jonno " + amt + " taka Petty Cash Theke Deoya Hoyese");
 	});
 </script>
