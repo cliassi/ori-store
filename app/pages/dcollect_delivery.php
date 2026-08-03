@@ -197,7 +197,7 @@
 
 
 <script type="text/javascript">
-  var __restrictedUser = <?php echo (uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar')) ? 'true' : 'false'; ?>;
+  var __restrictedUser = <?php echo (uid() == 60 || uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar')) ? 'true' : 'false'; ?>;
 
   function setItemId(id) {
     if (__restrictedUser) return;

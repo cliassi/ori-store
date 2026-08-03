@@ -1157,6 +1157,8 @@ if (isset($get->h)) {
 			$bal = 0;
 		}
 		$bal_data = round($bal, 2);
+		$existingPay = R::findOne('hotel_statement_meal_payment', 'worker=? ORDER BY id DESC', [$w->id]);
+		$existingDate = $existingPay && $existingPay->entry_time ? date('Y-m-d', strtotime($existingPay->entry_time)) : date('Y-m-d', time());
 		print "<tr>
 					<td>";
 		if (isUserIn(['superadmin']) || uid() == 47) {
@@ -1192,7 +1194,7 @@ if (isset($get->h)) {
 		print "</td>
 					<td class='text-center'>" . nf0($meal) . "</td>
 					<td class='text-center'>" . nf0($w->paid) . "</td>
-					<td class='text-center' style='cursor:pointer' onclick='resubmitBalance($w->id)' id='bal{$w->id}' data-bal='" . nf0(round($bal, 2)) . "' data-total='" . nf0($meal + $income) . "' data-name='$w->name'>" . nf0(round($bal, 2)) . "</td>
+					<td class='text-center' style='cursor:pointer' onclick='resubmitBalance($w->id)' id='bal{$w->id}' data-bal='" . nf0(round($bal, 2)) . "' data-total='" . nf0($meal + $income) . "' data-date='{$existingDate}' data-name='$w->name'>" . nf0(round($bal, 2)) . "</td>
 					<td class='text-center' nowrap>";
 		if ($w->approved) {
 			print '<a class="btn btn-success">Approved</a>';
@@ -2334,7 +2336,7 @@ if (isset($get->h)) {
 		<div class="modal-content">
 			<form method="post" autocomplete="off">
 				<input type="hidden" name="id" id="resubmit-meal-id">
-				<input type="hidden" name="payment_date" value="<?php print today(); ?>">
+				<input type="hidden" name="payment_date" id="resubmit-meal-date" value="<?php print today(); ?>">
 				<div class="modal-header">
 					<h4 class="modal-title">Resubmit Balance Meal</h4>
 				</div>
@@ -2343,6 +2345,10 @@ if (isset($get->h)) {
 						<tr>
 							<td>Worker</td>
 							<td><span id="resubmit-meal-name"></span></td>
+						</tr>
+						<tr>
+							<td>Meal Date</td>
+							<td><input type="text" class="form-control" id="resubmit-meal-date-display" disabled></td>
 						</tr>
 						<tr>
 							<td>Amount</td>
@@ -2358,7 +2364,7 @@ if (isset($get->h)) {
 				</div>
 				<div class="modal-footer">
 					<button type="submit" class="btn btn-success" name="resubmit_meal">Resubmit</button>
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+					<button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
 				</div>
 			</form>
 		</div>
@@ -2554,10 +2560,8 @@ if (isset($get->h)) {
 								<div class="row">
 									<div class="col-md-6">
 										<label>Date:</label>
-										<?php
-										print today();
-										print "<input type='hidden' name='payment_date' value='" . today() . "'>";
-										?>
+										<span id="payment-date-display"><?php print today(); ?></span>
+										<input type='hidden' name='payment_date' value='<?php print today(); ?>'>
 									</div>
 									<div class="col-md-6">
 										<label>Banking:</label>
@@ -3059,6 +3063,18 @@ if (isset($get->h)) {
 	// Handle salary type change
 	$("#salary_type").change(setParticulars2);
 
+	// Handle banking date change - sync payment_date
+	$(document).on("change", "#banking_date-2_day, #banking_date-2_mon, #banking_date-2_year", function () {
+		setTimeout(function () {
+			var dt = $("#banking_date-2").val();
+			if (dt) {
+				$("#modal-worker-payment-2 input[name='payment_date']").val(dt);
+				$("#payment-date-display").text(dt);
+			}
+			setParticulars2();
+		}, 10);
+	});
+
 	// Investment Swal confirmation on modal-worker-payment-2 form submit
 	$("#modal-worker-payment-2 form").on("submit", function (e) {
 		var form = this;
@@ -3223,14 +3239,17 @@ if (isset($get->h)) {
 	}
 
 	function resubmitBalance(id) {
-		var totalMeal = $("#bal" + id).data('total');
+		var totalMeal = parseFloat($("#bal" + id).data('total').toString().replace(/,/g, ''));
 		var name = $("#wn" + id).text().trim();
 		var hotelName = $("#title-hotel").text().trim();
 		var monthText = $("#title-month").text().trim();
 		var monthName = monthText.split(' ')[0];
+		var stmtDate = $("#bal" + id).data('date');
 		$("#resubmit-meal-id").val(id);
 		$("#resubmit-meal-amount").val(totalMeal);
 		$("#resubmit-meal-name").text(name);
+		$("#resubmit-meal-date-display").val(stmtDate);
+		$("#resubmit-meal-date").val(stmtDate);
 		$("#resubmit-meal-particulars").val(hotelName + ", " + name + " ke " + monthName + " Masher Khabarer Jonno " + totalMeal + " taka Petty Cash Theke Deoya Hoyese");
 		$("#modal-resubmit-meal").modal('show');
 	}

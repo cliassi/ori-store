@@ -4,7 +4,7 @@ require_once("../env.php");
 require_once("../config.php");
 require_once("../f.inc.php");
 
-$restrictedUser = (uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
+$restrictedUser = (uid() == 60 || uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
 
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED & ~E_WARNING & ~E_NOTICE);
 ini_set('display_errors', 0);

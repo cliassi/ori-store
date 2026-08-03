@@ -8,7 +8,7 @@ require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
 
-$restrictedUser = (uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
+$restrictedUser = (uid() == 60 || uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
 $staff_name = '';
 if (function_exists('rolename') && rolename() == 'Delivery Staff') {
   $staff_name = getFieldValue('staff_salary', 'name', "user_id=" . uid());
