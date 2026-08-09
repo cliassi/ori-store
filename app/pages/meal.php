@@ -304,16 +304,96 @@ if (isset($post->save_hotel)) {
 	R::store($loan);
 	// redir("?page=3");
 }
+ensureMysqlColumn('hotel_statement', 'enum', "ENUM('meal','salary','hotel') NOT NULL DEFAULT 'meal' COMMENT 'Type of statement'");
+
+// Handle duplicate deletion and recreation
+if (isset($get->conf_del_duplicate)) {
+	$oldStatement = R::load("hotel_statement", $get->conf_del_duplicate);
+	if ($oldStatement && $oldStatement->id) {
+		$workers = R::find("hotel_statement_meal", "statement=?", [$oldStatement->id]);
+		foreach ($workers as $w) {
+			$incomes = R::find("hotel_statement_meal_income", "worker=?", [$w->id]);
+			foreach ($incomes as $inc) R::trash($inc);
+			$payments = R::find("hotel_statement_meal_payment", "worker=?", [$w->id]);
+			foreach ($payments as $pmt) {
+				$entry = R::findOne("expense_account_entry", "entry_id=? AND entry_type=?", [$pmt->id, 'Factory - Meal Payment']);
+				if ($entry) R::trash($entry);
+				R::trash($pmt);
+			}
+			R::trash($w);
+		}
+		$remarks = R::find("hotel_statement_remarks", "statement=?", [$oldStatement->id]);
+		foreach ($remarks as $rm) R::trash($rm);
+		R::trash($oldStatement);
+	}
+	$hotel = R::load("hotel", $get->hotel);
+	$loan = R::dispense("hotel_statement");
+	$loan->type = $get->type;
+	$loan->enum = 'meal';
+	$loan->month = $get->month;
+	$loan->hotel = $get->hotel;
+	$loan->entry_by = uid();
+	$loan->entry_time = now();
+	$loan->accountid = isset($get->expense_account) && $get->expense_account ? $get->expense_account : null;
+	R::store($loan);
+	redir("?page=3&h=$loan->id");
+}
+
 if (isset($post->save_statement)) {
+	$month = isset($post->month) ? $post->month : $post->month2;
+	$existingStatement = R::findOne('hotel_statement', 'hotel = ? AND month = ? AND type = ? AND enum = ?', [$post->hotel, $month, $post->type, 'meal']);
+	if ($existingStatement && $existingStatement->id) {
+		?>
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+		<script>
+			Swal.fire({
+				icon: 'warning',
+				title: 'Duplicate Entry',
+				text: 'A statement for this hotel and month already exists. Delete it and create a new one?',
+				showCancelButton: true,
+				confirmButtonText: 'Yes, Delete & Recreate',
+				cancelButtonText: 'Cancel'
+			}).then((result) => {
+				if (result.isConfirmed) {
+					window.location.href = '?page=3&conf_del_duplicate=<?php echo $existingStatement->id; ?>&hotel=<?php echo $post->hotel; ?>&month=<?php echo $month; ?>&type=<?php echo $post->type; ?>&expense_account=<?php echo isset($post->expense_account) ? $post->expense_account : ''; ?>';
+				} else {
+					window.location.href = '?page=3';
+				}
+			});
+		</script>
+		<?php
+		exit;
+	}
 	$loan = R::load("hotel", $post->hotel);
 	$loan = R::dispense("hotel_statement");
 	$loan->type = $post->type;
-	$loan->month = isset($post->month) ? $post->month : $post->month2;
+	$loan->enum = 'meal';
+	$loan->month = $month;
 	$loan->hotel = $post->hotel;
 	$loan->accountid = isset($post->expense_account) && $post->expense_account ? $post->expense_account : null;
 	$loan->entry_by = uid();
 	$loan->entry_time = now();
-	R::store($loan);
+	try {
+		R::store($loan);
+	} catch (Exception $e) {
+		if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+			?>
+			<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+			<script>
+				Swal.fire({
+					icon: 'error',
+					title: 'Duplicate Entry',
+					text: 'A statement for this hotel, month and type already exists.',
+					confirmButtonText: 'OK'
+				}).then(() => {
+					window.location.href = '?page=3';
+				});
+			</script>
+			<?php
+			exit;
+		}
+		throw $e;
+	}
 
 	//Account
 	// $account = accMan($hotel->accountid, date("M Y", strtotime("{$post->month}-01")), ['contexttype'=>'hotel_statement', 'contextid'=>$loan->id]);
@@ -402,7 +482,7 @@ if (isset($get->duplicate)) {
 	}
 	$newMonth = "$y-" . zerofill($m, 2);
 
-	$existingStatement = R::findOne('hotel_statement', 'hotel = ? AND month = ? AND type = ?', [$statement->hotel, $newMonth, $statement->type]);
+	$existingStatement = R::findOne('hotel_statement', 'hotel = ? AND month = ? AND type = ? AND enum = ?', [$statement->hotel, $newMonth, $statement->type, 'meal']);
 	if ($existingStatement) {
 		// Show SweetAlert and redirect back
 		?>
@@ -425,6 +505,7 @@ if (isset($get->duplicate)) {
 	$loan->month = $newMonth;
 	$loan->hotel = $statement->hotel;
 	$loan->type = $statement->type;
+	$loan->enum = 'meal';
 	$loan->hourly = $statement->hourly;
 	$loan->entry_by = uid();
 	$loan->entry_time = now();
@@ -1654,7 +1735,7 @@ if (isset($get->h)) {
 	</div-->';
 	}
 } else {
-	$filter = "h.id=s.hotel AND h.type IN ('meal','both')";
+	$filter = "h.id=s.hotel AND h.type IN ('meal','both') AND s.enum='meal'";
 	if (!isset($get->showall)) {
 		// $latest = mysqli_fetch_object(select("SELECT month FROM hotel_statement ORDER BY id DESC"));
 		// $filter .= " AND s.month='$latest->month'";
@@ -1763,8 +1844,8 @@ if (isset($get->h)) {
 					<table>
 						<tr>
 							<td>Store</td>
-							<td><?php print sop2('hotel', '', ['filter' => "type IN ('meal','both')", 'active' => false]); ?>
-								<a data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
+							<td><?php print sop2('hotel', '', ['filter' => "type IN ('meal','both')"]); ?> <a
+									data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
 							</td>
 						</tr>
 						<tr>
@@ -1800,8 +1881,8 @@ if (isset($get->h)) {
 					<table>
 						<tr>
 							<td>Store</td>
-							<td><?php print sop2('hotel', '', ['filter' => "type IN ('meal','both')", 'active' => false]); ?>
-								<a data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
+							<td><?php print sop2('hotel', '', ['filter' => "type IN ('meal','both')"]); ?> <a
+									data-bs-toggle='modal' data-bs-target='#modal-hotel'><i class='fa fa-plus'></i></a>
 							</td>
 						</tr>
 						<tr>

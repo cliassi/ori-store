@@ -826,7 +826,7 @@ if (isset($get->petty_cash_currency)) {
 	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND amount>0 AND date<'$d'");
 	$handoverResult = $c->query("SELECT IFNULL(SUM(h.amount),0) cash_handover FROM (SELECT MAX(id) id FROM bd_handover WHERE (branch_id = $bId OR branch_id IS NULL) AND amount>0 AND date<'$d' GROUP BY `date`) latest JOIN bd_handover h ON h.id = latest.id");
 	$cash_handover = $handoverResult->fetch_assoc()['cash_handover'];
-	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND (company=$cwId OR company IS NULL) AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
+	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
 	$cash_payment = getSum("payment", "amount", "(branch_id = $bId OR branch_id IS NULL) AND payment_method='Cash' AND date<'$d'");
 	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
 
@@ -1246,9 +1246,9 @@ if (isset($get->petty_cash_currency)) {
 			UNION
 			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE branch_id=$branch_id AND amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.payment_method='Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
+			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method='Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.payment_method<>'Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
+			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method<>'Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
 			UNION
 			SELECT '' se, 'cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t') AND company=$company->id
 			UNION
