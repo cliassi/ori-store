@@ -136,6 +136,7 @@ date_default_timezone_set('Asia/Kuala_Lumpur');
 require_once ('env.php');
 require_once ('config.php');
 require_once ('functions.php');
+require_once ('../core/functions.php');
 // require_once ('f.inc.php');
 
 $get = array(); foreach ($_GET as $key => $value) $get[$key] = $value; unset($_GET); $get = (object)$get;

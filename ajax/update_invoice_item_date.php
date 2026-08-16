@@ -6,9 +6,14 @@ session_start();
 require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
+require_once("../core/functions.php");
 
 extract($_POST);
 
+if (!canEditDateOnly()) {
+    http_response_code(403);
+    exit;
+}
 
 if(isset($update_date)){
     $ids = array_filter(array_map('intval', explode(',', $invoice_item_id)));

@@ -9,6 +9,7 @@ require_once ('env.php');
 require_once ('core/config.php');
 require_once ('core/functions.php');
 require_once ('core/f.inc.php');
+ensureDcollectPrivileges();
 $get = array();
 foreach ($_GET as $key => $value) {
     $get[$key] = $value;

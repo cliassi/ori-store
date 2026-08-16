@@ -8,6 +8,9 @@ session_start();
 require_once("../env.php");
 require_once("../config.php");
 require_once("../f.inc.php");
+require_once("../core/functions.php");
+
+$canEditDate = canEditDateOnly();
 
 // Functions loaded successfully from f.inc.php
 
@@ -354,7 +357,7 @@ if ($i->pc_name != $cat) {
 
 $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
         $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
-        print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> <a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a></div></td>";
+        print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a>" : "<span>$ci</span>") . "</div></td>";
 
         if ($rolename === 'Delivery Staff' || $rolename === 'Store Staff') {
 					print "<td>$i->particulars ($i->price)</td>";

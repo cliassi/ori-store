@@ -101,6 +101,24 @@ if (isset($post->save)) {
 		}
 		del("sys_user_role", "ur_user_id = $id");
 		replace("sys_user_role", "ur_user_id, ur_role_id", "$id, {$post->role}");
+
+		// Save D-Collect permissions
+		if (uid() == 1 && isset($post->dcollect_priv)) {
+			$dcollectPrivileges = R::find("sys_privilege", "link='dcollect' AND root!=0 AND active=1");
+			// First, remove all existing dcollect ACL entries for this user
+			del("sys_acl", "appliesto=$id AND utype='u' AND privilege IN (SELECT id FROM sys_privilege WHERE link='dcollect')");
+			// Then insert the selected permissions
+			foreach ($dcollectPrivileges as $priv) {
+				$hasAccess = in_array($priv->id, $post->dcollect_priv);
+				if ($hasAccess) {
+					replace("sys_acl", "appliesto, utype, privilege, access, entryby", "$id, 'u', {$priv->id}, 1, " . uid());
+				}
+			}
+		} elseif (uid() == 1) {
+			// If no checkboxes submitted, remove all dcollect permissions for this user
+			del("sys_acl", "appliesto=$id AND utype='u' AND privilege IN (SELECT id FROM sys_privilege WHERE link='dcollect')");
+		}
+
 		redir("/store/user");
 	} else {
 		global $back;
@@ -127,6 +145,19 @@ if (METHOD != "edit") {
 }
 echo "<tr class='hidden'><td>Email</td><td><input type='text' name='email' value='$object->u_email' class='email form-control' /></td></tr>
 	<tr><td>Avatar</td><td><input type='file' name='avatar' accept='image/*' class='form-control' />" . ($object->u_avatar && file_exists("uploads/user/avatar/$object->u_avatar") ? "<img src='".BASEURL.APP."/uploads/user/avatar/$object->u_avatar' class='w30' style='margin-top:5px'>" : "") . "</td></tr>
-	<tr><td>Role</td><td>" . selectOption("name='role' id='role' onchange='getNames()' class='form-control'", "sys_role", "r_name", "id", $object->id ? getFieldValue("sys_user_role", "ur_role_id", "ur_user_id=$object->id") : '', "id>1") . "<span id='names'></span></td></tr>
-	</table>";
+	<tr><td>Role</td><td>" . selectOption("name='role' id='role' onchange='getNames()' class='form-control'", "sys_role", "r_name", "id", $object->id ? getFieldValue("sys_user_role", "ur_role_id", "ur_user_id=$object->id") : '', "id>1") . "<span id='names'></span></td></tr>";
+
+if (METHOD == 'edit' && uid() == 1) {
+	$dcollectPrivileges = R::find("sys_privilege", "link='dcollect' AND root!=0 AND active=1");
+	if ($dcollectPrivileges) {
+		echo "<tr><td colspan='2'><hr><b>D-Collect Permissions</b></td></tr>";
+		foreach ($dcollectPrivileges as $priv) {
+			$acl = R::findOne("sys_acl", "appliesto=? AND utype='u' AND privilege=?", [$object->id, $priv->id]);
+			$isChecked = ($acl && $acl->access == 1) ? 'checked' : '';
+			echo "<tr><td>" . htmlspecialchars($priv->title) . "</td><td><input type='checkbox' name='dcollect_priv[]' value='{$priv->id}' $isChecked /> <small>({$priv->link}/{$priv->option})</small></td></tr>";
+		}
+	}
+}
+
+echo "</table>";
 closeForm();

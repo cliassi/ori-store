@@ -653,9 +653,6 @@
 	// }
 
 	function hasAccess($object, $function = false){
-		if(!in_array(uid(), [0,23])){
-			return true;
-		}
 		global $accessGranted;
 		global $appurl;
 		if(uid()==1){

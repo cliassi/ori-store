@@ -7,8 +7,10 @@ $branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
+require_once("../core/functions.php");
 
-$restrictedUser = (uid() == 60 || uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
+$restrictedUser = !canEditPriceAndQuantity();
+$canEditDate = canEditDateOnly();
 
 if (!function_exists('ensureMysqlColumn')) {
   function ensureMysqlColumn($table, $column, $definition)
@@ -388,7 +390,7 @@ print "<th class='price-col'>Price</th><th class='order-qty-col'>Ord Qty</th></t
           if ($i->quantity > 0) {
 $collected = 0;
             $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
-            print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> <a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a></div></td>
+            print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a>" : "<span>$ci</span>") . "</div></td>
                             <td>$i->particulars (" . ($restrictedUser ? "<span>" . ($i->price) . "</span>" : "<a data-id='$i->iid' class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . ($i->price) . "</a>") . ") </td>";
 
             $collected = $i->quantity;

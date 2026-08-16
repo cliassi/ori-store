@@ -171,7 +171,7 @@ if (isset($post->save_outsource_expense) || isset($post->save_online_expense) ||
 //     $get->d = $d;
 //   }
 // }
-$canPickPast = in_array((int) uid(), [1, 47], true);
+$canPickPast = in_array((int) uid(), [1, 45, 47], true);
 
 if ($canPickPast) {
   $minDate = '';

@@ -6,14 +6,18 @@ session_start();
 require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
+require_once("../core/functions.php");
 
-$restrictedUser = (uid() == 60 || uid() == 53 || (isset($_SESSION['store_username']) && $_SESSION['store_username'] == 'anowar'));
+if (!canEditPriceAndQuantity()) {
+    http_response_code(403);
+    exit;
+}
 
 extract($_POST);
 
 
 if(isset($update_price)){
-	if ($restrictedUser) { print ""; exit; }
+	if (!$canEditPriceQty) exit;
 	$item = R::load("invoice_item", $invoice_item_id);
 	// if($item->price < $price){
 		$item->old_price = $item->price;

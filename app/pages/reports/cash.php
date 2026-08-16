@@ -838,6 +838,37 @@ if (isset($get->petty_cash_currency)) {
 		$cData[strtolower($row->label)] = $row->count;
 	}
 	$notes = R::find("petty_cash_currency_notes", "month=? AND year=? AND trash=0 ORDER BY sort_order ASC, id ASC", [$cm, $cy]);
+
+	// Calculate denomination total from physical counts (this is the correct "Cash Available Balance")
+	$denomCalcDefs = [
+		['label' => '1', 'value' => 1],
+		['label' => '5', 'value' => 5],
+		['label' => '10', 'value' => 10],
+		['label' => '20', 'value' => 20],
+		['label' => '50', 'value' => 50],
+		['label' => '100', 'value' => 100],
+		['label' => 'fd_1', 'value' => 100],
+		['label' => 'fd_5', 'value' => 500],
+		['label' => 'fd_10', 'value' => 1000],
+		['label' => 'fd_20', 'value' => 2000],
+		['label' => 'fd_50', 'value' => 5000],
+		['label' => 'fd_100', 'value' => 10000],
+	];
+	$denominationTotal = 0;
+	foreach ($denomCalcDefs as $dd) {
+		$cnt = isset($cData[strtolower($dd['label'])]) ? intval($cData[strtolower($dd['label'])]) : 0;
+		$denominationTotal += $dd['value'] * $cnt;
+	}
+	$coinAmount = isset($cData['coin']) ? floatval($cData['coin']) : 0;
+	$denominationTotal += $coinAmount;
+	$notesTotal = 0;
+	foreach ($notes as $note) {
+		$notesTotal += floatval($note->note_amount);
+	}
+	$denominationTotal += $notesTotal;
+	// Use denomination total as the petty cash value (matches "Cash Available Balance")
+	$petty_cash_value = $denominationTotal;
+	$petty_cash_value_str = number_format($petty_cash_value, 2, '.', ',');
 	$denomDefs = [
 		['label' => '1', 'value' => 1, 'type' => 'currency'],
 		['label' => '5', 'value' => 5, 'type' => 'currency'],
@@ -1155,6 +1186,43 @@ if (isset($get->petty_cash_currency)) {
 	print "<h3><strong><a href='?page=18&petty_cash_currency=&cw=$get->cw'>$company->name Petty Cash Report</a></strong></h3>";
 	$d = isset($get->d) ? $get->d : addDay(-5);
 	$t = isset($get->t) ? $get->t : today();
+
+	// Calculate denomination total from physical counts for current month (always use today's date for consistent display)
+	$cm2 = intval(date('m'));
+	$cy2 = intval(date('Y'));
+	$cData2 = [];
+	$cRows2 = R::find("petty_cash_currency_data", "month=? AND year=?", [$cm2, $cy2]);
+	foreach ($cRows2 as $row) {
+		$cData2[strtolower($row->label)] = $row->count;
+	}
+	$notes2 = R::find("petty_cash_currency_notes", "month=? AND year=? AND trash=0 ORDER BY sort_order ASC, id ASC", [$cm2, $cy2]);
+	$denomCalcDefs2 = [
+		['label' => '1', 'value' => 1],
+		['label' => '5', 'value' => 5],
+		['label' => '10', 'value' => 10],
+		['label' => '20', 'value' => 20],
+		['label' => '50', 'value' => 50],
+		['label' => '100', 'value' => 100],
+		['label' => 'fd_1', 'value' => 100],
+		['label' => 'fd_5', 'value' => 500],
+		['label' => 'fd_10', 'value' => 1000],
+		['label' => 'fd_20', 'value' => 2000],
+		['label' => 'fd_50', 'value' => 5000],
+		['label' => 'fd_100', 'value' => 10000],
+	];
+	$denominationTotal2 = 0;
+	foreach ($denomCalcDefs2 as $dd) {
+		$cnt = isset($cData2[strtolower($dd['label'])]) ? intval($cData2[strtolower($dd['label'])]) : 0;
+		$denominationTotal2 += $dd['value'] * $cnt;
+	}
+	$coinAmount2 = isset($cData2['coin']) ? floatval($cData2['coin']) : 0;
+	$denominationTotal2 += $coinAmount2;
+	$notesTotal2 = 0;
+	foreach ($notes2 as $note) {
+		$notesTotal2 += floatval($note->note_amount);
+	}
+	$denominationTotal2 += $notesTotal2;
+
 	print "<div class='row'>";
 	print "<div class='col-md-5'>";
 	print "<form>";

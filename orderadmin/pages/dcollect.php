@@ -420,6 +420,9 @@ if (isset($post->save)) {
 
 
 <script type="text/javascript">
+  var __canEditPriceQty = <?php echo canEditPriceAndQuantity() ? 'true' : 'false'; ?>;
+  var __canEditAnything = <?php echo canEditAnything() ? 'true' : 'false'; ?>;
+
   function setItemId(id) {
     $('#invoice_item_id').val(id);
   }
@@ -472,6 +475,7 @@ if (isset($post->save)) {
 
   // Function to call and show modal with ID
   function setDate(el, id) {
+    if (!__canEditAnything) return;
     var checked = $(".iid-date:checked");
     debugger;
     if (checked.length > 0) {

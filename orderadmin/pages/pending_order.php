@@ -718,6 +718,9 @@ if (isset($post->collect)) {
     </div>
 
     <script type="text/javascript">
+      var __canEditPriceQty = <?php echo canEditPriceAndQuantity() ? 'true' : 'false'; ?>;
+      var __canEditAnything = <?php echo canEditAnything() ? 'true' : 'false'; ?>;
+
       function setItemId(id) {
         $('#invoice_item_id').val(id);
       }
@@ -771,6 +774,7 @@ if (isset($post->collect)) {
 
       // Function to call and show modal with ID
       function setDate(el, id) {
+        if (!__canEditAnything) return;
         var selectedIds = getSelectedInvoiceItemIds();
         if (selectedIds) {
           document.getElementById('hiddenId').value = selectedIds;

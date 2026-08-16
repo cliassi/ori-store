@@ -3,9 +3,14 @@ session_start();
 require_once("../env.php");
 require_once("../config.php");
 require_once("../f.inc.php");
+require_once("../core/functions.php");
 
 extract($_POST);
 
+if (!canEditDateOnly()) {
+    http_response_code(403);
+    exit;
+}
 
 if(isset($update_date)){
     $item = R::load('invoice_item', $invoice_item_id);

@@ -251,10 +251,9 @@ function dp2($name='date', $date = false){
     return "<input type='date' name='$name' class='datepicker form-control form-control-fluid' value='$date'>";
 }
 
-function isUserIn($users = []){return true;
+function isUserIn($users = []){
     if(uid() == 1) return true;
     return in_array(strtolower(username()), $users);
-    // return in_array('lemon', $users);
 }
 
 function isUserIn2($users = []){

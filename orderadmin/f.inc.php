@@ -1113,12 +1113,7 @@ function days($from_date, $to_date = ''){
 		return getFieldValue("purchase_supplier", "id", "s_user_id=".uid());
 	}
 	function uid(){
-		if(isset($_GET['uid'])) return $_GET['uid'];
-		global $get;
-		if(isset($get->uid)) return $get->uid;
-		// return UID; // Undefined constant
-		return 1; // Default user ID
-		// return iss(APP.'_id', 0);
+		return isset($_SESSION[APP.'_id']) ? $_SESSION[APP.'_id'] : 0;
 	}
 	function aid(){
 		$account = R::load("sys_user", uid());

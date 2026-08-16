@@ -426,6 +426,63 @@ function isUserIn($users = [])
     // return in_array('lemon', $users);
 }
 
+function canEditPriceAndQuantity() {
+    return hasAccess('dcollect', 'edit_price');
+}
+
+function canEditDateOnly() {
+    return hasAccess('dcollect', 'edit_date');
+}
+
+function canEditAnything() {
+    return canEditDateOnly() || canEditPriceAndQuantity();
+}
+
+function ensureDcollectPrivileges() {
+    $parent = R::findOne("sys_privilege", "link='dcollect' AND root=0");
+    if (!$parent) {
+        R::freeze(false);
+        $parent = R::dispense("sys_privilege");
+        $parent->app = APP;
+        $parent->module = "Order";
+        $parent->link = "dcollect";
+        $parent->name = "dcollect";
+        $parent->title = "D-Collect";
+        $parent->root = 0;
+        $parent->position = 50;
+        $parent->active = 1;
+        $parent->controller = 0;
+        R::store($parent);
+        R::freeze(true);
+    }
+
+    $privileges = [
+        ['link' => 'dcollect', 'option' => 'edit_date', 'name' => 'Edit Date', 'title' => 'Edit Delivery Date'],
+        ['link' => 'dcollect', 'option' => 'edit_price', 'name' => 'Edit Price', 'title' => 'Edit Price'],
+        ['link' => 'dcollect', 'option' => 'edit_quantity', 'name' => 'Edit Quantity', 'title' => 'Edit Quantity'],
+    ];
+
+    foreach ($privileges as $p) {
+        $exists = R::findOne("sys_privilege", "link=? AND `option`=?", [$p['link'], $p['option']]);
+        if (!$exists) {
+            R::freeze(false);
+            $priv = R::dispense("sys_privilege");
+            $priv->app = APP;
+            $priv->module = "Order";
+            $priv->link = $p['link'];
+            $priv->option = $p['option'];
+            $priv->name = $p['name'];
+            $priv->title = $p['title'];
+            $priv->root = $parent->id;
+            $priv->position = 0;
+            $priv->active = 1;
+            $priv->controller = 0;
+            R::store($priv);
+            R::freeze(true);
+        }
+    }
+}
+
 function isUserIn2($users = [])
 {
     return in_array(username(), $users);

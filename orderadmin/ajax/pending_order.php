@@ -4,6 +4,9 @@ $branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 require_once("../env.php");
 require_once("../config.php");
 require_once("../f.inc.php");
+require_once("../core/functions.php");
+
+$canEditDate = canEditDateOnly();
 
 // Determine logged-in delivery staff name (if applicable)
 $staff_name = '';
@@ -178,7 +181,7 @@ $items = select($itemQuery);
       // Print item row
       $partAttr = htmlspecialchars($item->particulars, ENT_QUOTES);
       echo "<tr data-vid='$item->vid' data-qty='$remainingQty' data-unit-price='$item->price' data-particulars='$partAttr'>
-        <td style='width:30px;'><input type='checkbox' class='iid-date' name='iid[$item->iid]' value='$item->iid'> <a href='#' id='invoice-item-date-$item->iid' data-dd='" . df($item->dd) . "' onclick='setDate(this, $item->iid); return false;' style='text-decoration:none; color:#333; font-weight:bold; cursor:pointer;'>$itemSerial</a></td>
+        <td style='width:30px;'><input type='checkbox' class='iid-date' name='iid[$item->iid]' value='$item->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$item->iid' data-dd='" . df($item->dd) . "' onclick='setDate(this, $item->iid); return false;' style='text-decoration:none; color:#333; font-weight:bold; cursor:pointer;'>$itemSerial</a>" : "<span style='font-weight:bold;'>$itemSerial</span>") . "</td>
         <td>$item->particulars</td>
         <td style='text-align:center; width:60px;'>" . nf($item->price * $remainingQty) . "</td>
         <td style='text-align:center; width:50px;'>$remainingQty</td>
