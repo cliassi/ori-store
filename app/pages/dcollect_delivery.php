@@ -261,7 +261,9 @@
           // Then call the hide() method
           dateModal.hide();
         })
-        .fail(() => {});
+        .fail((jqXHR) => {
+          alert(jqXHR.status === 403 ? 'You do not have permission to perform this action.' : 'An error occurred. Please try again.');
+        });
     });
   });
 
@@ -306,7 +308,9 @@
         // Then call the hide() method
         myModal.hide();
       })
-      .fail(() => {});
+      .fail((jqXHR) => {
+          alert(jqXHR.status === 403 ? 'You do not have permission to perform this action.' : 'An error occurred. Please try again.');
+        });
   });
   $("#update_price_button").click(function() {
     if (!__canEditPriceQty) return;
@@ -325,7 +329,9 @@
         // Then call the hide() method
         myModal.hide();
       })
-      .fail(() => {});
+      .fail((jqXHR) => {
+          alert(jqXHR.status === 403 ? 'You do not have permission to perform this action.' : 'An error occurred. Please try again.');
+        });
   });
   $("input[type=checkbox]").change(triggerChange);
   triggerChange();
@@ -359,7 +365,9 @@
       .done((response) => {
         $('.orders').html(response);
       })
-      .fail(() => {});
+      .fail((jqXHR) => {
+          alert(jqXHR.status === 403 ? 'You do not have permission to perform this action.' : 'An error occurred. Please try again.');
+        });
   }
 
   function load() {
@@ -390,6 +398,8 @@
       .done((response) => {
         $('.orders').html(response);
       })
-      .fail(() => {});
+      .fail((jqXHR) => {
+          alert(jqXHR.status === 403 ? 'You do not have permission to perform this action.' : 'An error occurred. Please try again.');
+        });
   }
 </script>

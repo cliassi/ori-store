@@ -1,8 +1,5 @@
 <?php
 session_start();
-// ini_set('display_errors', '1');
-// ini_set('display_startup_errors', '1');
-// error_reporting(E_ALL);
 require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
@@ -13,11 +10,11 @@ if (!canEditPriceAndQuantity()) {
     exit;
 }
 
-extract($_POST);
+$invoice_item_id = isset($_POST['invoice_item_id']) ? intval($_POST['invoice_item_id']) : 0;
+$quantity = isset($_POST['quantity']) ? floatval($_POST['quantity']) : 0;
+$update_quantity = isset($_POST['update_quantity']) ? $_POST['update_quantity'] : '';
 
-
-if(isset($update_quantity)){
-	if (!$canEditPriceQty) exit;
-	update("invoice_item", "quantity=$quantity", "id=$invoice_item_id");
-	update("stock_collect_item", "quantity=$quantity", "invoice_item_id=$invoice_item_id");
+if ($update_quantity && $invoice_item_id > 0 && $quantity > 0) {
+    update("invoice_item", "quantity=$quantity", "id=$invoice_item_id");
+    update("stock_collect_item", "quantity=$quantity", "invoice_item_id=$invoice_item_id");
 }

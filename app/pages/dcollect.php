@@ -631,11 +631,11 @@ if ($iid <= 0) continue;
           .done((response) => {
             $('#invoice-item-' + invoice_item_id).text(quantity);
             var myModal = bootstrap.Modal.getInstance(document.getElementById('modal-modify-quantity'));
-
-            // Then call the hide() method
             myModal.hide();
           })
-          .fail(() => {});
+          .fail((jqXHR) => {
+            alert(jqXHR.status === 403 ? 'You do not have permission to edit quantity.' : 'Failed to update quantity. Please try again.');
+          });
       });
       $("#update_price_button").click(function() {
         if (!window.__canEditPriceQty) return;
@@ -650,11 +650,11 @@ if ($iid <= 0) continue;
             if (response != "")
               $('#invoice-item-price-' + invoice_item_id).parent().text(response);
             var myModal = bootstrap.Modal.getInstance(document.getElementById('modal-modify-price'));
-
-            // Then call the hide() method
             myModal.hide();
           })
-          .fail(() => {});
+          .fail((jqXHR) => {
+            alert(jqXHR.status === 403 ? 'You do not have permission to edit price.' : 'Failed to update price. Please try again.');
+          });
       });
       $("input[type=checkbox]").change(function() {
         let selectedCustomers = $('.checkbox-area:checked').map(function() {

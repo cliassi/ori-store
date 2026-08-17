@@ -1,8 +1,5 @@
 <?php
 session_start();
-// ini_set('display_errors', '1');
-// ini_set('display_startup_errors', '1');
-// error_reporting(E_ALL);
 require_once("../env.php");
 require_once("../core/config.php");
 require_once("../core/f.inc.php");
@@ -13,19 +10,18 @@ if (!canEditPriceAndQuantity()) {
     exit;
 }
 
-extract($_POST);
+$invoice_item_id = isset($_POST['invoice_item_id']) ? intval($_POST['invoice_item_id']) : 0;
+$price = isset($_POST['price']) ? floatval($_POST['price']) : 0;
+$update_price = isset($_POST['update_price']) ? $_POST['update_price'] : '';
 
-
-if(isset($update_price)){
-	if (!$canEditPriceQty) exit;
-	$item = R::load("invoice_item", $invoice_item_id);
-	// if($item->price < $price){
-		$item->old_price = $item->price;
-		$item->price_updated_by = uid();
-		$item->price_updated_at = now();
-		$item->price = $price;
-		R::store($item);
-		print nf($item->quantity * $item->price);
-	// }
-	print "";
+if ($update_price && $invoice_item_id > 0 && $price > 0) {
+    $item = R::load("invoice_item", $invoice_item_id);
+    if ($item && $item->id) {
+        $item->old_price = $item->price;
+        $item->price_updated_by = uid();
+        $item->price_updated_at = now();
+        $item->price = $price;
+        R::store($item);
+        print nf($item->quantity * $item->price);
+    }
 }

@@ -1261,44 +1261,12 @@ if (isset($get->petty_cash_currency)) {
 	$expense_entry = getSum("expense_account_entry", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND tran_type='Debit' AND company=$company->id AND expense_date<'$d'");
 
 	$summary2 = mysqli_fetch_object(select("SELECT 
-    (SELECT IFNULL(SUM(amount),0)
-        FROM cw_cash
-        WHERE (branch_id = $branch_id OR branch_id IS NULL)
-          AND company = $company->id
-          AND `date` < '$d'
-    ) add_cash,
-
-    (SELECT IFNULL(SUM(h.amount),0)
-        FROM (SELECT MAX(id) id FROM bd_handover
-              WHERE (branch_id = $branch_id OR branch_id IS NULL)
-                AND `date` < '$d'
-              GROUP BY `date`) latest
-        JOIN bd_handover h ON h.id = latest.id
-    ) cash_handover,
-
-    (SELECT IFNULL(SUM(amount),0)
-        FROM expense_account_entry
-        WHERE (branch_id = $branch_id OR branch_id IS NULL)
-          AND company = $company->id
-          AND payment_method = 'Cash'
-          AND tran_type = 'Debit'
-          AND expense_date < '$d'
-    ) cash_expense,
-
-    (SELECT IFNULL(SUM(amount),0)
-        FROM payment
-        WHERE (branch_id = $branch_id OR branch_id IS NULL)
-          AND payment_method = 'Cash'
-          AND `date` < '$d'
-    ) cash_payment,
-
-    (SELECT IFNULL(SUM(amount),0)
-        FROM cw_cash_withdraw
-        WHERE (branch_id = $branch_id OR branch_id IS NULL)
-          AND company = $company->id
-          AND `date` < '$d'
-    ) withdraw
-"));
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash` WHERE branch_id=$branch_id AND `date` < '$d') add_cash, 
+    (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE branch_id=$branch_id AND `date` < '$d' GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover, 
+    (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND branch_id=$branch_id AND expense_date < '$d') cash_expense, 
+    (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND branch_id=$branch_id AND `date` < '$d') cash_payment, 
+    (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id AND `date` < '$d') cash, 
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id AND `date` < '$d') withdraw"));
 
 	$total = $summary2->cash_handover
 		+ $summary2->add_cash
