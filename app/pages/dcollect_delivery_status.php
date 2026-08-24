@@ -533,30 +533,4 @@ elseif (isset($post->deliver)) {
   $("#delivery-staff-filter").change(function() {
     load(); // Call load function directly instead of triggering all checkboxes
   });
-  
-  // Handle Return to Order button with SweetAlert confirmation
-  $(document).on('click', 'button[name="return_to_order"]', function(e) {
-    e.preventDefault();
-    
-    Swal.fire({
-      title: 'Return to Order?',
-      text: 'This will remove stock collection and clear assigned delivery staff. Are you sure?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ffc107',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, Return',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const form = $(this).closest('form');
-        $('<input>').attr({
-          type: 'hidden',
-          name: 'return_to_order',
-          value: '1'
-        }).appendTo(form);
-        form.submit();
-      }
-    });
-  });
 </script>

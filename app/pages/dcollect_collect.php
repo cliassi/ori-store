@@ -448,7 +448,6 @@ if (isset($post->save)) {
   var __canEditAnything = <?php echo canEditAnything() ? 'true' : 'false'; ?>;
 
   function setItemId(id) {
-    if (!__canEditPriceQty) return;
     $('#invoice_item_id').val(id);
   }
 
@@ -571,7 +570,7 @@ if (isset($post->save)) {
         invoice_item_id: invoice_item_id
       })
       .done((response) => {
-        $('.invoice-item-' + invoice_item_id).text(quantity);        
+        $('#invoice-item-' + invoice_item_id).text(quantity);        
         const price = $('#invoice-item-price-' + invoice_item_id).data('price');
         $('#invoice-item-price-' + invoice_item_id).text((parseFloat(price) * parseFloat(quantity)).toFixed(2));
         var myModal = bootstrap.Modal.getInstance(document.getElementById('modal-modify-quantity'));

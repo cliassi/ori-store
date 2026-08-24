@@ -779,8 +779,8 @@ if (isset($get->copy) && $get->copy > 0) {
 if (isset($get->petty_cash_currency)) {
 	ensurePettyCashCurrencyTables();
 
-	$cwId = isset($get->cw) ? intval($get->cw) : 0;
-	$bId = isset($branch_id) ? intval($branch_id) : 0;
+	$cwId = isset($get->cw) ? intval($get->cw) : 3;
+	$bId = isset($branch_id) ? intval($branch_id) : 1;
 
 	$startDate = isset($get->start_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $get->start_date) ? $get->start_date : date('Y-m-d');
 	$endDate = isset($get->end_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $get->end_date) ? $get->end_date : date('Y-m-d');
@@ -823,15 +823,23 @@ if (isset($get->petty_cash_currency)) {
 
 	$d = date('Y-m-d', strtotime($endDate . ' +1 day'));
 
-	$add_cash = getSum("cw_cash", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND amount>0 AND date<'$d'");
-	$handoverResult = $c->query("SELECT IFNULL(SUM(h.amount),0) cash_handover FROM (SELECT MAX(id) id FROM bd_handover WHERE (branch_id = $bId OR branch_id IS NULL) AND amount>0 AND date<'$d' GROUP BY `date`) latest JOIN bd_handover h ON h.id = latest.id");
-	$cash_handover = $handoverResult->fetch_assoc()['cash_handover'];
-	$cash_expense = getSum("expense_account_entry", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND payment_method='Cash' AND tran_type='Debit' AND expense_date<'$d'");
-	$cash_payment = getSum("payment", "amount", "(branch_id = $bId OR branch_id IS NULL) AND payment_method='Cash' AND date<'$d'");
-	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $bId OR branch_id IS NULL) AND company=$cwId AND date<'$d'");
+$summary2 = mysqli_fetch_object(select("SELECT 
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash` WHERE branch_id=$branch_id AND `date` < '$d') add_cash, 
+    (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE branch_id=$branch_id AND `date` < '$d' GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover, 
+    (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND branch_id=$branch_id AND expense_date < '$d') cash_expense, 
+    (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND branch_id=$branch_id AND `date` < '$d') cash_payment, 
+    (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id AND `date` < '$d') cash, 
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id AND `date` < '$d') withdraw"));
 
-	$petty_cash_value = $cash_handover + $add_cash - abs($withdraw) - $cash_payment - $cash_expense;
+	$petty_cash_value = $summary2->cash_handover
+		+ $summary2->add_cash
+		- abs($summary2->withdraw)
+		- $summary2->cash_payment
+		- $summary2->cash_expense;
 	$petty_cash_value_str = number_format($petty_cash_value, 2, '.', ',');
+	// DEBUG: output values as JavaScript console.log
+	$debug_js = "<script>console.log('DEBUG PETTY CASH: branch_id=$branch_id, cwId=$cwId, add_cash=$summary2->add_cash, cash_handover=$summary2->cash_handover, withdraw=$summary2->withdraw, cash_payment=$summary2->cash_payment, cash_expense=$summary2->cash_expense, petty_cash_value=$petty_cash_value');</script>";
+	print $debug_js;
 	$cData = [];
 	$cRows = R::find("petty_cash_currency_data", "month=? AND year=?", [$cm, $cy]);
 	foreach ($cRows as $row) {
@@ -866,8 +874,6 @@ if (isset($get->petty_cash_currency)) {
 		$notesTotal += floatval($note->note_amount);
 	}
 	$denominationTotal += $notesTotal;
-	// Use denomination total as the petty cash value (matches "Cash Available Balance")
-	$petty_cash_value = $denominationTotal;
 	$petty_cash_value_str = number_format($petty_cash_value, 2, '.', ',');
 	$denomDefs = [
 		['label' => '1', 'value' => 1, 'type' => 'currency'],
@@ -1233,11 +1239,11 @@ if (isset($get->petty_cash_currency)) {
 	print "</form>";
 	print "</div>";
 	print "<div class='col-md-5'>";
-	if (isUserIn(['superadmin', 'amla', 'orange', 'parvez'])) {
+	if (isUserIn(['superadmin', 'emon', 'orange', 'parvez']) || uid() == 45) {
 		print "<a data-bs-toggle='modal' data-bs-target='.invest' class='btn btn-warning'>Asset Invest</a>" . space(5);
 		print "<a data-bs-toggle='modal' data-bs-target='.withdraw' class='btn btn-primary'>Cash Withdraw</a>" . space(5);
 	}
-	if (isUserIn(['superadmin', 'amla', 'orange', 'parvez'])) {
+	if (isUserIn(['superadmin', 'emon', 'orange', 'parvez']) || uid() == 45) {
 		print "<a data-bs-toggle='modal' data-bs-target='.cash' class='btn btn-primary'>Add Cash</a>" . space(5);
 		// print "<a data-bs-toggle='modal' data-bs-target='.bankdeposit' class='btn btn-success'>Bank Deposit</a>".space(5);
 		print "<a data-bs-toggle='modal' data-bs-target='.outlet' class='btn btn-secondary'>Petty Cash to Outlet Account</a>";

@@ -576,13 +576,10 @@ $customers = select($query);
         $iidStr = implode(',', array_unique($invoiceItemIds));
         $invStr = implode(',', $invoiceIds);
         print "<div style='padding: 10px; text-align: center; border: 1px solid #ddd; border-top: none;'>
-          <form method='post' style='display:inline;'>
-            <input type='hidden' name='return_to_order_customer_id' value='$custId'>
-            <input type='hidden' name='return_to_order_invoice_ids' value='$invStr'>
-            <button type='submit' class='btn btn-warning btn-sm return-to-order-btn' name='return_to_order' value='1'>
-              <i class='fas fa-undo'></i> Return to Order
-            </button>
-          </form>
+          <button type='button' class='btn btn-warning btn-sm return-to-order-btn'
+                  data-cust-id='$custId' data-inv-ids='$invStr'>
+            <i class='fas fa-undo'></i> Return to Order
+          </button>
         </div>";
       }
       
@@ -783,6 +780,20 @@ $customers = select($query);
         if (totalPriceEl) totalPriceEl.textContent = totalPrice.toFixed(2);
         panel.style.display = entries.length ? '' : 'none';
       }
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.return-to-order-btn');
+        if (!btn) return;
+        e.preventDefault();
+        if (!confirm('Return these items to order?')) return;
+        var fd = new FormData();
+        fd.append('return_to_order_customer_id', btn.getAttribute('data-cust-id'));
+        fd.append('return_to_order_invoice_ids', btn.getAttribute('data-inv-ids'));
+        fd.append('return_to_order', '1');
+        fetch(window.location.href, { method: 'POST', body: fd })
+          .then(function () { window.location.reload(); })
+          .catch(function (err) { alert('Failed: ' + err); });
+      });
 
       document.addEventListener('click', function (e) {
         var toggleEl = e.target.closest('.cust-toggle');
