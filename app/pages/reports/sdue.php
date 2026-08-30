@@ -9,7 +9,8 @@
     "due" => ["label"=>"Due", "display"=>'', 'type'=>'due'],
     "image" => ["label"=>"Photo", "display"=>'', 'type'=>'image'],
   ];
-  $objs = R::find('supplier');
+  $branch_id = isset($branch_id) ? $branch_id : (isset($_SESSION['branch_id']) ? (int)$_SESSION['branch_id'] : 1);
+  $objs = R::find('supplier', "branch_id = $branch_id OR branch_id IS NULL");
   $contant = "";
   ?>
   <div class="row">

@@ -206,7 +206,8 @@ if (METHOD == 'return') {
 </style>
 <!-- [ Main Content ] start -->
 <?php
-$suppliers = R::find('supplier');
+$branch_id = isset($branch_id) ? $branch_id : (isset($_SESSION['branch_id']) ? (int)$_SESSION['branch_id'] : 1);
+$suppliers = R::find('supplier', "branch_id = $branch_id OR branch_id IS NULL");
 $lorries = R::find('lorry', '1 ORDER BY id DESC');
 ?>
 <form method="post">
@@ -222,7 +223,7 @@ $lorries = R::find('lorry', '1 ORDER BY id DESC');
                   <select type="text" class="form-select supplier-select" name="supplier" required>
                     <option value=''>Please select</option>
                     <?php
-                    $suppliers = R::find('supplier');
+                    $suppliers = R::find('supplier', "branch_id = $branch_id OR branch_id IS NULL");
                     foreach ($suppliers as $key => $supplier) {
                       print "<option value='$supplier->id' ";
                       if ($obj->supplier_id == $supplier->id)
@@ -240,7 +241,7 @@ $lorries = R::find('lorry', '1 ORDER BY id DESC');
                   <select type="text" class="form-select supplier-select" name="supplier" required>
                     <option value=''>Please select</option>
                     <?php
-                    $suppliers = R::find('supplier');
+                    $suppliers = R::find('supplier', "branch_id = $branch_id OR branch_id IS NULL");
                     foreach ($suppliers as $key => $supplier) {
                       print "<option value='$supplier->id' ";
                       if ($obj->supplier_id == $supplier->id)

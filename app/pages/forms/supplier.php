@@ -12,6 +12,7 @@ if (isset($post->save)) {
     // $obj->address = $post->address;
     $obj->created_by = uid();
     $obj->created_at = now();
+    $obj->branch_id = isset($branch_id) ? $branch_id : (isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1);
     R::store($obj);
 
     // if (count($_FILES) > 0) {

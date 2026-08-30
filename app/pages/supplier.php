@@ -45,7 +45,8 @@ if (METHOD == 'add') {
     "avatar" => ["label" => "Entry", "style" => "width: 50px;", "display" => '', 'type' => 'avatar'],
     "" => ["display" => '', 'type' => 'link', 'action' => 'edit'],
   ];
-  $objs = R::find('supplier');
+  $branch_id = isset($branch_id) ? $branch_id : (isset($_SESSION['branch_id']) ? (int)$_SESSION['branch_id'] : 1);
+  $objs = R::find('supplier', "branch_id = $branch_id OR branch_id IS NULL");
   $contant = "";
   ?>
   <div class="row">

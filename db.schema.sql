@@ -1741,8 +1741,12 @@ CREATE TABLE `supplier` (
   `deleted_at` datetime DEFAULT NULL,
   `version` tinyint(4) DEFAULT NULL,
   `active` bit(1) DEFAULT b'1',
+  `branch_id` int(11) DEFAULT 1,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=25 DEFAULT CHARSET=latin1;
+
+-- ALTER TABLE `supplier` ADD COLUMN `branch_id` int(11) DEFAULT 1;
+-- UPDATE `supplier` SET `branch_id` = 1 WHERE `branch_id` IS NULL;
 
 /*Table structure for table `supplier_remarks` */
 
