@@ -103,7 +103,7 @@ if (nn($deliveryStaff)) {
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " LOWER(TRIM(ii.assigned_to)) = LOWER(TRIM('$deliveryStaffSql'))";
 }
 
-if ($_SESSION['UID'] == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

@@ -28,9 +28,10 @@ if ($uid > 0) {
 
 $customers = isset($_POST['customers']) ? $_POST['customers'] : '';
 $products = isset($_POST['products']) ? $_POST['products'] : '';
-$branch_id = isset($_POST['branch_id']) ? $_POST['branch_id'] : '';
 
 extract($_POST);
+
+$branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 
 $filter = " WHERE ";
 $cities = preg_replace('/[^0-9,]/', '', $customers);
@@ -62,13 +63,9 @@ $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.collected_at IS NULL AND NOT EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
 
 // Check if functions exist before using them
-if (function_exists('uid') && function_exists('nn')) {
-  if (uid() == 1 && nn($branch_id)) {
-    $branchId = (int) $branch_id;
-    $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
-  }
-} else {
-  echo "Missing functions: uid or nn not defined<br>";
+if (function_exists('nn') && nn($branch_id)) {
+  $branchId = (int) $branch_id;
+  $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }
 
 // Optimized query: Get customers with their order data in one query

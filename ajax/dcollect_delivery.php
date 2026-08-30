@@ -31,7 +31,9 @@ if (!function_exists('ensureMysqlColumn')) {
 ensureMysqlColumn("invoice_item", "collected_at", "DATETIME NULL DEFAULT NULL");
 ensureMysqlColumn("invoice_item", "collected_by", "INT NULL DEFAULT NULL");
 
+$sess_branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 extract($_POST);
+$branch_id = $sess_branch_id;
 if ($order == 'false' && $pending == 'false' && $delivery == 'false' && $collection == 'false') exit;
 
 $collectedExpr = "(ii.collected_at IS NOT NULL OR EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
@@ -52,7 +54,7 @@ $filter .= ($filter != " WHERE " ? " AND " : " ") . " IFNULL(ii.delivery_date,i.
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " $collectedExpr ";
 
-if (uid() == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

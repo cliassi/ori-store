@@ -55,7 +55,9 @@ if (!function_exists('elapsedIntervalLabel')) {
   }
 }
 
+$sess_branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 extract($_POST);
+$branch_id = $sess_branch_id;
 if ($order == 'false' && $pending == 'false' && $delivery == 'false' && $collection == 'false') exit;
 
 // Get delivery staff filter
@@ -90,7 +92,7 @@ if (nn($deliveryStaff)) {
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.assigned_to = '$deliveryStaffSql'";
 }
 
-if (uid() == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

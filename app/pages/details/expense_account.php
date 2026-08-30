@@ -294,8 +294,12 @@ function printExpenseAccount($_filter, $i, $parent = '')
 		$filter .= " path LIKE '$get->parent/%' AND parent IS NULL ";
 	}
 
+	$month_start = $month . '-01';
+	$month_end = date('Y-m-t', strtotime($month_start));
+
 	$expense_accounts = select("a.*,
-			(SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) FROM `expense_account_entry` WHERE entry_time LIKE '$month-%' AND accountpath LIKE CONCAT(a.path,'%')) income,
+			(SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) FROM `expense_account_entry` WHERE entry_time LIKE '$month-%' AND accountpath LIKE CONCAT(a.path,'%')) +
+			IF(a.path = '/1/', IFNULL((SELECT SUM(ii.quantity * (ii.price - ii.cost)) FROM invoice i INNER JOIN invoice_item ii ON i.id = ii.invoice_id WHERE i.invoice_date BETWEEN '$month_start' AND '$month_end'), 0), 0) income,
 			(SELECT IFNULL(SUM(IF(tran_type='Debit', amount, 0)),0) FROM `expense_account_entry` WHERE $entryFilter accountpath LIKE CONCAT(a.path,'%')) expense", "expense_account a", "$filter", "order by sortorder");
 
 	while ($expense_account = mysqli_fetch_object($expense_accounts)) {

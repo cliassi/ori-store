@@ -51,7 +51,9 @@ if (!function_exists('elapsedIntervalLabel')) {
   }
 }
 
+$sess_branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 extract($_POST);
+$branch_id = $sess_branch_id;
 if ($order == 'false' && $pending == 'false' && $delivery == 'false' && $collection == 'false') exit;
 
 $collectedExpr = "(ii.collected_at IS NOT NULL OR EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
@@ -73,7 +75,7 @@ $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered
 $filter .= ($filter != " WHERE " ? " AND " : " ") . (($delivery == 'true' || $collection == 'true') ? " $collectedExpr " : " NOT $collectedExpr ");
 // $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
 
-if (uid() == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

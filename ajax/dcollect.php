@@ -53,7 +53,6 @@ if (!function_exists('elapsedIntervalLabel')) {
 
 $customers = isset($_POST['customers']) ? $_POST['customers'] : '';
 $products = isset($_POST['products']) ? $_POST['products'] : '';
-$branch_id = isset($_POST['branch_id']) ? $_POST['branch_id'] : '';
 
 extract($_POST);
 
@@ -75,7 +74,7 @@ $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.collected_at IS NULL AND NOT EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
 
-if (uid() == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

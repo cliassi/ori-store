@@ -113,15 +113,61 @@
 						</div>
 					</div> -->
 					<style>
-						.skel-wrap{display:flex;gap:50px;align-items:flex-start}
-						.skel-card{display:inline-block;min-width:320px}
-						.skel-line{height:12px;background:#eee;border-radius:6px;margin:8px 0;position:relative;overflow:hidden}
-						.skel-line.sm{height:10px;width:40%}
-						.skel-line.md{height:12px;width:70%}
-						.skel-line.lg{height:14px;width:90%}
-						.skel-line:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55),rgba(255,255,255,0));animation:skel 1.4s infinite}
-						@keyframes skel{100%{transform:translateX(100%)}}
-						.skel-table{border:1px solid #eee;border-radius:6px;padding:12px}
+						.skel-wrap {
+							display: flex;
+							gap: 50px;
+							align-items: flex-start
+						}
+
+						.skel-card {
+							display: inline-block;
+							min-width: 320px
+						}
+
+						.skel-line {
+							height: 12px;
+							background: #eee;
+							border-radius: 6px;
+							margin: 8px 0;
+							position: relative;
+							overflow: hidden
+						}
+
+						.skel-line.sm {
+							height: 10px;
+							width: 40%
+						}
+
+						.skel-line.md {
+							height: 12px;
+							width: 70%
+						}
+
+						.skel-line.lg {
+							height: 14px;
+							width: 90%
+						}
+
+						.skel-line:after {
+							content: "";
+							position: absolute;
+							inset: 0;
+							transform: translateX(-100%);
+							background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .55), rgba(255, 255, 255, 0));
+							animation: skel 1.4s infinite
+						}
+
+						@keyframes skel {
+							100% {
+								transform: translateX(100%)
+							}
+						}
+
+						.skel-table {
+							border: 1px solid #eee;
+							border-radius: 6px;
+							padding: 12px
+						}
 					</style>
 					<div id="metrics-root">
 						<div class="skel-wrap">
@@ -142,27 +188,27 @@
 						</div>
 					</div>
 					<?php if (false) { ?>
-					<div style="display: inline-block;">
-						<table id="customer-table" class="table table-striped table-bordered nowrap">
-							<tbody>
-								<?php
-								$filter1 = "branch_id=$branch_id";
-								$filter = "branch_id=$branch_id";
-								$filter3 = "branch_id=$branch_id";
-								$filter_exp = "branch_id=$branch_id";
-								if (isset($get->mon)) {
-									$date = "{$get->mon}-01";
-									$filter1 = "entry_time BETWEEN '$date' AND '" . lastDate($date) . "'";
-									$filter_exp = "expense_date BETWEEN '$date' AND '" . lastDate($date) . "'";
-									$filter = "created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
-									$filterInv = "invoice_date BETWEEN '$date' AND '" . lastDate($date) . "'";
-									$filter3 = "AND oi.created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
-								} else {
+						<div style="display: inline-block;">
+							<table id="customer-table" class="table table-striped table-bordered nowrap">
+								<tbody>
+									<?php
+									$filter1 = "branch_id=$branch_id";
+									$filter = "branch_id=$branch_id";
+									$filter3 = "branch_id=$branch_id";
+									$filter_exp = "branch_id=$branch_id";
+									if (isset($get->mon)) {
+										$date = "{$get->mon}-01";
+										$filter1 = "entry_time BETWEEN '$date' AND '" . lastDate($date) . "'";
+										$filter_exp = "expense_date BETWEEN '$date' AND '" . lastDate($date) . "'";
+										$filter = "created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
+										$filterInv = "invoice_date BETWEEN '$date' AND '" . lastDate($date) . "'";
+										$filter3 = "AND oi.created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
+									} else {
 
-								}
+									}
 
-								// Optimized: Combine multiple queries into fewer queries
-								$summary = mysqli_fetch_object(select("SELECT 
+									// Optimized: Combine multiple queries into fewer queries
+									$summary = mysqli_fetch_object(select("SELECT 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE $filter1) add_cash, 
 									(SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND $filter1) cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_bank` WHERE $filter1) bank, 
@@ -176,7 +222,7 @@
 									(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Online' AND $filter_exp) bank_expense"));
 
-								$summary2 = mysqli_fetch_object(select("SELECT 
+									$summary2 = mysqli_fetch_object(select("SELECT 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE branch_id=$branch_id) add_cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `bd_handover` WHERE branch_id=$branch_id) cash_handover, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
@@ -184,97 +230,97 @@
 									(SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id) cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id) withdraw"));
 
-								require_once 'reports/customer_due_functions.php';
-								$customer_due = getCustomerDueTotal($branch_id, $filter);
+									require_once 'reports/customer_due_functions.php';
+									$customer_due = getCustomerDueTotal($branch_id, $filter);
 
-								$sreturn = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `goods_return_item` WHERE $filter"));
-								$damage = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `damaged_item` WHERE $filter"));
-								$sdue = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*cost) FROM `order_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE $filter) amount"));
-								$due = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*price) FROM `invoice_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `collection` WHERE $filter) amount"));
+									$sreturn = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `goods_return_item` WHERE $filter"));
+									$damage = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `damaged_item` WHERE $filter"));
+									$sdue = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*cost) FROM `order_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE $filter) amount"));
+									$due = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*price) FROM `invoice_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `collection` WHERE $filter) amount"));
 
-								$profit = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*(CAST(price AS DECIMAL(15,4)) - CAST(cost AS DECIMAL(15,4)))),0) amount FROM invoice_item ii inner join invoice i on i.id=ii.invoice_id WHERE $filter"));
+									$profit = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*(CAST(price AS DECIMAL(15,4)) - CAST(cost AS DECIMAL(15,4)))),0) amount FROM invoice_item ii inner join invoice i on i.id=ii.invoice_id WHERE $filter"));
 
-								// Get store value - cache this if possible as it's expensive
-								$store_value = mysqli_fetch_object(select("SELECT IFNULL(SUM(stock2(id, $branch_id)*cost),0) amount FROM product_variance"));
-								if (!$store_value) {
-									$store_value = (object) ['amount' => 0];
-								}
-								$petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
-								$petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
-								$bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
+									// Get store value - cache this if possible as it's expensive
+									$store_value = mysqli_fetch_object(select("SELECT IFNULL(SUM(stock2(id, $branch_id)*cost),0) amount FROM product_variance"));
+									if (!$store_value) {
+										$store_value = (object) ['amount' => 0];
+									}
+									$petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
+									$petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
+									$bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
 
-								$m = date("M, Y", time());
-								// dd($summary);
-								?>
-								<tr>
-									<td><a href='/store/report/cash'>Petty Cash</a></td>
-									<td>:</td>
-									<td width="250px"
-										title="<?php print "$summary->add_cash - $summary->withdraw  + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense"; ?>">
-										
-										<?php print nf($petty_cash); ?></td>
-								</tr>
-								<!-- All add cash - All withdrawals -->
-								<tr>
-									<td>Invested Cash Capital</td>
-									<td>:</td>
-									<td><?php print nf($summary2->cash - abs($summary2->withdraw)); ?></td>
-								</tr>
-								<tr>
-									<td>Bank</td>
-									<td>:</td>
-									<td><?php print nf($bank + $summary->bank); ?></td>
-								</tr>
-								<!-- <tr><td><a href='/store/report/due'>Customer Due</a></td><td>:</td><td><?php print nf($due->amount); ?></td></tr> -->
-								<tr>
-									<td><a href='/store/report/due'>Customer Due</a></td>
-									<td>:</td>
-									<td><?php print nf($customer_due); ?></td>
-								</tr>
+									$m = date("M, Y", time());
+									// dd($summary);
+									?>
+									<tr>
+										<td><a href='/store/report/cash'>Petty Cash</a></td>
+										<td>:</td>
+										<td width="250px"
+											title="<?php print "$summary->add_cash - $summary->withdraw  + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense"; ?>">
 
-								<tr>
-									<td><a href='/store/report/sdue'>Supplier Due</a></td>
-									<td>:</td>
-									<td><?php print nf($sdue->amount - $sreturn->amount); ?></td>
-								</tr>
-								<!-- <tr><td><a href='/store/report/sdue'>Goods Return</a></td><td>:</td><td><?php print nf($sreturn->amount); ?></td></tr> -->
-							</tbody>
-						</table>
-					</div>
+											<?php print nf($petty_cash); ?>
+										</td>
+									</tr>
+									<!-- All add cash - All withdrawals -->
+									<tr>
+										<td>Invested Cash Capital</td>
+										<td>:</td>
+										<td><?php print nf($summary2->cash - abs($summary2->withdraw)); ?></td>
+									</tr>
+									<tr>
+										<td>Bank</td>
+										<td>:</td>
+										<td><?php print nf($bank + $summary->bank); ?></td>
+									</tr>
+									<!-- <tr><td><a href='/store/report/due'>Customer Due</a></td><td>:</td><td><?php print nf($due->amount); ?></td></tr> -->
+									<tr>
+										<td><a href='/store/report/due'>Customer Due</a></td>
+										<td>:</td>
+										<td><?php print nf($customer_due); ?></td>
+									</tr>
 
-					<div style="display: inline-block; margin-left: 50px; vertical-align: top;">
-						<table id="customer-table" class="table table-striped table-bordered nowrap">
-							<tbody>
-								<!-- = Petty Cash+ Bank+Customer Due+Store Stock In Items Value+Profit - Supplier Due-Expensess-Loss-->
-								<?php /* <tr><td>Present Capital	</td><td>:</td><td title="<?php print "Petty Cash: ".nf($petty_cash).", Bank: ".nf($bank + $summary->bank ).", Customer Due: ".nf($due->amount).", Store Net Product Value: ".nf($store_value->amount).", Supplier Due: ".nf($sdue->amount).""; ?>"><?php print nf($petty_cash + $due->amount + $bank + $store_value->amount - $sdue->amount - $sreturn->amount + $summary->bank - $damage->amount); ?></td></tr> */ ?>
-								<tr>
-									<td>Present Capital </td>
-									<td>:</td>
-									<td
+									<tr>
+										<td><a href='/store/report/sdue'>Supplier Due</a></td>
+										<td>:</td>
+										<td><?php print nf($sdue->amount - $sreturn->amount); ?></td>
+									</tr>
+									<!-- <tr><td><a href='/store/report/sdue'>Goods Return</a></td><td>:</td><td><?php print nf($sreturn->amount); ?></td></tr> -->
+								</tbody>
+							</table>
+						</div>
+
+						<div style="display: inline-block; margin-left: 50px; vertical-align: top;">
+							<table id="customer-table" class="table table-striped table-bordered nowrap">
+								<tbody>
+									<!-- = Petty Cash+ Bank+Customer Due+Store Stock In Items Value+Profit - Supplier Due-Expensess-Loss-->
+									<?php /* <tr><td>Present Capital	</td><td>:</td><td title="<?php print "Petty Cash: ".nf($petty_cash).", Bank: ".nf($bank + $summary->bank ).", Customer Due: ".nf($due->amount).", Store Net Product Value: ".nf($store_value->amount).", Supplier Due: ".nf($sdue->amount).""; ?>"><?php print nf($petty_cash + $due->amount + $bank + $store_value->amount - $sdue->amount - $sreturn->amount + $summary->bank - $damage->amount); ?></td></tr> */ ?>
+									<tr>
+										<td>Present Capital </td>
+										<td>:</td>
+										<td
 											title="<?php print "Petty Cash: " . nf($petty_cash) . ", Bank: " . nf($bank + $summary->bank) . ", Customer Due: " . nf($due->amount) . ", Store Net Product Value: " . nf($store_value->amount) . ", Supplier Due: " . nf($sdue->amount) . ""; ?>">
-										<?php print nf($petty_cash + $due->amount + $bank + ($store_value->amount * 0) - $sdue->amount - $sreturn->amount + $summary->bank - $damage->amount + ($profit->amount - ($summary->cash_expense + $summary->bank_expense + $damage->amount))); ?>
-									</td>
-								</tr>
-								<!-- <tr><td>Present Capital	</td><td>:</td><td><?php print nf($petty_cash + $due->amount - $damage->amount + $bank + $store_value->amount - $sdue->amount); ?></td></tr> -->
-								<tr>
-									<td>Store Stock in Items Value</td>
-									<td>:</td>
-									<td width="250px"
+											<?php print nf($petty_cash + $due->amount + $bank + ($store_value->amount * 0) - $sdue->amount - $sreturn->amount + $summary->bank - $damage->amount + ($profit->amount - ($summary->cash_expense + $summary->bank_expense + $damage->amount))); ?>
+										</td>
+									</tr>
+									<!-- <tr><td>Present Capital	</td><td>:</td><td><?php print nf($petty_cash + $due->amount - $damage->amount + $bank + $store_value->amount - $sdue->amount); ?></td></tr> -->
+									<tr>
+										<td>Store Stock in Items Value</td>
+										<td>:</td>
+										<td width="250px"
+											title="<?php print "$store_value->amount - $damage->amount - $sreturn->amount"; ?>">
+											<?php print nf($store_value->amount - $damage->amount - $sreturn->amount); ?>
+										</td>
+									</tr>
+									<!-- <tr><td>Store Net Product Value</td><td>:</td><td width="250px"><?php //print nf($store_value->amount - $damage->amount - $sdue->amount - $sreturn->amount); ?></td></tr> -->
+									<?php
+									$date = date("Y-m-01", time());
+									$filter1 = "branch_id=$branch_id AND entry_time BETWEEN '$date' AND '" . lastDate($date) . "'";
+									$filter_exp = "branch_id=$branch_id AND expense_date BETWEEN '$date' AND '" . lastDate($date) . "'";
+									$filter = "branch_id=$branch_id AND created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
+									$filter3 = "AND branch_id=$branch_id AND oi.created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
 
-																				title="<?php print "$store_value->amount - $damage->amount - $sreturn->amount"; ?>">
-										<?php print nf($store_value->amount - $damage->amount - $sreturn->amount); ?>
-									</td>
-								</tr>
-								<!-- <tr><td>Store Net Product Value</td><td>:</td><td width="250px"><?php //print nf($store_value->amount - $damage->amount - $sdue->amount - $sreturn->amount); ?></td></tr> -->
-								<?php
-								$date = date("Y-m-01", time());
-								$filter1 = "branch_id=$branch_id AND entry_time BETWEEN '$date' AND '" . lastDate($date) . "'";
-								$filter_exp = "branch_id=$branch_id AND expense_date BETWEEN '$date' AND '" . lastDate($date) . "'";
-								$filter = "branch_id=$branch_id AND created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
-								$filter3 = "AND branch_id=$branch_id AND oi.created_at BETWEEN '$date' AND '" . lastDate($date) . "'";
 
-
-								$summary = mysqli_fetch_object(select("SELECT 
+									$summary = mysqli_fetch_object(select("SELECT 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE $filter1) add_cash, 
 									(SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND $filter1) cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_bank` WHERE $filter1) bank, 
@@ -288,7 +334,7 @@
 									(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Online' AND $filter_exp) bank_expense"));
 
-								$summary2 = mysqli_fetch_object(select("SELECT 
+									$summary2 = mysqli_fetch_object(select("SELECT 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash`) add_cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `bd_handover`) cash_handover, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash') cash_expense, 
@@ -296,57 +342,66 @@
 									(SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0) cash, 
 									(SELECT SUM(IFNULL(amount,0)) FROM `cw_cash_withdraw`) withdraw"));
 
-								$sreturn = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `goods_return_item` WHERE $filter"));
-								$damage = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `damaged_item` WHERE $filter"));
-								$sdue = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*cost) FROM `order_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE $filter) amount"));
-								$due = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*price) FROM `invoice_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `collection` WHERE $filter) amount"));
-								$profit = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*(CAST(price AS DECIMAL(15,4)) - CAST(cost AS DECIMAL(15,4)))),0) amount FROM invoice_item WHERE $filter"));
-								$store_value = mysqli_fetch_object(select("SELECT IFNULL(SUM(stock(id)*cost),0) amount FROM product_variance"));
-								if (!$store_value) {
-									$store_value = (object) ['amount' => 0];
-								}
-								$petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
-								$petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
-								$bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
+									$sreturn = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `goods_return_item` WHERE $filter"));
+									$damage = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*cost),0) amount FROM `damaged_item` WHERE $filter"));
+									$sdue = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*cost) FROM `order_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE $filter) amount"));
+									$due = mysqli_fetch_object(select("SELECT (SELECT SUM(quantity*price) FROM `invoice_item` WHERE $filter) - (SELECT IFNULL(SUM(amount),0) FROM `collection` WHERE $filter) amount"));
+									$profit = mysqli_fetch_object(select("SELECT IFNULL(SUM(quantity*(CAST(price AS DECIMAL(15,4)) - CAST(cost AS DECIMAL(15,4)))),0) amount FROM invoice_item WHERE $filter"));
+									$store_value = mysqli_fetch_object(select("SELECT IFNULL(SUM(stock(id)*cost),0) amount FROM product_variance"));
+									if (!$store_value) {
+										$store_value = (object) ['amount' => 0];
+									}
+									$petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
+									$petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
+									$bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
 
-								$m = date("M, Y", time());
-								?>
+									$m = date("M, Y", time());
+									?>
 
-								<tr>
-									<td><a href='/store/expense_account_entry/view?d=<?php print subDay(7); ?>'>Expense
-											(<?php print $m; ?>)</a></td>
-									<td>:</td>
-									<td><?php print nf($summary->cash_expense + $summary->bank_expense); ?></td>
-								</tr>
-								<tr>
-									<td>Damage/Loss (<?php print $m; ?>)</td>
-									<td>:</td>
-									<td><?php print nf($damage->amount); ?></td>
-								</tr>
-								<tr>
-									<td>Profit & Loss (<?php print $m; ?>)</td>
+									<?php
+									$capex_expense = mysqli_fetch_object(select(
+										"SELECT IFNULL(SUM(iae.amount),0) amount FROM expense_account_entry iae
+									 INNER JOIN expense_account ea ON iae.accountpath LIKE CONCAT(ea.path, '%')
+									 WHERE iae.tran_type='Debit' AND $filter_exp
+									 AND ea.parent IS NULL AND ea.path LIKE '/1/%'"
+									));
+									?>
+									<tr>
+										<td><a href='/store/expense_account_entry/view?d=<?php print subDay(7); ?>'>Expense
+												(<?php print $m; ?>)</a></td>
+										<td>:</td>
+										<td><?php print nf($capex_expense->amount); ?></td>
+									</tr>
+									<tr>
+										<td>Damage/Loss (<?php print $m; ?>)</td>
+										<td>:</td>
+										<td><?php print nf($damage->amount); ?></td>
+									</tr>
+									<tr>
+										<td>Profit & Loss (<?php print $m; ?>)</td>
 
-										
-																		<td>:</td>
-									<td><span style="font-weight: 300">(<?php print nf($profit->amount); ?>)</span> <?php print nf($profit->amount - ($summary->cash_expense + $summary->bank_expense + $damage->amount));
 
-									   // print nf($petty_cash + $due->amount + $store_value->amount - $sdue->amount - $summary->add_cash - $damage->amount - $summary->cash_handover);
+										<td>:</td>
+										<td><span style="font-weight: 300">(<?php print nf($profit->amount); ?>)</span> <?php print nf($profit->amount - ($summary->cash_expense + $summary->bank_expense + $damage->amount));
+
+										   // print nf($petty_cash + $due->amount + $store_value->amount - $sdue->amount - $summary->add_cash - $damage->amount - $summary->cash_handover);
 									   
-									   /*vd([[
-									   'petty_cash'=>$petty_cash, 'c_due'=> $due->amount, 'store_value'=>$store_value->amount], 
-										   ['s_due'=>$sdue->amount,'add_cash'=> $summary->add_cash,'damage'=> $damage->amount ,'cash_handover'=> $summary->cash_handover
-								   ]]);*/
-									   //print nf($petty_cash + $due->amount + $bank - $summary->add_cash + $store_value->amount - $sdue->amount); 
-									   ?></td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
+										   /*vd([[
+										   'petty_cash'=>$petty_cash, 'c_due'=> $due->amount, 'store_value'=>$store_value->amount], 
+											   ['s_due'=>$sdue->amount,'add_cash'=> $summary->add_cash,'damage'=> $damage->amount ,'cash_handover'=> $summary->cash_handover
+									   ]]);*/
+										   //print nf($petty_cash + $due->amount + $bank - $summary->add_cash + $store_value->amount - $sdue->amount); 
+									   	?></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
 					<?php } ?>
 					<div class='center'>
 
-						<form><button
-								class='btn btn-success'><?php print dfd(today()); ?></button><?php print space(5) . monthSelector('mon', isset($get->mon) ? $get->mon : ''); ?>
+						<form>
+							<?php print dateSelector('mon', isset($get->mon) ? $get->mon : ''); ?>
+							<?php // print monthSelector('mon', isset($get->mon) ? $get->mon : ''); ?>
 							<button class='btn btn-info'>Show</button>
 					</div>
 
@@ -397,7 +452,7 @@
 		document.addEventListener('DOMContentLoaded', function () { loadDashboardMetrics({ useSelectedMon: false }); });
 
 		// Reload when Show clicked (prevent full submit)
-		document.addEventListener('click', function(e){
+		document.addEventListener('click', function (e) {
 			var btn = e.target.closest('.btn.btn-info');
 			if (!btn) return;
 			e.preventDefault();
@@ -405,7 +460,7 @@
 		});
 
 		// Also reload when month changes
-		document.addEventListener('change', function(e){
+		document.addEventListener('change', function (e) {
 			if (e.target && e.target.name === 'mon') {
 				loadDashboardMetrics({ useSelectedMon: true });
 			}

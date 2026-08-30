@@ -16,6 +16,7 @@ $customers = $_POST['customers'] ?? '';
 $products = $_POST['products'] ?? '';
 
 extract($_POST);
+$branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 if ($order == 'false' && $pending == 'false' && $delivery == 'false' && $collection == 'false') exit;
 
 $filter = " WHERE ";
@@ -30,6 +31,12 @@ if (nn($products)) {
 //$filter .= ($filter != " WHERE " ? " AND " : " ").($pending == 'true' ? " i.invoice_date < curdate()" : " i.invoice_date = curdate()");
 $filter .= ($filter != " WHERE " ? " AND " : " ") . ($pending == 'true' ? " IFNULL(ii.delivery_date,i.invoice_date) < curdate()" : " IFNULL(ii.delivery_date,i.invoice_date) = curdate()");
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity >= ii.delivered";
+
+if (nn($branch_id)) {
+  $branchId = (int) $branch_id;
+  $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
+}
+
 $query = "SELECT distinct c.* FROM customer c INNER JOIN invoice i ON c.id=i.customer_id INNER JOIN invoice_item ii ON i.id=ii.invoice_id LEFT JOIN city ON city.name=c.city $filter";
 
 $customers = select($query);

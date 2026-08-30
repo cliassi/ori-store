@@ -29,9 +29,10 @@ if ($rolename === 'Delivery Staff') {
 
 $customers = isset($_POST['customers']) ? $_POST['customers'] : '';
 $products = isset($_POST['products']) ? $_POST['products'] : '';
-$branch_id = isset($_POST['branch_id']) ? $_POST['branch_id'] : '';
 
 extract($_POST);
+
+$branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 
 // Initialize variables to avoid undefined warnings
 $pending = isset($pending) ? $pending : 'false';
@@ -85,7 +86,7 @@ if (function_exists('nn') && nn($deliveryStaff)) {
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.delivery_staff = '$deliveryStaffSql'";
 }
 
-if (uid() == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

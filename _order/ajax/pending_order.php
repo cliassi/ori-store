@@ -96,7 +96,7 @@ $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity > ii.delivered
 $filter .= ($filter != " WHERE " ? " AND " : " ") . " NOT $collectedExpr ";
 // $filter .= ($filter != " WHERE " ? " AND " : " ") . " (ii.assigned_at IS NULL OR ii.assigned_to IS NULL OR ii.assigned_to = '')";
 
-if ($_SESSION['UID'] == 1 && nn($branch_id)) {
+if (nn($branch_id)) {
   $branchId = (int) $branch_id;
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branchId OR c.branch_id IS NULL)";
 }

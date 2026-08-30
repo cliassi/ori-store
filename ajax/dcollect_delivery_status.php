@@ -56,7 +56,9 @@ if (!function_exists('elapsedIntervalLabel')) {
 ensureMysqlColumn("invoice_item", "collected_at", "DATETIME NULL DEFAULT NULL");
 ensureMysqlColumn("invoice_item", "collected_by", "INT NULL DEFAULT NULL");
 
+$sess_branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 extract($_POST);
+$branch_id = $sess_branch_id;
 if ($order == 'false' && $pending == 'false' && $delivery == 'false' && $collection == 'false')
   exit;
 
@@ -84,7 +86,7 @@ if (nn($deliveryStaff)) {
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.assigned_to = '$deliveryStaffSql'";
 }
 
-if (uid() == 1) {
+if (nn($branch_id)) {
   $filter .= ($filter != " WHERE " ? " AND " : " ") . " (c.branch_id = $branch_id OR c.branch_id IS NULL)";
 }
 
