@@ -1,5 +1,4 @@
 <?php
-// vd($_SESSION);
 // die(0);
 // Ensure required columns exist to prevent query failures
 // ensureMysqlColumn('order', 'lorry_id', 'INT NULL');
