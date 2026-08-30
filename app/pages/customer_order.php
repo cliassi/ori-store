@@ -27,6 +27,7 @@ if(isset($post->approve_id)){
     $invoice->invoice_date = $orderBean->invoice_date;
     $invoice->delivery_date = $orderBean->invoice_date;
     $invoice->status = 'approved';
+    $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
     $invoice_id = R::store($invoice);
 
     // Insert each item into invoice_item
@@ -65,6 +66,7 @@ if (isset($get) && isset($get->approve_form)) {
     $invoice->invoice_date = $order->invoice_date;
     $invoice->delivery_date = $order->invoice_date;
     $invoice->status = 'approved';
+    $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
     $invoice_id = R::store($invoice);
 
     foreach ($items as $item) {

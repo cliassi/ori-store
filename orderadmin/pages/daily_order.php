@@ -64,6 +64,7 @@ if(!isUserIn(['apple','superadmin','melon','lemon','orange','mango', 'berry', 'O
 if (isset($post->collect) && isset($get->salesman)) {
   $obj = R::dispense("stock_collect");
   $obj->salesman_id = isset($get->salesman)?$get->salesman:0;
+  $obj->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
   if(isset($post->save)){
     $obj->salesman_id = $get->salesman;
     $obj->date = today();
@@ -87,6 +88,7 @@ if (isset($post->collect) && isset($get->salesman)) {
       $ii->name = $product->name;
       $ii->description = "$variance->particulars $variance->size x $variance->unit";
       $ii->created_by = uid();
+      $ii->branch_id = $obj->branch_id;
 
       R::store($ii);
     }

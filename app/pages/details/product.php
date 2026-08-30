@@ -132,6 +132,7 @@ if (isset($post->save)) {
 
 }
 
+$branch_id = isset($_SESSION['branch_id']) ? (int)$_SESSION['branch_id'] : 1;
 $objs = R::find('product', 'id > 0 and visible=1 ORDER BY sort_order');
 $contant = "";
 ?>
@@ -168,7 +169,7 @@ $contant = "";
                 print "<td style='text-align:center'><a type='button' class='btn btn-primary' onclick='setProduct($obj->id)' id='product-$obj->id' data-bs-toggle='modal' data-bs-target='#productFrommOdal'>Add Product</a> <a href='javascript:deleteProductWithPin($obj->id)'><i class='fa fa-trash'></i></a></td>";
                 print "</tr>";
 
-                $variances = select("*, stock(id) stock", "product_variance", "product_id=$obj->id ORDER BY sort_order");
+                $variances = select("*, stock2(id, $branch_id) stock", "product_variance", "product_id=$obj->id ORDER BY sort_order");
                 $vi = 1;
                 $totalVariants = 0;
                 // foreach ($variances as $key => $var) {

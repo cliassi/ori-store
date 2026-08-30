@@ -56,6 +56,7 @@ if (isset($post->collect)) {
   $collectedExpr = "(ii.collected_at IS NOT NULL OR EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id=ii.id LIMIT 1))";
   $obj = R::dispense("stock_collect");
   $obj->salesman_id = isset($post->salesman) ? $post->salesman : 0;
+  $obj->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
   if (isset($post->collect)) {
     // Get delivery staff from POST or from the first selected item's assigned_to field, or default to logged-in staff
     $obj->delivery_staff = '';
@@ -134,6 +135,7 @@ if (isset($post->collect)) {
         $sci->name = ($product && isset($product->name)) ? $product->name : '';
         $sci->description = ($variance && isset($variance->particulars, $variance->size, $variance->unit)) ? "$variance->particulars $variance->size x $variance->unit" : '';
         $sci->created_by = uid();
+        $sci->branch_id = $obj->branch_id;
         R::store($sci);
       }
     }
@@ -181,6 +183,7 @@ if (isset($post->collect)) {
         $ii->name = $product->name;
         $ii->description = "$variance->particulars $variance->size x $variance->unit";
         $ii->created_by = uid();
+        $ii->branch_id = $obj->branch_id;
 
         R::store($ii);
       }

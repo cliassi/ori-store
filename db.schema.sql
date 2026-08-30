@@ -1206,8 +1206,12 @@ CREATE TABLE `invoice` (
   `salesman_id` int(10) unsigned DEFAULT NULL,
   `salesman` varchar(128) DEFAULT NULL,
   `incentive` decimal(4,2) unsigned DEFAULT 5.00,
+  `branch_id` int(11) DEFAULT 1,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=7671 DEFAULT CHARSET=latin1;
+
+-- ALTER TABLE `invoice` ADD COLUMN `branch_id` int(11) DEFAULT 1;
+-- UPDATE `invoice` SET `branch_id` = 1 WHERE `branch_id` IS NULL;
 
 /*Table structure for table `invoice_item` */
 
@@ -1631,10 +1635,14 @@ CREATE TABLE `stock_collect` (
   `advance_payment` int(10) unsigned DEFAULT NULL,
   `trash` tinyint(1) unsigned NOT NULL DEFAULT 0,
   `amount` decimal(10,0) unsigned DEFAULT NULL,
+  `branch_id` int(11) DEFAULT 1,
   PRIMARY KEY (`id`),
   KEY `fk_stock_collect_lorry` (`lorry_id`),
   CONSTRAINT `fk_stock_collect_lorry` FOREIGN KEY (`lorry_id`) REFERENCES `lorry` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=369 DEFAULT CHARSET=latin1;
+
+-- ALTER TABLE `stock_collect` ADD COLUMN `branch_id` int(11) DEFAULT 1;
+-- UPDATE `stock_collect` SET `branch_id` = 1 WHERE `branch_id` IS NULL;
 
 /*Table structure for table `stock_collect_item` */
 
@@ -1657,8 +1665,12 @@ CREATE TABLE `stock_collect_item` (
   `returned_quantity` int(10) unsigned NOT NULL DEFAULT 0,
   `damaged_quantity` int(10) unsigned NOT NULL DEFAULT 0,
   `damaged_cause` text DEFAULT NULL,
+  `branch_id` int(11) DEFAULT 1,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1008 DEFAULT CHARSET=latin1;
+
+-- ALTER TABLE `stock_collect_item` ADD COLUMN `branch_id` int(11) DEFAULT 1;
+-- UPDATE `stock_collect_item` SET `branch_id` = 1 WHERE `branch_id` IS NULL;
 
 /*Table structure for table `stock_return` */
 

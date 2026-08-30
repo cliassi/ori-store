@@ -45,6 +45,7 @@ if ($approveId) {
     $invoice->delivery_date = $invoice->invoice_date;
     $invoice->status = 'approved';
     $invoice->created_by = isset($_SESSION['UID']) ? (int)$_SESSION['UID'] : (function_exists('uid') ? uid() : null);
+    $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
     $invoiceId = R::store($invoice);
 
     $approvedItemIds = [];
