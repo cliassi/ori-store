@@ -78,6 +78,7 @@ if (isset($post->save)) {
       }
       $inv->invoice_date = isset($post->date) ? $post->date : today();
       $inv->created_by = isset($_SESSION['UID']) ? $_SESSION['UID'] : (function_exists('uid') ? uid() : null);
+      $inv->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
 
       R::store($inv);
 

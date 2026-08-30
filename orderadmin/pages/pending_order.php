@@ -438,6 +438,7 @@ if (isset($post->collect)) {
     if (isset($post->save)) {
       $obj = R::dispense("stock_collect");
       $obj->salesman_id = isset($post->salesman) ? $post->salesman : 0;
+      $obj->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
       if (isset($post->save)) {
         $obj->delivery_staff = $post->delivery_staff;
         $obj->date = today();
@@ -467,6 +468,7 @@ if (isset($post->collect)) {
           $ii->name = $product->name;
           $ii->description = "$variance->particulars $variance->size x $variance->unit";
           $ii->created_by = uid();
+          $ii->branch_id = $obj->branch_id;
 
           R::store($ii);
         }
