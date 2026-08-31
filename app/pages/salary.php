@@ -594,7 +594,7 @@ if (isset($post->update_working_days)) {
 	if (strpos($post->working_days, ".")) {
 		$dh = explode(".", $post->working_days);
 		$worker->working_days = $dh[0] + 0;
-		$worker->working_hours = $dh[1] + 0;
+		$worker->working_hours = strlen($dh[1]) == 1 ? ($dh[1] + 0) * 10 : ($dh[1] + 0);
 	} elseif (strpos($post->working_days, "++")) {
 		$dh = explode("++", $post->working_days);
 		$worker->working_days = $dh[0] + 0;
@@ -675,7 +675,7 @@ if (isset($post->save_worker_payment)) {
 	}
 	// var_dump($statement);
 	// vd($post);
-	$salary = ($statement->type == 'Parttime' ? round($w->basic * $w->working_days, 2) : round($w->basic / 30 * $w->working_days));
+	$salary = ($statement->type == 'Parttime' ? round($w->basic * ($w->working_days + ($w->working_hours / 100)), 2) : round($w->basic / 30 * ($w->working_days + ($w->working_hours / 100))));
 	$income = getSum("hotel_statement_worker_income", "amount", "worker=$post->worker AND branch_id=" . bid());
 	$salary = $salary + $income;
 	// dd($salary);
@@ -693,7 +693,7 @@ if (isset($post->save_worker_payment)) {
 	// if($notOverpaid && $notAdvancedOverpaid){
 	// if(($salary >= ($paid->paid + $post->amount)) || (!$w->working_days && ($post->amount + $paid->paid) <= 1500 && $post->amount > 0 && date("d", time()) > 14 && date("d", time()) < 21)){
 	// dd([$salary, $income, $paid->paid + $post->amount]);
-	$pay = ($salary >= ($paid->paid + $post->amount)) || (!$w->working_days && ($post->amount + $paid->paid) <= 1500 && $post->amount > 0 && date("d", time()) > 14 && date("d", time()) < 21);
+	$pay = true;
 	if (true) {
 		$payment = R::dispense("hotel_statement_worker_payment");
 		$payment->worker = $post->worker;
@@ -735,6 +735,9 @@ if (isset($post->save_worker_payment)) {
 					$existingEntry->month = $statement->month;
 					$existingEntry->expense_date = $post->payment_date;
 					$existingEntry->accountpath = $accountExists->path;
+					$existingEntry->company = $accountExists->company;
+					$existingEntry->branch_id = bid();
+					$existingEntry->payment_method = 'Cash';
 					$existingEntry->modify_by = uid();
 					$existingEntry->modify_time = now();
 
@@ -785,12 +788,6 @@ if (isset($post->save_worker_payment)) {
 			R::store($official_receipt);
 		}
 		redir("?page=3&h=$get->h");
-	} else {
-		if (!$w->working_days && date("d", time() > 14)) {
-			alert("Sorry you cannot pay advance before 15 of the month");
-		} else {
-			alert("Sorry you cannot overpay 1");
-		}
 	}
 }
 if (!function_exists('createFormInvestmentEntry')) {
@@ -839,7 +836,7 @@ if (isset($post->save_worker_payment_2)) {
 			}
 		}
 
-		$salary = ($statement->type == 'Parttime' ? round($w->basic * $w->working_days, 2) : round($w->basic / 30 * $w->working_days));
+		$salary = ($statement->type == 'Parttime' ? round($w->basic * ($w->working_days + ($w->working_hours / 100)), 2) : round($w->basic / 30 * ($w->working_days + ($w->working_hours / 100))));
 		if ($statement->hourly && $w->working_days < 325) {
 			$salary -= 100;
 		}
@@ -850,11 +847,11 @@ if (isset($post->save_worker_payment_2)) {
 		//salary_log("Payment validation details - Worker: {$w->name}, UID: " . uid() . ", Working days: {$w->working_days}, Basic salary: {$w->basic}, Calculated salary: {$salary}, Paid: {$paid->paid}, This payment: {$worker_salary}, Current date: " . date("d") . ", Current time: " . time());
 
 		$isAdvance = isset($post->salary_type) && $post->salary_type === 'Advance';
-		$pay = ($salary >= ($paid->paid + $worker_salary)) || ($isAdvance && ($worker_salary + $paid->paid) <= 5000 && $worker_salary > 0) || (!$w->working_days && ($worker_salary + $paid->paid) <= 1500 && $worker_salary > 0 && date("d", time()) > 14 && date("d", time()) < 21) || (uid() == 1);
+		$pay = true;
 
 		//salary_log("Payment validation - Salary: {$salary}, Paid: {$paid->paid}, This payment: {$worker_salary}, Can pay: " . ($pay ? 'YES' : 'NO') . ", UID: " . uid());
 
-		if ($pay && $worker_salary > 0) {
+		if ($worker_salary > 0) {
 			$payment = R::dispense("hotel_statement_worker_payment");
 			$payment->worker = $w->id;
 			$payment->date = $post->payment_date;
@@ -911,6 +908,8 @@ if (isset($post->save_worker_payment_2)) {
 						$existingEntry->month = $statement->month;
 						$existingEntry->expense_date = $post->payment_date;
 						$existingEntry->accountpath = $accountExists->path;
+						$existingEntry->company = $accountExists->company;
+						$existingEntry->branch_id = bid();
 						$existingEntry->modify_by = uid();
 						$existingEntry->modify_time = now();
 						$existingEntry->opex_or_capex = isset($post->opex_or_capex) ? $post->opex_or_capex : 'Capex';
@@ -944,13 +943,6 @@ if (isset($post->save_worker_payment_2)) {
 
 			} catch (Exception $e) {
 				//salary_log("ERROR: Failed to store payment: " . $e->getMessage());
-			}
-		} else {
-			//salary_log("Payment blocked - Worker: {$w->name}, Amount: {$worker_salary}");
-			if (!$w->working_days && date("d", time() > 14)) {
-				alert("Sorry you cannot pay advance before 15 of the month");
-			} else {
-				alert("Sorry you cannot overpay 2");
 			}
 		}
 	}
@@ -1175,9 +1167,9 @@ if (isset($get->h)) {
 			if ($meal > 0 || $visa > 0 || $monthlyWorking > 0) {
 				$salary = $payable;
 			} elseif ($hotel_statement->type == 'Fulltime') {
-				$salary = round(($w->basic / 30 * ($w->working_days + $w->public_holiday)) + ($w->working_days > 25 ? 0000 : 0));
+				$salary = round(($w->basic / 30 * ($w->working_days + $w->public_holiday + ($w->working_hours / 100))) + ($w->working_days > 25 ? 0000 : 0));
 			} else {
-				$salary = $w->basic * $w->working_days;
+				$salary = $w->basic * ($w->working_days + ($w->working_hours / 100));
 			}
 		} else {
 			$hotel_salary = $w->billed_amount / 30;
@@ -1266,18 +1258,18 @@ if (isset($get->h)) {
 			}
 		}
 		print "</td>";
-		if (uid() == 1 || uid() == 53) {
+		if (isUserIn(['superadmin', 'orange', 'lemon'])) {
 			print "<td class='text-center'><a data-bs-toggle='modal' data-bs-target='#modal-worker-edit' onClick='setWorkerId($w->id)' class='btn btn-sm btn-warning'><i class='fa fa-edit'></i></a></td>";
 		} else {
 			print "<td class='text-center'><a onClick='showEditPermissionAlert()' class='btn btn-sm btn-warning'><i class='fa fa-edit'></i></a></td>";
 		}
-		if (isUserIn(['Adminn', 'orange', 'Apple'])) {
+		if (isUserIn(['superadmin', 'orange', 'lemon'])) {
 			print "<td class='text-center' nowrap>
 							<a data-bs-toggle='modal' data-bs-target='#modal-deduct-salary' onClick='setWorkerId($w->id)' class='btn btn-sm btn-danger'><i class='fa fa-minus'></i></a>
 							<a data-bs-toggle='modal' data-bs-target='#modal-add-salary' onClick='setWorkerId($w->id)' class='btn btn-sm btn-warning'><i class='fa fa-plus'></i></a>
 						</td>";
 		}
-		if (uid() == 1 || uid() == 53) {
+		if (isUserIn(['superadmin', 'orange', 'lemon'])) {
 			print "<td class='text-center'><a href='javascript:deleteWorker($w->id)' class='btn btn-sm btn-warning'><i class='fa fa-trash'></i></a></td>";
 		} else {
 			print "<td class='text-center'><a onClick='showDeletePermissionAlert()' class='btn btn-sm btn-warning'><i class='fa fa-trash'></i></a></td>";
@@ -1754,7 +1746,7 @@ if (isset($get->h)) {
 	while ($hotel = mysqli_fetch_object($hotels)) {
 		//////////
 		$hotel_statement = R::load("hotel_statement", $hotel->id);
-		$workers = select("basic, working_days, meal, visa, monthly_working", "hotel_statement_worker", "statement=$hotel_statement->id", "ORDER BY name");
+		$workers = select("basic, working_days, working_hours, meal, visa, monthly_working", "hotel_statement_worker", "statement=$hotel_statement->id", "ORDER BY name");
 		$total_salary = 0;
 		while ($w = mysqli_fetch_object($workers)) {
 			if ((float) $w->meal > 0 || (float) $w->visa > 0 || (int) $w->monthly_working > 0) {
@@ -1766,9 +1758,9 @@ if (isset($get->h)) {
 				$abs = max(0, $mw - $w->working_days);
 				$salary = $w->basic - round($pd * $abs);
 			} elseif ($hotel_statement->type == 'Fulltime') {
-				$salary = round(($w->basic / 30 * $w->working_days) + ($w->working_days > 30 ? 0000 : 0));
+				$salary = round(($w->basic / 30 * ($w->working_days + ($w->working_hours / 100))) + ($w->working_days > 30 ? 0000 : 0));
 			} else {
-				$salary = $w->basic * $w->working_days;
+				$salary = $w->basic * ($w->working_days + ($w->working_hours / 100));
 			}
 			$total_salary += $salary;
 		}

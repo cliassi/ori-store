@@ -17,7 +17,7 @@ if ($mon) {
   $date = "$mon-01";
   $last = lastDate($date);
   $filter1 = "entry_time BETWEEN '$date' AND '$last'";
-  $filter_exp = "expense_date BETWEEN '$date' AND '$last'";
+  $filter_exp = "branch_id=$branch_id AND expense_date BETWEEN '$date' AND '$last'";
   $filter = "created_at BETWEEN '$date' AND '$last'";
   $filter_invoice = "i.created_at BETWEEN '$date' AND '$last' AND i.branch_id=$branch_id";
 }
@@ -88,6 +88,35 @@ if (!$_profitRes) {
 }
 $store_value = mysqli_fetch_object(select("SELECT IFNULL(SUM(stock2(id, $branch_id)*cost),0) amount FROM product_variance")) ?: (object)['amount'=>0];
 
+// ---- Store (top-level expense account) Income/Expense — mirrors app/pages/details/expense_account.php exactly ----
+$store_month = $mon ? $mon : date('Y-m', time());
+$store_month_start = "$store_month-01";
+$store_month_end = date('Y-m-t', strtotime($store_month_start));
+
+$storeAccount = mysqli_fetch_object(select("SELECT id, path FROM `expense_account` WHERE parent IS NULL AND path='/1/' LIMIT 1")) ?: null;
+
+$store_income = 0;
+$store_expense = 0;
+if ($storeAccount) {
+  $storePath = $storeAccount->path;
+
+  $store_credit_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) amt FROM `expense_account_entry` WHERE branch_id=$branch_id AND entry_time LIKE '$store_month-%' AND accountpath LIKE CONCAT('$storePath','%')")) ?: (object)['amt'=>0];
+  $store_credit = (float)$store_credit_row->amt;
+
+  // Same schema as $profitSql above: branch comes via customer, not invoice.branch_id
+  $store_profit_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(ii.quantity * (CAST(ii.price AS DECIMAL(15,4)) - CAST(ii.cost AS DECIMAL(15,4)))),0) amt 
+    FROM invoice i 
+    INNER JOIN invoice_item ii ON i.id = ii.invoice_id 
+    INNER JOIN customer c ON c.id = i.customer_id
+    WHERE (c.branch_id=$branch_id OR c.branch_id IS NULL) AND i.invoice_date BETWEEN '$store_month_start' AND '$store_month_end'")) ?: (object)['amt'=>0];
+  $store_profit = (float)$store_profit_row->amt;
+
+  $store_income = $store_credit + ($storePath === '/1/' ? $store_profit : 0);
+
+  $store_expense_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(IF(tran_type='Debit', amount, 0)),0) amt FROM `expense_account_entry` WHERE branch_id=$branch_id AND (`month`='$store_month' OR expense_date LIKE '$store_month-%') AND accountpath LIKE CONCAT('$storePath','%')")) ?: (object)['amt'=>0];
+  $store_expense = (float)$store_expense_row->amt;
+}
+
 $petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
 $petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
 $bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
@@ -136,7 +165,7 @@ ob_start();
       </tr>
       <tr>
         <td><a href='/store/expense_account_entry/view?d=<?php print subDay(7); ?>'>Expense (<?php print $m; ?>)</a></td><td>:</td>
-        <td><?php print nf($summary->cash_expense + $summary->bank_expense); ?></td>
+        <td><?php print nf($store_expense); ?></td>
       </tr>
       <tr>
         <td>Damage/Loss (<?php print $m; ?>)</td><td>:</td>
@@ -144,7 +173,7 @@ ob_start();
       </tr>
       <tr>
         <td>Profit & Loss (<?php print $m; ?>)</td><td>:</td>
-        <td><span style="font-weight: 300"><?php print '('.nf($profit->amount).')'; ?></span> <?php print nf($profit->amount - ($summary->cash_expense + $summary->bank_expense + $damage->amount)); ?></td>
+        <td><span style="font-weight: 300"><?php print '('.nf($store_income).')'; ?></span> <?php print nf($store_income - $store_expense); ?></td>
       </tr>
     </tbody></table>
   </div>

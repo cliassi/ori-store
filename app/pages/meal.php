@@ -588,7 +588,7 @@ if (isset($post->update_working_days)) {
 	if (strpos($post->working_days, ".")) {
 		$dh = explode(".", $post->working_days);
 		$worker->working_days = $dh[0] + 0;
-		$worker->working_hours = $dh[1] + 0;
+		$worker->working_hours = strlen($dh[1]) == 1 ? ($dh[1] + 0) * 10 : ($dh[1] + 0);
 	} elseif (strpos($post->working_days, "++")) {
 		$dh = explode("++", $post->working_days);
 		$worker->working_days = $dh[0] + 0;
@@ -653,7 +653,7 @@ if (isset($post->save_worker_payment)) {
 	}
 	// var_dump($statement);
 	// vd($post);
-	$meal = ($statement->type == 'Parttime' ? round($w->basic * $w->working_days, 2) : round($w->basic / 30 * $w->working_days)) + ($w->working_days > 30 ? 0000 : 0);
+	$meal = ($statement->type == 'Parttime' ? round($w->basic * ($w->working_days + ($w->working_hours / 100)), 2) : round($w->basic / 30 * ($w->working_days + ($w->working_hours / 100)))) + ($w->working_days > 30 ? 0000 : 0);
 	$income = getSum("hotel_statement_meal_income", "amount", "worker=$post->worker");
 	$meal = $meal + $income;
 	// dd($meal);
@@ -671,7 +671,7 @@ if (isset($post->save_worker_payment)) {
 	// if($notOverpaid && $notAdvancedOverpaid){
 	// if(($meal >= ($paid->paid + $post->amount)) || (!$w->working_days && ($post->amount + $paid->paid) <= 1500 && $post->amount > 0 && date("d", time()) > 14 && date("d", time()) < 21)){
 	// dd([$meal, $income, $paid->paid + $post->amount]);
-	$pay = ($meal >= ($paid->paid + $post->amount)) || (!$w->working_days && ($post->amount + $paid->paid) <= 1500 && $post->amount > 0 && date("d", time()) > 14 && date("d", time()) < 21);
+	$pay = true;
 	if (true) {
 		$payment = R::dispense("hotel_statement_meal_payment");
 		$payment->worker = $post->worker;
@@ -713,6 +713,9 @@ if (isset($post->save_worker_payment)) {
 					$existingEntry->month = $statement->month;
 					$existingEntry->expense_date = $post->payment_date;
 					$existingEntry->accountpath = $accountExists->path;
+					$existingEntry->company = $accountExists->company;
+					$existingEntry->branch_id = bid();
+					$existingEntry->payment_method = 'Cash';
 					$existingEntry->modify_by = uid();
 					$existingEntry->modify_time = now();
 
@@ -763,12 +766,6 @@ if (isset($post->save_worker_payment)) {
 			R::store($official_receipt);
 		}
 		redir("?page=3&h=$get->h");
-	} else {
-		if (!$w->working_days && date("d", time() > 14)) {
-			alert("Sorry you cannot pay advance before 15 of the month");
-		} else {
-			alert("Sorry you cannot overpay 1");
-		}
 	}
 }
 if (isset($post->resubmit_meal)) {
@@ -820,8 +817,11 @@ if (isset($post->resubmit_meal)) {
 			$existingEntry->entry_by = uid();
 			$existingEntry->month = $statement->month;
 			$existingEntry->expense_date = isset($post->payment_date) ? $post->payment_date : today();
-			$existingEntry->accountpath = $accountExists->path;
-			$existingEntry->modify_by = uid();
+		$existingEntry->accountpath = $accountExists->path;
+		$existingEntry->company = $accountExists->company;
+		$existingEntry->branch_id = bid();
+		$existingEntry->payment_method = 'Cash';
+		$existingEntry->modify_by = uid();
 			$existingEntry->modify_time = now();
 			R::store($existingEntry);
 		}
@@ -875,7 +875,7 @@ if (isset($post->save_worker_payment_2)) {
 			}
 		}
 
-		$meal = ($statement->type == 'Parttime' ? round($w->basic * $w->working_days, 2) : round($w->basic / 30 * $w->working_days)) + ($w->working_days > 30 ? 0000 : 0);
+	$meal = ($statement->type == 'Parttime' ? round($w->basic * ($w->working_days + ($w->working_hours / 100)), 2) : round($w->basic / 30 * ($w->working_days + ($w->working_hours / 100)))) + ($w->working_days > 30 ? 0000 : 0);
 		if ($statement->hourly && $w->working_days < 325) {
 			$meal -= 100;
 		}
@@ -885,11 +885,11 @@ if (isset($post->save_worker_payment_2)) {
 
 		//meal_log("Payment validation details - Worker: {$w->name}, UID: " . uid() . ", Working days: {$w->working_days}, Monthly Meal: {$w->basic}, Calculated meal: {$meal}, Paid: {$paid->paid}, This payment: {$worker_meal}, Current date: " . date("d") . ", Current time: " . time());
 
-		$pay = ($meal >= ($paid->paid + $worker_meal)) || (!$w->working_days && ($worker_meal + $paid->paid) <= 1500 && $worker_meal > 0 && date("d", time()) > 14 && date("d", time()) < 21) || (uid() == 1);
+		$pay = true;
 
 		//meal_log("Payment validation - Meal: {$meal}, Paid: {$paid->paid}, This payment: {$worker_meal}, Can pay: " . ($pay ? 'YES' : 'NO') . ", UID: " . uid());
 
-		if ($pay && $worker_meal > 0) {
+		if ($worker_meal > 0) {
 			$payment = R::dispense("hotel_statement_meal_payment");
 			$payment->worker = $w->id;
 			$payment->date = $post->payment_date;
@@ -955,6 +955,8 @@ if (isset($post->save_worker_payment_2)) {
 						$existingEntry->month = $statement->month;
 						$existingEntry->expense_date = $post->payment_date;
 						$existingEntry->accountpath = $accountExists->path;
+						$existingEntry->company = $accountExists->company;
+						$existingEntry->branch_id = bid();
 						$existingEntry->modify_by = uid();
 						$existingEntry->modify_time = now();
 						$existingEntry->opex_or_capex = isset($post->opex_or_capex) ? $post->opex_or_capex : 'Capex';
@@ -988,13 +990,6 @@ if (isset($post->save_worker_payment_2)) {
 
 			} catch (Exception $e) {
 				//meal_log("ERROR: Failed to store payment: " . $e->getMessage());
-			}
-		} else {
-			//meal_log("Payment blocked - Worker: {$w->name}, Amount: {$worker_meal}");
-			if (!$w->working_days && date("d", time() > 14)) {
-				alert("Sorry you cannot pay advance before 15 of the month");
-			} else {
-				alert("Sorry you cannot overpay 2");
 			}
 		}
 	}
@@ -1204,9 +1199,9 @@ if (isset($get->h)) {
 		if ($hotel_statement->hourly == 0) {
 			$hotel_meal = $w->billed_amount / 30;
 			if ($hotel_statement->type == 'Fulltime') {
-				$meal = round(($w->basic / 30 * ($w->working_days + $w->public_holiday)) + ($w->working_days > 25 ? 0000 : 0));
+				$meal = round(($w->basic / 30 * ($w->working_days + $w->public_holiday + ($w->working_hours / 100))) + ($w->working_days > 25 ? 0000 : 0));
 			} else {
-				$meal = $w->basic * $w->working_days;
+				$meal = $w->basic * ($w->working_days + ($w->working_hours / 100));
 			}
 		} else {
 			$hotel_meal = $w->billed_amount / 30;
@@ -1764,13 +1759,13 @@ if (isset($get->h)) {
 	while ($hotel = mysqli_fetch_object($hotels)) {
 		//////////
 		$hotel_statement = R::load("hotel_statement", $hotel->id);
-		$workers = select("basic, working_days", "hotel_statement_meal", "statement=$hotel_statement->id", "ORDER BY name");
+		$workers = select("basic, working_days, working_hours", "hotel_statement_meal", "statement=$hotel_statement->id", "ORDER BY name");
 		$total_meal = 0;
 		while ($w = mysqli_fetch_object($workers)) {
 			if ($hotel_statement->type == 'Fulltime') {
-				$meal = round(($w->basic / 30 * $w->working_days) + ($w->working_days > 30 ? 0000 : 0));
+				$meal = round(($w->basic / 30 * ($w->working_days + ($w->working_hours / 100))) + ($w->working_days > 30 ? 0000 : 0));
 			} else {
-				$meal = $w->basic * $w->working_days;
+				$meal = $w->basic * ($w->working_days + ($w->working_hours / 100));
 			}
 			$total_meal += $meal;
 		}

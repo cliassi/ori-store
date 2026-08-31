@@ -338,6 +338,12 @@ function printExpenseAccount($_filter, $i, $parent = '')
 			// Show clickable delete button with JavaScript alert
 			print "<a href='javascript:void(0)' onclick='alert(\"Cannot delete expense account as it has previous data\")' style='color: #999;' title='Expense Account Entry has previous month data therefore you cannot delete it'><i class='fas fa-trash'></i></a> ";
 		}
+		if (isUserIn(['superadmin'])) {
+			$eyePath = urlencode($expense_account->path);
+			$eyeCompany = isset($get->company) ? urlencode($get->company) : '';
+			$eyeT = isset($get->t) ? urlencode($get->t) : '';
+			print "<a href='/store/report/cash?cw=$eyeCompany&account_path=$eyePath' target='_blank' title='View in Cash Report'><i class='fa fa-eye' style='color: #5cb85c; margin-left: 5px;'></i></a> ";
+		}
 		print "<a href='edit/$expense_account->id?company=" . (isset($get->company) ? $get->company : '') . "&t=" . (isset($get->t) ? $get->t : '') . "'><i class='fas fa-edit'></i></a></td>";
 		// <td>".options2("", $expense_account->id, array("edit", "remove","erase"))."</td>
 		print "</tr>";
