@@ -308,3 +308,142 @@ function getImageOrPlaceholder($imagePath, $productName = '')
             </svg>
         ');
     }
+
+function orderadminDashboardItems()
+{
+    return [
+        // Row 1
+        ['label' => 'Dashboard', 'icon' => 'view-grid', 'page' => 'dashboard'],
+        ['label' => 'Supplier', 'icon' => 'user-add', 'page' => 'supplier_add'],
+        // ['label' => 'Petty Cash', 'icon' => 'currency-dollar', 'page' => 'petty_cash'],
+        ['label' => 'Cus Due', 'icon' => 'cash', 'page' => 'customer_due'],
+        ['label' => 'Customer', 'icon' => 'shopping-cart', 'page' => 'customer'],
+        // Row 2
+        ['label' => 'Expenses', 'icon' => 'receipt-tax', 'page' => 'expenses'],
+        ['label' => 'Product +', 'icon' => 'plus-circle', 'page' => 'product_add'],
+        ['label' => 'Order Approval', 'icon' => 'clipboard', 'page' => 'customer_order'],
+        ['label' => 'Order List', 'icon' => 'view-list', 'page' => 'order'],
+        // Row 3
+        ['label' => 'Daily Sales', 'icon' => 'chart-bar', 'page' => 'daily_sales'],
+        ['label' => 'File Manager', 'icon' => 'credit-card', 'page' => 'file'],
+        ['label' => 'Supplier Due', 'icon' => 'user-circle', 'page' => 'supplier_due'],
+        ['label' => 'Pending Collect', 'icon' => 'view-list', 'page' => 'collect'],
+        // Row 4
+        ['label' => 'Daily Order', 'icon' => 'document-text', 'page' => 'daily_order'],
+        ['label' => 'CnR Report', 'icon' => 'clipboard-list', 'page' => 'cnr'],
+        ['label' => 'Pending Order', 'icon' => 'clipboard', 'page' => 'pending_order'],
+        ['label' => 'Delivery Status', 'icon' => 'clipboard', 'page' => 'delivery_status'],
+        ['label' => 'Permission', 'icon' => 'admin_panel_settings', 'page' => 'permission', 'admin_only' => true],
+    ];
+}
+
+function orderadminDashboardIcon($alias)
+{
+    $map = [
+        'view-grid' => 'dashboard', 'currency-dollar' => 'payments', 'document-text' => 'assignment',
+        'chart-bar' => 'attach_money', 'archive' => 'inventory_2', 'shopping-bag' => 'shopping_bag',
+        'user-add' => 'person_add', 'plus-circle' => 'add_box', 'user-circle' => 'account_balance_wallet',
+        'clipboard-list' => 'bar_chart', 'clipboard' => 'pending_actions', 'receipt-tax' => 'money_off',
+        'cash' => 'receipt_long', 'credit-card' => 'payments', 'users' => 'shopping_cart',
+        'shopping-cart' => 'group', 'view-list' => 'format_list_bulleted',
+        'admin_panel_settings' => 'admin_panel_settings',
+    ];
+    return isset($map[$alias]) ? $map[$alias] : 'apps';
+}
+
+function orderadminIsAdministrator($userId = null)
+{
+    $userId = $userId === null ? (int) uid() : (int) $userId;
+    if ($userId === 1) {
+        return true;
+    }
+
+    $user = R::load('sys_user', $userId);
+    $username = isset($user->u_username) ? strtolower(trim($user->u_username)) : '';
+    if ($username === 'superadmin' || (function_exists('isUserIn') && isUserIn(['superadmin']))) {
+        return true;
+    }
+
+    $role = R::findOne('sys_role', 'id = (SELECT ur_role_id FROM sys_user_role WHERE ur_user_id = ? LIMIT 1)', [$userId]);
+    if (!$role) {
+        return false;
+    }
+
+    $roleName = strtolower(trim(isset($role->r_name) ? $role->r_name : ''));
+    $roleCode = strtolower(trim(isset($role->code) ? $role->code : ''));
+    return in_array($roleName, ['admin', 'administrator', 'super admin', 'superadmin'], true)
+        || in_array($roleCode, ['admin', 'administrator', 'superadmin'], true);
+}
+
+function orderadminEnsureDashboardPermissionTable()
+{
+    global $c;
+    static $ensured = false;
+    if ($ensured || !isset($c)) {
+        return $ensured;
+    }
+
+    $sql = "CREATE TABLE IF NOT EXISTS `sys_user_dashboard_permission` (
+        `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+        `user_id` int(10) unsigned NOT NULL,
+        `dashboard_page` varchar(64) NOT NULL,
+        `enabled` tinyint(1) unsigned NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `user_dashboard_page` (`user_id`, `dashboard_page`),
+        KEY `dashboard_permission_user` (`user_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1";
+    $ensured = (bool) $c->query($sql);
+    return $ensured;
+}
+
+function orderadminSeedAdminDashboardPermissions()
+{
+    global $c;
+    if (!orderadminEnsureDashboardPermissionTable() || !isset($c)) {
+        return;
+    }
+
+    if (num_rows('id', 'sys_user_dashboard_permission', 'user_id=1') !== 0) {
+        return;
+    }
+
+    foreach (orderadminDashboardItems() as $item) {
+        $page = mysqli_real_escape_string($c, $item['page']);
+        $c->query("INSERT IGNORE INTO `sys_user_dashboard_permission` (`user_id`, `dashboard_page`, `enabled`) VALUES (1, '$page', 1)");
+    }
+}
+
+function orderadminDashboardPermissions($userId)
+{
+    global $c;
+    $permissions = [];
+    if (!orderadminEnsureDashboardPermissionTable() || !isset($c)) {
+        return $permissions;
+    }
+
+    $userId = (int) $userId;
+    $result = $c->query("SELECT dashboard_page, enabled FROM `sys_user_dashboard_permission` WHERE user_id=$userId");
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $permissions[$row['dashboard_page']] = (int) $row['enabled'] === 1;
+        }
+    }
+    return $permissions;
+}
+
+function orderadminVisibleDashboardItems($userId)
+{
+    $permissions = orderadminDashboardPermissions($userId);
+    $hasConfiguration = count($permissions) > 0;
+    $items = [];
+    foreach (orderadminDashboardItems() as $item) {
+        if (!empty($item['admin_only']) && !orderadminIsAdministrator($userId)) {
+            continue;
+        }
+        if ($hasConfiguration && (!isset($permissions[$item['page']]) || !$permissions[$item['page']])) {
+            continue;
+        }
+        $items[] = $item;
+    }
+    return $items;
+}

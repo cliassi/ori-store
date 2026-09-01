@@ -82,55 +82,15 @@
         <div class="shortcut-table shadow-sm">
             <div class="shortcut-grid">
                 <?php
-                $items = [
-                    // Row 1
-                    ['label' => 'Dashboard',       'icon' => 'view-grid',       'page' => 'dashboard'],
-                    ['label' => 'Supplier',        'icon' => 'user-add',        'page' => 'supplier_add'],
-                    // ['label' => 'Petty Cash',      'icon' => 'currency-dollar', 'page' => 'petty_cash'],
-                    ['label' => 'Cus Due',         'icon' => 'cash',            'page' => 'customer_due'],
-                    ['label' => 'Customer',        'icon' => 'shopping-cart',   'page' => 'customer'],
-                    // Row 2
-                    ['label' => 'Expenses',        'icon' => 'receipt-tax',     'page' => 'expenses'],
-                    ['label' => 'Product +',       'icon' => 'plus-circle',     'page' => 'product_add'],
-                    ['label' => 'Order Approval',  'icon' => 'clipboard',       'page' => 'customer_order'],
-                    ['label' => 'Order List',      'icon' => 'view-list',       'page' => 'order'],
-                    // Row 3
-                    ['label' => 'Daily Sales',     'icon' => 'chart-bar',       'page' => 'daily_sales'],
-                    ['label' => 'File Manager',    'icon' => 'credit-card',     'page' => 'file'],
-                    ['label' => 'Supplier Due',    'icon' => 'user-circle',     'page' => 'supplier_due'],
-                    ['label' => 'Pending Collect', 'icon' => 'view-list',       'page' => 'collect'],
-                    // Row 4
-                    ['label' => 'Daily Order',     'icon' => 'document-text',   'page' => 'daily_order'],
-                    ['label' => 'CnR Report',      'icon' => 'clipboard-list',  'page' => 'cnr'],
-                    ['label' => 'Pending Order',       'icon' => 'clipboard',       'page' => 'pending_order'],
-                    ['label' => 'Delivery Status', 'icon' => 'clipboard',       'page' => 'delivery_status'],
-                ];
+                orderadminSeedAdminDashboardPermissions();
+                $items = orderadminVisibleDashboardItems(uid());
                 foreach ($items as $i => $it): ?>
                     <div class="shortcut-cell">
                         <?php if (!empty($it['page'])): ?>
                         <a href="?page=<?php echo htmlspecialchars($it['page']); ?>" class="shortcut-link">
                             <span class="flex items-center justify-center h-12 w-12">
                                 <?php
-                                $map = [
-                                    'view-grid'      => 'dashboard',
-                                    'currency-dollar'=> 'payments',
-                                    'document-text'  => 'assignment',
-                                    'chart-bar'      => 'attach_money',
-                                    'archive'        => 'inventory_2',
-                                    'shopping-bag'   => 'shopping_bag',
-                                    'user-add'       => 'person_add',
-                                    'plus-circle'    => 'add_box',
-                                    'user-circle'    => 'account_balance_wallet',
-                                    'clipboard-list' => 'bar_chart',
-                                    'clipboard'      => 'pending_actions',
-                                    'receipt-tax'    => 'money_off',
-                                    'cash'           => 'receipt_long',
-                                    'credit-card'    => 'payments',
-                                    'users'          => 'shopping_cart',
-                                    'shopping-cart'  => 'group',
-                                    'view-list'      => 'format_list_bulleted',
-                                ];
-                                $icon = $map[$it['icon']] ?? 'apps';
+                                $icon = orderadminDashboardIcon($it['icon']);
                                 echo '<span class="material-symbols-outlined icon-green text-[42px] leading-none" style="color:#47773f !important">' . $icon . '</span>';
                                 ?>
                             </span>
@@ -140,26 +100,7 @@
                         <div class="shortcut-link" style="opacity:.45; cursor: not-allowed;">
                             <span class="flex items-center justify-center h-12 w-12">
                                 <?php
-                                $map = [
-                                    'view-grid'      => 'dashboard',
-                                    'currency-dollar'=> 'payments',
-                                    'document-text'  => 'assignment',
-                                    'chart-bar'      => 'attach_money',
-                                    'archive'        => 'inventory_2',
-                                    'shopping-bag'   => 'shopping_bag',
-                                    'user-add'       => 'person_add',
-                                    'plus-circle'    => 'add_box',
-                                    'user-circle'    => 'account_balance_wallet',
-                                    'clipboard-list' => 'bar_chart',
-                                    'clipboard'      => 'pending_actions',
-                                    'receipt-tax'    => 'money_off',
-                                    'cash'           => 'receipt_long',
-                                    'credit-card'    => 'payments',
-                                    'users'          => 'shopping_cart',
-                                    'shopping-cart'  => 'group',
-                                    'view-list'      => 'format_list_bulleted',
-                                ];
-                                $icon = $map[$it['icon']] ?? 'apps';
+                                $icon = orderadminDashboardIcon($it['icon']);
                                 echo '<span class="material-symbols-outlined icon-green text-[42px] leading-none" style="color:#47773f !important">' . $icon . '</span>';
                                 ?>
                             </span>
