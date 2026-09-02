@@ -10,7 +10,7 @@ require_once("../config.php");
 require_once("../f.inc.php");
 // require_once("../core/functions.php");
 
-$canEditDate = canEditDateOnly();
+$canEditDate = false; canEditDateOnly();
 
 // Functions loaded successfully from f.inc.php
 
