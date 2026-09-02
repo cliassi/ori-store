@@ -21,6 +21,8 @@ $trans = select("SELECT * FROM (SELECT * FROM (
     SELECT 'collection' src, id, 0 id2, created_at sort_date, date, description particulars, amount
     FROM `collection` WHERE customer_id=$uid
 ) a ORDER BY date DESC, sort_date DESC) b ORDER BY sort_date, id");
+
+$showAll = isset($get->show) && $get->show === 'all';
 ?>
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
@@ -63,6 +65,8 @@ $trans = select("SELECT * FROM (SELECT * FROM (
           $totalCredit = 0;
           $balance = 0;
           $hasRows = false;
+          $rowCount = $trans ? (int)$trans->num_rows : 0;
+          $counter = $rowCount;
           if ($trans) {
             while ($item = mysqli_fetch_object($trans)) {
               $hasRows = true;
@@ -84,7 +88,9 @@ $trans = select("SELECT * FROM (SELECT * FROM (
                 $balance -= $item->amount;
                 $ref = 'OR' . zerofill($item->id, 7);
               }
-              echo "<tr class='border-b border-gray-100'>";
+              $hide = (!$showAll && $counter > 10) ? ' hidden' : '';
+              $counter--;
+              echo "<tr class='border-b border-gray-100$hide'>";
               echo "<td class='px-2 py-2'>" . htmlspecialchars((string)df($sort_date), ENT_QUOTES, 'UTF-8') . "</td>";
               echo "<td class='px-2 py-2'>" . htmlspecialchars($ref, ENT_QUOTES, 'UTF-8') . "</td>";
               echo "<td class='px-2 py-2 whitespace-normal'>" . htmlspecialchars($particulars, ENT_QUOTES, 'UTF-8') . "</td>";
@@ -115,5 +121,14 @@ $trans = select("SELECT * FROM (SELECT * FROM (
         </tbody>
       </table>
     </div>
+    <?php if ($rowCount > 10): ?>
+      <div class="px-4 py-3 text-center border-t border-gray-100">
+        <?php if ($showAll): ?>
+          <a href="?page=statement" class="text-sm text-blue-600 no-underline">Show last 10</a>
+        <?php else: ?>
+          <a href="?page=statement&show=all" class="text-sm text-blue-600 no-underline">Show all</a>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
   </div>
 </div>
