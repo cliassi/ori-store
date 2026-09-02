@@ -44,7 +44,7 @@ $payments = R::find('collection', ' customer_id = ? ORDER BY id DESC LIMIT 10 ',
 <div class="bg-primary blob-shape text-white">
   <div class="max-w-sm mx-auto px-4 py-6">
     <div class="flex items-center justify-between mb-2">
-      <a href="?page=home" class="text-white" aria-label="Back">
+      <a href="?page=account_menu" class="text-white" aria-label="Back">
         <span class="material-symbols-outlined">arrow_back</span>
       </a>
       <h1 class="text-lg font-semibold">Payment</h1>

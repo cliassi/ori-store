@@ -71,23 +71,12 @@
     overflow: hidden;
   }
 
-  #accountMenuBtn {
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    border: 0;
-    padding: 0;
-  }
-  #accountMenuBtn:focus {
-    outline: none;
-  }
-  .account-menu a {
+  #accountMenuLink {
     text-decoration: none;
-    color: #111827;
+    color: inherit;
   }
-  .account-menu .material-symbols-outlined {
-    font-size: 22px;
-    color: #5fbac6;
+  #accountMenuLink:focus {
+    outline: none;
   }
 </style>
 <?php
@@ -152,63 +141,17 @@ foreach ($categories as $category) {
       $custName = $cust ? htmlspecialchars($cust->contact, ENT_QUOTES, 'UTF-8') : 'Valued Customer';
       $custPhoto = ($cust && !empty($cust->image)) ? getImageOrPlaceholder($cust->image, $custName) : '';
     ?>
-  <div class="relative text-center pb-4" id="accountMenuWrap">
-    <button type="button" id="accountMenuBtn" class="w-full bg-transparent border-0 p-0 cursor-pointer" aria-expanded="false" aria-haspopup="true" aria-controls="accountMenu">
-      <div class="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-        <?php if ($custPhoto): ?>
-          <img src="<?php echo htmlspecialchars($custPhoto, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="w-16 h-16 rounded-full object-cover">
-        <?php else: ?>
-          <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-full"></div>
-        <?php endif; ?>
-      </div>
-      <h2 class="text-xl text-black font-semibold"><?php echo $greeting; ?></h2>
-      <p class="text-lg text-black"><?php echo $custName; ?></p>
-    </button>
-    <div id="accountMenu" hidden class="account-menu absolute left-1/2 z-50 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-xl bg-white text-left shadow-lg">
-      <a href="?page=customer_info" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
-        <span class="material-symbols-outlined">person</span>
-        <span>Customer</span>
-      </a>
-      <a href="?page=statement" class="flex items-center gap-3 px-4 py-3 border-t border-gray-100 hover:bg-gray-50">
-        <span class="material-symbols-outlined">receipt_long</span>
-        <span>Statement</span>
-      </a>
-      <a href="?page=last_order" class="flex items-center gap-3 px-4 py-3 border-t border-gray-100 hover:bg-gray-50">
-        <span class="material-symbols-outlined">shopping_bag</span>
-        <span>Last Order</span>
-      </a>
-      <a href="?page=payment" class="flex items-center gap-3 px-4 py-3 border-t border-gray-100 hover:bg-gray-50">
-        <span class="material-symbols-outlined">payments</span>
-        <span>Payment</span>
-      </a>
+  <a href="?page=account_menu" id="accountMenuLink" class="block text-center pb-4">
+    <div class="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+      <?php if ($custPhoto): ?>
+        <img src="<?php echo htmlspecialchars($custPhoto, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="w-16 h-16 rounded-full object-cover">
+      <?php else: ?>
+        <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-full"></div>
+      <?php endif; ?>
     </div>
-  </div>
-  <script>
-    (function () {
-      const wrap = document.getElementById('accountMenuWrap');
-      const btn = document.getElementById('accountMenuBtn');
-      const menu = document.getElementById('accountMenu');
-      if (!wrap || !btn || !menu) return;
-      const close = () => {
-        menu.hidden = true;
-        btn.setAttribute('aria-expanded', 'false');
-      };
-      const open = () => {
-        menu.hidden = false;
-        btn.setAttribute('aria-expanded', 'true');
-      };
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        menu.hidden ? open() : close();
-      });
-      document.addEventListener('click', (e) => {
-        if (!wrap.contains(e.target)) close();
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') close();
-      });
-    })();
-  </script>
+    <h2 class="text-xl text-black font-semibold"><?php echo $greeting; ?></h2>
+    <p class="text-lg text-black"><?php echo $custName; ?></p>
+  </a>
   <?php endif; ?>
 
 </div>
