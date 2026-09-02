@@ -28,19 +28,18 @@ $trans = select("SELECT * FROM (SELECT * FROM (
 </style>
 
 <div class="bg-primary blob-shape text-white">
-  <div class="max-w-sm mx-auto px-4 py-6">
-    <div class="flex items-center justify-between mb-2">
+  <div class="px-4 py-3">
+    <div class="flex items-center justify-between">
       <a href="?page=account_menu" class="text-white" aria-label="Back">
         <span class="material-symbols-outlined">arrow_back</span>
       </a>
-      <h1 class="text-lg font-semibold">Statement</h1>
+      <h1 class="text-lg font-semibold m-0">Statement</h1>
       <div class="w-6"></div>
     </div>
-    <p class="text-center text-white/90 text-sm"><?php echo htmlspecialchars($cust->company, ENT_QUOTES, 'UTF-8'); ?></p>
   </div>
 </div>
 
-<div class="max-w-sm mx-auto px-4 -mt-4 mb-6">
+<div class="mb-6">
   <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-xs statement-table">
