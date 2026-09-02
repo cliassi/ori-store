@@ -1,0 +1,37 @@
+Options -Indexes
+DirectoryIndex index.php
+ErrorDocument 404 /index.php
+
+# Various rewrite rules.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_URI} !=/favicon.ico
+  RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]
+  RewriteRule ^([0-9]{4})/([0-9]{2})/([0-9]{2})/([a-z0-9\-]+)$ index.php?q=$1&m=$2&d=$3&n=$4 [L]
+  RewriteRule ^([0-9]{4})/([0-9]{2})/([0-9]{2})$ index.php?q=$1&m=$2&d=$3 [L]
+  RewriteRule ^([0-9]{4})/([0-9]{2})$ index.php?q=$1&m=$2 [L]
+  RewriteRule ^([0-9]{4})$ index.php?q=$1 [L]
+</IfModule>
+
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresByType text/html "access plus 2 days"
+	ExpiresByType image/gif "access plus 60 days"
+	ExpiresByType image/icon "access plus 60 days"
+	ExpiresByType image/x-icon "access plus 60 days"
+	ExpiresByType image/jpg "access plus 60 days"
+	ExpiresByType image/png "access plus 60 days"
+	ExpiresByType application/x-javascript "access plus 60 days"
+	ExpiresByType application/javascript "access plus 60 days"
+	ExpiresByType text/javascript "access plus 60 days"
+	ExpiresByType text/css "access plus 60 days"
+	ExpiresByType image/x-icon "access plus 360 days"
+</IfModule>
+
+<IfModule mod_php5.c>
+    #Session timeout
+    #php_value session.cookie_lifetime 1200
+    #php_value session.gc_maxlifetime 1200
+</IfModule>
