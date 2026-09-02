@@ -8,7 +8,7 @@ session_start();
 require_once("../env.php");
 require_once("../config.php");
 require_once("../f.inc.php");
-require_once("../core/functions.php");
+// require_once("../core/functions.php");
 
 $canEditDate = canEditDateOnly();
 
