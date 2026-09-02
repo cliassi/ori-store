@@ -116,7 +116,7 @@ $html .= "</table></td></tr>
               'contact' => ['col' => 6, 'label' => 'Contact Person', 'type' => 'text', 'value' => $obj->contact, 'required' => true],
               'mobile' => ['col' => 6, 'label' => 'C.P. Mobile', 'type' => 'text', 'value' => $obj->mobile, 'required' => true],
               'city' => ['col' => 6, 'label' => 'Area', 'type' => 'dropdown', 'value' => $obj->city, 'table' => 'city', 'valueField' => 'name', 'filter' => 'branch_id = ' . $branch_id, 'required' => true, 'sort'=>'name'],
-              'map' => ['col' => 12, 'label' => 'Map', 'type' => 'text', 'value' => $obj->map, 'required' => false],
+              'map' => ['col' => 12, 'label' => 'Location Link', 'type' => 'text', 'value' => $obj->map, 'required' => false],
               'html' => ['col' => 6, 'type' => 'html', 'html' => $html],
               'image' => ['col' => 6, 'label' => 'Photo', 'type' => 'image', 'value' => $obj->image, 'required' => false],
               // 'location' => ['col' => 4, 'label' => 'Location', 'type' => 'text', 'value' => $obj->location, 'required' => true],
