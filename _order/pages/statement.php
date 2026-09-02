@@ -25,6 +25,10 @@ $trans = select("SELECT * FROM (SELECT * FROM (
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
   .statement-table td, .statement-table th { white-space: nowrap; }
+  .statement-table .amt {
+    border: 1px solid #d1d5db;
+    text-align: right;
+  }
 </style>
 
 <div class="bg-primary blob-shape text-white">
@@ -48,9 +52,9 @@ $trans = select("SELECT * FROM (SELECT * FROM (
             <th class="px-2 py-2 text-left">Date</th>
             <th class="px-2 py-2 text-left">Ref</th>
             <th class="px-2 py-2 text-left">Particulars</th>
-            <th class="px-2 py-2 text-right">Debit</th>
-            <th class="px-2 py-2 text-right">Credit</th>
-            <th class="px-2 py-2 text-right">Balance</th>
+            <th class="px-2 py-2 text-right amt">Debit</th>
+            <th class="px-2 py-2 text-right amt">Credit</th>
+            <th class="px-2 py-2 text-right amt">Balance</th>
           </tr>
         </thead>
         <tbody>
@@ -85,13 +89,13 @@ $trans = select("SELECT * FROM (SELECT * FROM (
               echo "<td class='px-2 py-2'>" . htmlspecialchars($ref, ENT_QUOTES, 'UTF-8') . "</td>";
               echo "<td class='px-2 py-2 whitespace-normal'>" . htmlspecialchars($particulars, ENT_QUOTES, 'UTF-8') . "</td>";
               if ($item->src == 'invoice') {
-                echo "<td class='px-2 py-2 text-right'>" . nf($item->amount) . "</td>";
-                echo "<td class='px-2 py-2 text-right'></td>";
+                echo "<td class='px-2 py-2 text-right amt'>" . nf($item->amount) . "</td>";
+                echo "<td class='px-2 py-2 text-right amt'></td>";
               } else {
-                echo "<td class='px-2 py-2 text-right'></td>";
-                echo "<td class='px-2 py-2 text-right'>" . nf($item->amount) . "</td>";
+                echo "<td class='px-2 py-2 text-right amt'></td>";
+                echo "<td class='px-2 py-2 text-right amt'>" . nf($item->amount) . "</td>";
               }
-              echo "<td class='px-2 py-2 text-right font-medium'>" . nf($balance) . "</td>";
+              echo "<td class='px-2 py-2 text-right font-medium amt'>" . nf($balance) . "</td>";
               echo "</tr>";
             }
           }
@@ -103,9 +107,9 @@ $trans = select("SELECT * FROM (SELECT * FROM (
           <?php else: ?>
             <tr class="bg-gray-100 font-semibold">
               <td colspan="3" class="px-2 py-2">TOTAL</td>
-              <td class="px-2 py-2 text-right"><?php echo nf($totalDebit); ?></td>
-              <td class="px-2 py-2 text-right"><?php echo nf($totalCredit); ?></td>
-              <td class="px-2 py-2 text-right"><?php echo nf($balance); ?></td>
+              <td class="px-2 py-2 text-right amt"><?php echo nf($totalDebit); ?></td>
+              <td class="px-2 py-2 text-right amt"><?php echo nf($totalCredit); ?></td>
+              <td class="px-2 py-2 text-right amt"><?php echo nf($balance); ?></td>
             </tr>
           <?php endif; ?>
         </tbody>
