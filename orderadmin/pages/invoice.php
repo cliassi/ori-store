@@ -225,7 +225,6 @@ if (isset($post->save)) {
 </style>
 
 <form method="post" class="inv-compact">
-  <input type='hidden' name='UID' value='<?php print $post->UID; ?>' >
   <div class="row">
     <div class="col-sm-12">
       <div class="card">

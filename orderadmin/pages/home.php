@@ -74,29 +74,32 @@
 <?php
 // Helper function to check if image exists and return placeholder if not
 
+// Customer context: set when arriving from customer_details.php (?page=home&customer=<id>).
+// Note: we deliberately do NOT use ?uid= here, because index.php writes that into
+// $_SESSION['UID'], which is the logged-in staff user, not the customer.
+$ctxCustomerId = isset($get->customer) ? (int) $get->customer : 0;
+
 // Product categories data - ready for database integration
 $categories = select('*', 'product', '1=1 ORDER BY sort_order');
 // Product variants data - ready for database integration
 
-// Pre-load customer-specific prices if a customer is selected
-$customerPriceMap = [];
-if (isset($get->customer) && (int)$get->customer > 0) {
-  $customerId = (int)$get->customer;
-  $cpResult = select('product_variance_id, price', 'customer_product_variance', "customer_id = $customerId");
-  while ($cp = mysqli_fetch_object($cpResult)) {
-    $customerPriceMap[(int)$cp->product_variance_id] = (float)$cp->price;
-  }
+// When ordering on behalf of a customer, prefer that customer's negotiated price
+if ($ctxCustomerId) {
+  $variance = select(
+    'pv.*, cpv.price cp',
+    "product_variance pv LEFT JOIN customer_product_variance cpv ON cpv.product_variance_id = pv.id AND cpv.customer_id = $ctxCustomerId",
+    'pv.visible=1 ORDER BY pv.sort_order'
+  );
+} else {
+  $variance = select('pv.*, NULL cp', 'product_variance pv', 'pv.visible=1 ORDER BY pv.sort_order');
 }
-
-$variance = select('*', 'product_variance', 'visible=1 ORDER BY sort_order');
 $variants = [];
 while ($v = mysqli_fetch_object($variance)) {
-  $price = isset($customerPriceMap[$v->id]) ? $customerPriceMap[$v->id] : $v->price;
   $v = [
     'id' => $v->id,
     'product_id' => $v->product_id,
     'name' => $v->particulars,
-    'price' => $price,
+    'price' => $v->cp ? $v->cp : $v->price,
     'size' => $v->size,
     'pack' => $v->unit,
     'image' => getImageOrPlaceholder($v->image, $v->particulars)
@@ -121,8 +124,8 @@ foreach ($categories as $category) {
 <!-- Header Section -->
 <div class="bg-gradient-to-br from-primary to-secondary text-white">
   <!-- Search Bar -->
-  <div class="px-4 pt-8 pb-4">
-    <div class="relative max-w-md mx-auto">
+  <div id="stickySearchBarHome" class="px-4 pt-3 pb-3">
+    <div class="relative mx-auto" style="max-width: 260px;">
       <input type="text" id="searchInput" placeholder="Search products..." class="w-full px-4 py-3 rounded-full text-gray-800 pl-12 focus:outline-none focus:ring-2 focus:ring-white">
       <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -135,8 +138,20 @@ foreach ($categories as $category) {
     <div class="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
       <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-full"></div>
     </div>
-    <h2 class="text-xl text-black font-semibold">Good Morning</h2>
-    <p class="text-lg text-black">Sagor</p>
+    <?php
+      $hour = (int)date('H');
+      $greeting = ($hour < 12) ? 'Good Morning' : (($hour < 18) ? 'Good Afternoon' : 'Good Evening');
+      if ($ctxCustomerId) {
+        // Ordering on behalf of a customer: show that customer, not the staff user
+        $cust = R::findOne('customer', ' id = ? ', [$ctxCustomerId]);
+        $custName = $cust ? htmlspecialchars($cust->company ?: $cust->contact, ENT_QUOTES, 'UTF-8') : 'Valued Customer';
+      } else {
+        $cust = R::findOne('sys_user', ' id = ? ', [UID]);
+        $custName = $cust ? htmlspecialchars($cust->u_fullname, ENT_QUOTES, 'UTF-8') : 'Valued Customer';
+      }
+    ?>
+    <h2 class="text-xl text-black font-semibold"><?php echo $greeting; ?></h2>
+    <p class="text-lg text-black"><?php echo $custName; ?></p>
   </div>
 
 </div>
@@ -188,17 +203,27 @@ foreach ($products as $pg) {
         </div>
       </div>
       <!-- Slider Viewport -->
-      <div class="relative -ml-4" style='overflow: auto'>
-        <div class="slider-track flex gap-0 will-change-transform pb-2 pl-4 pr-4 -mx-6">
+      <div class="relative -ml-4 scrollbar-hide" style='overflow: auto'>
+        <div class="slider-track flex gap-6 will-change-transform pb-2 pl-4 pr-4 -mx-6">
           <?php foreach ($productGroup['variants'] as $product): ?>
-            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(36%); min-width: calc(36%);" data-name="<?php echo strtolower($product['name']); ?>" data-category="<?php echo strtolower($productGroup['category_name']); ?>" data-size="<?php echo strtolower($product['size']); ?>">
-              <!-- Floating Quantity Badge (Right) -->
+            <div class="slider-card overflow-visible product-item bg-white flex-shrink-0 relative" style="width: calc(36%); min-width: calc(36%);" data-name="<?php echo strtolower($product['name']); ?>" data-category="<?php echo strtolower($productGroup['category_name']); ?>" data-size="<?php echo strtolower($product['size']); ?>" data-price="<?php echo htmlspecialchars($product['price']); ?>" data-image="<?php echo htmlspecialchars(getImageOrPlaceholder($product['image'], $product['name'])); ?>">
+              <!-- Old floating badge kept hidden by default -->
               <div class="absolute z-10" style="top: 0.5rem;right: 0.8rem;">
                 <div class="qty-badge bg-white text-black rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>" style="display: none;">0</div>
               </div>
-              <!-- Close Button (Left) -->
-              <div class="absolute z-10 qty-close-btn" style="top: 0.5rem;left: 0.8rem; display: none;">
-                <div class="bg-white text-gray-500 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs cursor-pointer border border-gray-300 hover:border-gray-400 transition-colors" data-product="<?php echo $product['id']; ?>">✕</div>
+
+              <!-- Plus button (shown when qty == 0) -->
+              <button type="button" class="absolute add-plus-btn" aria-label="Add" style="top: 0.6rem; right: 0.6rem; background:#008048; color:#fff; width:30px; height:30px; border-radius:9999px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.25); z-index:20; opacity:1;">
+                <span style="font-size:18px; line-height:18px; font-weight:700;">+</span>
+              </button>
+
+              <!-- Quantity controls (shown when qty > 0) -->
+              <div class="absolute qty-controls" style="top: 0.35rem; right: 0.5rem; display:none; z-index:20;">
+                <div style="display:flex; align-items:center; gap:6px; background:#fff; border:1px solid #e5e7eb; border-radius:9999px; padding:4px 8px; box-shadow:0 1px 2px rgba(0,0,0,.06);">
+                  <button type="button" class="btn-dec" aria-label="Decrease" style="width:20px; height:20px; border-radius:9999px; border:1px solid #d1d5db; background:#fff; color:#111827; display:flex; align-items:center; justify-content:center; font-weight:700;">−</button>
+                  <span class="qty-text" style="min-width:10px; text-align:center; font-weight:700; color:#111827; font-size:12px; cursor:pointer;">1</span>
+                  <button type="button" class="btn-inc" aria-label="Increase" style="width:20px; height:20px; border-radius:9999px; border:1px solid #d1d5db; background:#fff; color:#111827; display:flex; align-items:center; justify-content:center; font-weight:700;">+</button>
+                </div>
               </div>
               <!-- Hidden select for form submission -->
               <select class="cart-item hidden" data-product="<?php echo $product['id']; ?>" aria-label="Quantity">
@@ -209,24 +234,24 @@ foreach ($products as $pg) {
               </select>
               <!-- Image Area -->
               <div class="px-1.5 py-0.25">
-                <div class="bg-gradient-to-b from-blue-50 to-white flex items-end justify-center overflow-hidden" style="aspect-ratio: 1; border-radius: 15px; border: solid 1px #efefef;">
+                <div class="flex items-end justify-center overflow-hidden" style="aspect-ratio: 1; border-radius: 20px;">
                   <?php
                   $imageSrc = getImageOrPlaceholder($product['image'], $product['name']);
                   if (file_exists($product['image'])):
                   ?>
-                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="h-full object-contain rounded-md">
+                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover">
                   <?php else: ?>
-                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="object-contain opacity-80 rounded-md">
+                    <img src="<?php echo $imageSrc; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover opacity-90">
                   <?php endif; ?>
                 </div>
               </div>
               <!-- Product Name -->
-              <div class="text-left text-[10px] text-black px-2 py-2 pb-0 line-clamp-2" style="white-space: nowrap"><?php echo htmlspecialchars($product['name']); ?></div>
+              <div class="text-left text-[12px] text-black font-semibold px-2 py-2 pb-0 line-clamp-2" style="white-space: nowrap"><?php echo htmlspecialchars($product['name']); ?></div>
               <!-- Blue Footer with Category -->
               <!-- <div class="text-center bg-brandBlue text-black text-xxl font-semibold"><?php echo $productGroup['category_name']; ?></div> -->
               <!-- Bottom Row: price only (select moved to top) -->
               <div class="flex items-center justify-center px-2">
-                <div class="font-lexend text-[16px] text-bold" style="color:red"><span class="text-[8px]">RM</span> <?php echo number_format($product['price'], 2); ?></div>
+                <div class="font-lexend font-bold" style="color:#ef4444; font-size:18px"><span style="font-size:10px">Tk</span> <?php echo number_format($product['price'], 2); ?></div>
               </div>
             </div>
           <?php endforeach; ?>
@@ -241,8 +266,8 @@ foreach ($products as $pg) {
 
 <!-- Hidden Order Form and Floating Action Button -->
 <form method="post" action="?page=invoice" id="form-order"></form>
-<input type='hidden' name='UID' value='<?php print $get->uid; ?>' >
-<button id="proceedToInvoice"
+<!-- Keep floating button hidden; basket bar will be primary CTA -->
+<button id="proceedToInvoice" style="display:none"
   class="fixed bottom-4 right-4 z-40 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center focus:outline-none active:opacity-90 border-2 border-blue-700"
   type="button"
   aria-label="Open Cart / Proceed to Invoice">
@@ -251,6 +276,20 @@ foreach ($products as $pg) {
     <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l3-8H6.4M7 13L5.4 5M7 13l-2 9m12-9l-2 9m-6 0h8M7 22a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z" />
   </svg>
 </button>
+
+<!-- Basket bar -->
+<div id="basketBarWrap">
+  <div id="basketBarHome">
+    <div class="basket-inner">
+      <div>
+        <span class="basket-title">Basket</span>
+        <span> • </span>
+        <span id="basketCountHome">0 Item</span>
+      </div>
+      <div id="basketProceedHome" class="basket-price">Tk0.00</div>
+    </div>
+  </div>
+</div>
 
 <!-- Customer Select Modal (Bootstrap compatible) -->
 <div class="modal fade custom-fallback" id="orderModalHome" tabindex="-1" aria-hidden="true">
@@ -365,9 +404,58 @@ foreach ($products as $pg) {
     touch-action: pan-y;
     cursor: grab;
   }
+
+  /* Sticky search bar */
+  #stickySearchBarHome {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: #ffffff;
+    transition: transform .25s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  #stickySearchBarHome.hide-on-down {
+    transform: translateY(-100%);
+  }
+
+  /* Basket bar */
+  #basketBarWrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    background: #ffffff;
+    padding: 10px;
+    padding-bottom: 50px;
+    display: none;
+  }
+  #basketBarHome {
+    position: static;
+    background: #22b55e; /* green */
+    color: #ffffff;
+    padding: 12px 16px;
+    border-radius: 9999px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.18);
+    cursor: pointer;
+  }
+  #basketBarHome .basket-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #basketBarHome .basket-title {
+    font-weight: 700;
+  }
+  #basketBarHome .basket-price {
+    font-weight: 700;
+  }
 </style>
 
 <script>
+  // Customer this order is being placed for (set when arriving from customer_details)
+  const CTX_CUSTOMER_ID = <?php echo $ctxCustomerId ? json_encode((string) $ctxCustomerId) : 'null'; ?>;
   // Helpers to read current translateX from computed matrix
   function getTranslateX(el) {
     const style = getComputedStyle(el);
@@ -749,6 +837,9 @@ foreach ($products as $pg) {
     const formOrder = document.getElementById('form-order');
     const customerSelect = document.getElementById('customerSelectHome');
     const confirmCustomerBtn = document.getElementById('confirmCustomerHome');
+    const basketWrap = document.getElementById('basketBarWrap');
+    const basketCount = document.getElementById('basketCountHome');
+    const basketProceed = document.getElementById('basketProceedHome');
 
     const qtyModalEl = document.getElementById('qtyModalHome');
     const qtyInputEl = document.getElementById('qtyInputHome');
@@ -838,14 +929,42 @@ foreach ($products as $pg) {
         badge.textContent = qty;
         badge.style.display = qty > 0 ? 'flex' : 'none';
       });
-      // Show/hide close button
-      const card = sel.closest('.product-item');
-      if (card) {
-        const closeBtn = card.querySelector('.qty-close-btn');
-        if (closeBtn) {
-          closeBtn.style.display = qty > 0 ? 'block' : 'none';
+    }
+
+    // Helpers for the plus/minus UI and basket bar
+    function parsePrice(p) {
+      const n = parseFloat(p);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function syncControls(card) {
+      const sel = card.querySelector('select.cart-item');
+      if (!sel) return;
+      const qty = parseInt(sel.value || '0', 10);
+      const plus = card.querySelector('.add-plus-btn');
+      const group = card.querySelector('.qty-controls');
+      const qtxt = card.querySelector('.qty-text');
+      if (plus) plus.style.display = qty > 0 ? 'none' : 'flex';
+      if (group) group.style.display = qty > 0 ? 'block' : 'none';
+      if (qtxt) qtxt.textContent = String(qty);
+      updateAllBadges(sel.getAttribute('data-product'), sel);
+    }
+
+    function updateBasketBar() {
+      let totalItems = 0;
+      let totalPrice = 0;
+      document.querySelectorAll('.product-item').forEach(card => {
+        const sel = card.querySelector('select.cart-item');
+        if (!sel) return;
+        const qty = parseInt(sel.value || '0', 10);
+        if (qty > 0) {
+          totalItems += qty;
+          totalPrice += qty * parsePrice(card.dataset.price);
         }
-      }
+      });
+      if (basketCount) basketCount.textContent = `${totalItems} ${totalItems === 1 ? 'Item' : 'Items'}`;
+      if (basketProceed) basketProceed.textContent = `Tk${totalPrice.toFixed(2)}`;
+      if (basketWrap) basketWrap.style.display = totalItems > 0 ? 'block' : 'none';
     }
 
     // Handle badge click to increment quantity
@@ -864,28 +983,19 @@ foreach ($products as $pg) {
         }
         sel.value = String(qty);
         updateAllBadges(productId, sel);
-      });
-    });
-
-    // Handle close button click to reset quantity to 0
-    document.querySelectorAll('.qty-close-btn').forEach(closeBtn => {
-      const closeIcon = closeBtn.querySelector('div');
-      closeIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const productId = closeIcon.getAttribute('data-product');
-        const sel = document.querySelector(`select.cart-item[data-product="${productId}"]`);
-        if (!sel) return;
-        sel.value = '0';
-        updateAllBadges(productId, sel);
+        updateBasketBar();
       });
     });
 
     // Update badge when select changes
     document.querySelectorAll('select.cart-item').forEach(sel => {
       const productId = sel.getAttribute('data-product');
-      
+
       sel.addEventListener('change', () => {
         updateAllBadges(productId, sel);
+        const card = sel.closest('.product-item');
+        if (card) syncControls(card);
+        updateBasketBar();
         if (sel.value !== '__custom__') return;
         openQtyModal(sel);
       });
@@ -899,36 +1009,81 @@ foreach ($products as $pg) {
       applyQtyToSelect(qtyTargetSelect, qtyInputEl ? qtyInputEl.value : '0');
       const productId = qtyTargetSelect.getAttribute('data-product');
       updateAllBadges(productId, qtyTargetSelect);
+      const card = qtyTargetSelect.closest('.product-item');
+      if (card) syncControls(card);
       qtyTargetSelect = null;
       closeQtyModal();
+      updateBasketBar();
     });
 
     qtyCancelBtn && qtyCancelBtn.addEventListener('click', () => {
       if (qtyTargetSelect) qtyTargetSelect.value = '0';
       const productId = qtyTargetSelect.getAttribute('data-product');
       updateAllBadges(productId, qtyTargetSelect);
+      const card = qtyTargetSelect.closest('.product-item');
+      if (card) syncControls(card);
       qtyTargetSelect = null;
       closeQtyModal();
+      updateBasketBar();
     });
 
-    // Click card to increment quantity (mobile-friendly)
+    // Initial UI sync per card (background tap no longer increments)
     document.querySelectorAll('.product-item').forEach(card => {
-      card.addEventListener('click', (e) => {
-        // avoid increment when clicking on badge or select
-        if (e.target && (e.target.tagName === 'SELECT' || e.target.closest('select') || e.target.closest('.qty-badge'))) return;
-        const sel = card.querySelector('select.cart-item');
-        if (!sel) return;
-        let qty = parseInt(sel.value || '0', 10) + 1;
-        if (qty > 10) {
+      syncControls(card);
+    });
+
+    // Delegated handlers so cloned slider items also work
+    function getCardAndSelectFrom(target) {
+      const card = target.closest && target.closest('.product-item');
+      if (!card) return {};
+      const sel = card.querySelector('select.cart-item');
+      return { card, sel };
+    }
+
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+      if (!t) return;
+      // Plus (add)
+      if (t.classList.contains('add-plus-btn') || (t.parentElement && t.parentElement.classList && t.parentElement.classList.contains('add-plus-btn'))) {
+        const { card, sel } = getCardAndSelectFrom(t);
+        if (!card || !sel) return;
+        sel.value = '1';
+        syncControls(card);
+        updateBasketBar();
+        return;
+      }
+      // Increment
+      if (t.classList.contains('btn-inc')) {
+        const { card, sel } = getCardAndSelectFrom(t);
+        if (!card || !sel) return;
+        let q = parseInt(sel.value || '0', 10) + 1;
+        if (q > 10) {
           const opt = document.createElement('option');
-          opt.value = String(qty);
-          opt.textContent = String(qty);
+          opt.value = String(q);
+          opt.textContent = String(q);
           sel.appendChild(opt);
         }
-        sel.value = String(qty);
-        const productId = sel.getAttribute('data-product');
-        updateAllBadges(productId, sel);
-      });
+        sel.value = String(q);
+        syncControls(card);
+        updateBasketBar();
+        return;
+      }
+      // Decrement
+      if (t.classList.contains('btn-dec')) {
+        const { card, sel } = getCardAndSelectFrom(t);
+        if (!card || !sel) return;
+        let q = Math.max(0, parseInt(sel.value || '0', 10) - 1);
+        sel.value = String(q);
+        syncControls(card);
+        updateBasketBar();
+        return;
+      }
+      if (t.classList.contains('qty-text')) {
+        const { card, sel } = getCardAndSelectFrom(t);
+        if (!card || !sel) return;
+        openQtyModal(sel);
+        return;
+      }
     });
 
     function buildHiddenInputs() {
@@ -971,7 +1126,18 @@ foreach ($products as $pg) {
         return;
       }
 
-      // Always open customer selection modal before submit (like sell3.php)
+      // Ordering for a specific customer: skip the modal and submit directly
+      if (CTX_CUSTOMER_ID) {
+        const c = document.createElement('input');
+        c.type = 'hidden';
+        c.name = 'customer_id';
+        c.value = CTX_CUSTOMER_ID;
+        formOrder.appendChild(c);
+        formOrder.submit();
+        return;
+      }
+
+      // Otherwise open customer selection modal before submit (like sell3.php)
       const modalEl = document.getElementById('orderModalHome');
       try {
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1013,5 +1179,14 @@ foreach ($products as $pg) {
       }
       submitWithOptionalCustomer();
     });
+
+    // Basket interactions: clicking bar or right price proceeds
+    const basketBarEl = document.getElementById('basketBarHome');
+    const basketPriceEl = document.getElementById('basketProceedHome');
+    basketBarEl && basketBarEl.addEventListener('click', () => { proceedBtn && proceedBtn.click(); });
+    basketPriceEl && basketPriceEl.addEventListener('click', (e) => { e.stopPropagation(); proceedBtn && proceedBtn.click(); });
+
+    // Initialize basket visibility/totals on load
+    updateBasketBar();
   }
 </script>
