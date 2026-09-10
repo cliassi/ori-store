@@ -47,8 +47,8 @@ $showAll = isset($get->show) && $get->show === 'all';
 
 <div class="mb-6">
   <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-xs statement-table">
+    <div class="overflow-x-auto" style="padding: 10px; margin: 10px; border: solid 1px #aaa">
+      <table class="w-full text-xs statement-table" style="border: solid 1px #aaa">
         <thead class="bg-gray-50">
           <tr>
             <th class="px-2 py-2 text-left">Date</th>
@@ -112,7 +112,7 @@ $showAll = isset($get->show) && $get->show === 'all';
             </tr>
           <?php else: ?>
             <tr class="bg-gray-100 font-semibold">
-              <td colspan="3" class="px-2 py-2">TOTAL</td>
+              <td colspan="3" class="px-2 py-2 text-right amt">TOTAL</td>
               <td class="px-2 py-2 text-right amt"><?php echo nf($totalDebit); ?></td>
               <td class="px-2 py-2 text-right amt"><?php echo nf($totalCredit); ?></td>
               <td class="px-2 py-2 text-right amt"><?php echo nf($balance); ?></td>

@@ -268,7 +268,7 @@ foreach ($products as $pg) {
 
 <!-- Hidden Order Form and Floating Action Button -->
 <form method="post" action="?page=place_order" id="form-order"></form>
-<input type='hidden' name='UID' value='<?php print $get->uid; ?>' >
+<input type='hidden' name='UID' value='<?php print isset($get->uid) ? $get->uid : $_SESSION['UID']; ?>' >
 <?php if (!((defined('GUEST') && GUEST))): ?>
 <!-- Keep floating button hidden; basket bar will be primary CTA -->
 <button id="proceedToInvoice" style="display:none"

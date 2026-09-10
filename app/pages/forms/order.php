@@ -1,4 +1,5 @@
 <?php
+die(0);
 if (METHOD == 'collect') {
   $obj = R::dispense("stock_collect");
   $obj->status = "New";

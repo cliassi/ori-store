@@ -1,4 +1,5 @@
 <?php
+dd($_SESSION);
 $button = "<a href='' class='has-checkbox hidden'><span><input type='checkbox' id='all-order' checked data-type='all'> Order</span></a>";
 
 // Determine if logged-in user is Delivery Staff and get their staff name

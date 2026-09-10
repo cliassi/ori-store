@@ -1,6 +1,8 @@
 <?php 
 if(METHOD == 'add'){
+// dd([$_SESSION, METHOD]);
   require 'forms/order.php';
+  // exit;
 } elseif(METHOD == 'return'){
   require 'forms/order.php';
 } elseif(METHOD == 'collect'){

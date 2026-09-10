@@ -111,10 +111,9 @@ foreach($products as $product){
 		</strong>
 	</div>
 <?php 
+  	$branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
 
-  $branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
-
-require_once 'app/pages/' . $page . '.php'; ?>
+	require_once 'app/pages/' . $page . '.php'; ?>
 </div>
 <script type="text/javascript">
 
