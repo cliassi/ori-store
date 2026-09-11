@@ -28,8 +28,6 @@
   }
 </style>
 <?php
-ensureMysqlColumn('order_item', 'is_verify', "BOOLEAN NOT NULL DEFAULT FALSE AFTER `product_variance_id`");
-ensureMysqlColumn('payment', 'is_verify', "BOOLEAN NOT NULL DEFAULT FALSE AFTER `supplier_id`");
 $obj = R::dispense('supplier');
 if (defined('ID')) {
   $obj = R::load('supplier', ID);
@@ -313,14 +311,11 @@ foreach ($lorries as $l) {
   $lorryMap[$l->id] = $l->lorry_no . ' - ' . $l->driver_name;
 }
 
-$bq = mysqli_fetch_object(select("SELECT 
-(SELECT IFNULL(SUM(cost * quantity),0) amount FROM `order`, order_item ii WHERE  ii.order_id=order.id AND supplier_id=$obj->id) `order`,
-(SELECT IFNULL(SUM(cost * quantity),0) amount FROM `goods_return`, `goods_return_item` ii WHERE ii.order_id=goods_return.id AND supplier_id=$obj->id) `return`,
-(SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE supplier_id=$obj->id) `payment`"));
-sum('credit', $bq->return);
-sum('credit', $bq->payment);
-sum('debit', $bq->order);
-sum('balance', $bq->order - $bq->return - $bq->payment);
+$bq = mysqli_fetch_object(select("SELECT
+(SELECT IFNULL(SUM(oi.cost * oi.quantity), 0) FROM `order` o INNER JOIN order_item oi ON oi.order_id = o.id WHERE o.supplier_id = $obj->id) `order`,
+(SELECT IFNULL(SUM(gri.cost * gri.quantity), 0) FROM goods_return gr INNER JOIN goods_return_item gri ON gri.order_id = gr.id WHERE gr.supplier_id = $obj->id) `return`,
+(SELECT IFNULL(SUM(amount), 0) FROM payment WHERE supplier_id = $obj->id) `payment`,
+(SELECT IFNULL(SUM(amount), 0) FROM refund WHERE supplier_id = $obj->id AND payment_method = 'Supplier ID') `refund`"));
 
 if (isset($get->show) && $get->show == "all") {
   $limit = "";
@@ -329,116 +324,119 @@ if (isset($get->show) && $get->show == "all") {
 }
 
 $trans = select("SELECT * FROM (SELECT * FROM (
-  SELECT 'order' src, id, created_at date, confirm_date, created_by, created_at, orderItems(id) particulars, delivered_by, (SELECT SUM(cost * quantity) FROM `order_item` ii WHERE ii.order_id=order.id) amount FROM `order` WHERE supplier_id=$obj->id
-  UNION
-  SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE supplier_id=$obj->id
-  UNION
-  SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE supplier_id=$obj->id
-) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b  order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
-//New added for balance
-$transForTotal = select("SELECT * FROM (SELECT * FROM (
-  SELECT 'order' src, id, created_at date, confirm_date, created_by, created_at, orderItems(id) particulars, delivered_by, (SELECT SUM(cost * quantity) FROM `order_item` ii WHERE ii.order_id=order.id) amount FROM `order` WHERE supplier_id=$obj->id
-  UNION
-  SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE supplier_id=$obj->id
-  UNION
-  SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE supplier_id=$obj->id
-) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC) b  order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
+  SELECT 'order' src, o.id, o.created_at date, o.confirm_date, o.created_by, o.created_at, '' particulars, o.delivered_by, o.lorry_id, COALESCE(oa.amount, 0) amount
+    FROM `order` o
+    LEFT JOIN (SELECT order_id, SUM(cost * quantity) amount FROM order_item GROUP BY order_id) oa ON oa.order_id = o.id
+    WHERE $orderWhere
+  UNION ALL
+  SELECT 'goods_return' src, gr.id, gr.order_date date, '' confirm_date, gr.created_by, gr.created_at, '' particulars, '' delivered_by, NULL lorry_id, COALESCE(gra.amount, 0) amount
+    FROM goods_return gr
+    LEFT JOIN (SELECT order_id, SUM(cost * quantity) amount FROM goods_return_item GROUP BY order_id) gra ON gra.order_id = gr.id
+    WHERE $grWhere
+  UNION ALL
+  SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, NULL lorry_id, amount FROM payment WHERE $payWhere
+  UNION ALL
+  SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, NULL lorry_id, amount FROM refund WHERE $refundWhere
+) a ORDER BY COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b ORDER BY COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
 
-// balance
-$i = 1;
-$users = userList();
-while ($item = mysqli_fetch_object($transForTotal)) {
-  if ($item->src == 'order') {
-    sum('balance', 0 - $item->amount);
-    sum('debit', 0 - $item->amount);
-  } elseif ($item->src == 'goods_return') {
-    sum('balance', $item->amount);
-    sum('credit', 0 - $item->amount);
-  } else {
-    sum('balance', $item->amount);
-    sum('credit', 0 - $item->amount);
+$transactionRows = [];
+$orderIds = [];
+$returnIds = [];
+while ($row = mysqli_fetch_object($trans)) {
+  $row->particulars = '';
+  $transactionRows[] = $row;
+  if ($row->src === 'order') {
+    $orderIds[] = (int) $row->id;
+  } elseif ($row->src === 'goods_return') {
+    $returnIds[] = (int) $row->id;
   }
 }
 
-// ✅ CORRECTED - Final query with WHERE conditions
-$trans = select("SELECT * FROM (SELECT * FROM (
-  SELECT 'order' src, id, created_at date, confirm_date, created_by, created_at, orderItems(id) particulars, delivered_by, (SELECT SUM(cost * quantity) FROM `order_item` ii WHERE ii.order_id=order.id) amount FROM `order` WHERE $orderWhere
-  UNION
-  SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE $grWhere
-  UNION
-  SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE $payWhere
-  UNION
-  SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `refund` WHERE $refundWhere
-) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
+$orderItemsByOrder = [];
+if ($orderIds) {
+  $orderItemRows = select("SELECT oi.order_id, oi.product_variance_id, oi.description, oi.cost, oi.quantity, pv.size, pv.unit
+    FROM order_item oi
+    LEFT JOIN product_variance pv ON pv.id = oi.product_variance_id
+    WHERE oi.order_id IN (" . implode(',', $orderIds) . ")
+    ORDER BY oi.order_id, oi.id");
+  while ($row = mysqli_fetch_object($orderItemRows)) {
+    $orderItemsByOrder[(int) $row->order_id][] = $row;
+  }
+}
 
-$balance = 0;
+$returnItemsByReturn = [];
+if ($returnIds) {
+  $returnItemRows = select("SELECT order_id, description, cost, quantity
+    FROM goods_return_item
+    WHERE order_id IN (" . implode(',', $returnIds) . ")
+    ORDER BY order_id, id");
+  while ($row = mysqli_fetch_object($returnItemRows)) {
+    $returnItemsByReturn[(int) $row->order_id][] = $row;
+  }
+}
 
-if ($limit) {
-  // ✅ CORRECTED - Opening balance query with WHERE conditions
-  $otrans = select("SELECT SUM(CASE WHEN src = 'order' THEN amount ELSE 0 END) `order`, SUM(CASE WHEN src = 'goods_return' THEN amount ELSE 0 END) `goods_return`, SUM(CASE WHEN src = 'payment' THEN amount ELSE 0 END) `payment`, SUM(CASE WHEN src = 'refund' THEN amount ELSE 0 END) `refund` FROM (SELECT * FROM (
-    SELECT 'order' src, id, created_at date, confirm_date, created_by, created_at, orderItems(id) particulars, delivered_by, (SELECT SUM(cost * quantity) FROM `order_item` ii WHERE ii.order_id=order.id) amount FROM `order` WHERE $orderWhere
-    UNION
-    SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE $grWhere
-    UNION
-    SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE $payWhere
-    UNION
-    SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `refund` WHERE $refundWhere
-  ) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC) b order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
-  $opening = mysqli_fetch_object($otrans);
-  $balance = $opening->order + $opening->goods_return + $opening->payment + $opening->refund;
-
-  sum('balance', $opening->order);
-  sum('debit', $opening->order);
-  sum('balance', 0 - $opening->goods_return);
-  sum('credit', $opening->goods_return);
-
-  sum('balance', 0 - $opening->refund);
-  sum('credit', $opening->refund);
-  sum('balance', 0 - $opening->payment);
-  sum('credit', $opening->payment);
-
-  while ($item = mysqli_fetch_object($trans)) {
-    if ($item->src == 'order') {
-      sum('balance', -$item->amount);
-      sum('debit', -$item->amount);
-    } elseif ($item->src == 'goods_return') {
-      sum('balance', $item->amount);
-      sum('credit', -$item->amount);
-    } elseif ($item->src == 'refund') {
-      sum('balance', $item->amount);
-      sum('credit', -$item->amount);
-    } else {
-      sum('balance', $item->amount);
-      sum('credit', -$item->amount);
+foreach ($transactionRows as $row) {
+  if ($row->src === 'order') {
+    foreach ($orderItemsByOrder[(int) $row->id] ?? [] as $item) {
+      $description = htmlspecialchars(trim((string) $item->description), ENT_QUOTES, 'UTF-8');
+      $size = htmlspecialchars((string) $item->size, ENT_QUOTES, 'UTF-8');
+      $unit = htmlspecialchars((string) $item->unit, ENT_QUOTES, 'UTF-8');
+      $cost = (float) $item->cost;
+      $quantity = (float) $item->quantity;
+      $row->particulars .= '<div class="order-item"><span class="item-count">' . (substr_count($row->particulars, 'item-count') + 1) . '.</span> (' . $description . ' ' . $size . ' x ' . $unit . ') <span class="item-price">(' . $cost . ' X <span class="item-qty">' . $quantity . '</span> = ' . ($quantity * $cost) . ')</span></div>';
+    }
+  } elseif ($row->src === 'goods_return') {
+    foreach ($returnItemsByReturn[(int) $row->id] ?? [] as $item) {
+      $description = htmlspecialchars((string) $item->description, ENT_QUOTES, 'UTF-8');
+      $cost = (float) $item->cost;
+      $quantity = (float) $item->quantity;
+      $row->particulars .= '<div style="border-bottom: solid 1px #ccc;">' . $description . ', <b class="frht">(' . $cost . ' X ' . $quantity . ' = ' . ($quantity * $cost) . ')</b></div>';
     }
   }
-
-  // ✅ CORRECTED - Refresh query with WHERE conditions
-  $trans = select("SELECT * FROM (SELECT * FROM (
-    SELECT 'order' src, id, created_at date, confirm_date, created_by, created_at, orderItems(id) particulars, delivered_by, (SELECT SUM(cost * quantity) FROM `order_item` ii WHERE ii.order_id=order.id) amount FROM `order` WHERE $orderWhere
-    UNION
-    SELECT 'goods_return' src, id, order_date date, '' confirm_date, created_by, created_at, returnedItems(id) particulars, '' delivered_by, (SELECT SUM(cost * quantity) FROM `goods_return_item` ii WHERE ii.order_id=goods_return.id) amount FROM `goods_return` WHERE $grWhere
-    UNION
-    SELECT 'payment' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `payment` WHERE $payWhere
-    UNION
-    SELECT 'refund' src, id, date, '' confirm_date, created_by, created_at, description particulars, '' delivered_by, amount FROM `refund` WHERE $refundWhere
-  ) a order by COALESCE(NULLIF(confirm_date, ''), date) DESC, CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END ASC, created_at DESC $limit) b order by COALESCE(NULLIF(confirm_date, ''), date), CASE WHEN src = 'order' THEN 0 WHEN src = 'payment' THEN 1 ELSE 2 END, created_at ");
-
 }
+
+// Start the running totals at the opening balance before the displayed rows.
+// This preserves full-history totals without a second transaction query.
+$displayCredit = 0;
+$displayDebit = 0;
+$displayBalance = 0;
+foreach ($transactionRows as $row) {
+  $amount = (float) $row->amount;
+  if ($row->src === 'order') {
+    $displayDebit += $amount;
+    $displayBalance += $amount;
+  } else {
+    $displayCredit += $amount;
+    $displayBalance -= $amount;
+  }
+}
+
+sum('credit', ($bq->return + $bq->payment + $bq->refund) - $displayCredit);
+sum('debit', $bq->order - $displayDebit);
+sum('balance', ($bq->order - $bq->return - $bq->payment - $bq->refund) - $displayBalance);
+
+$i = 1;
+$users = userList();
 $orderItemSummary = [];
 if ($f_variance) {
-  $orderItems = select("SELECT
-    order_id,
-    IFNULL(SUM(quantity), 0) qty,
-    COALESCE(NULLIF(GROUP_CONCAT(DISTINCT NULLIF(TRIM(description), '') ORDER BY id SEPARATOR ' / '), ''), '') goods
-  FROM order_item
-  WHERE product_variance_id = " . (int) $f_variance . "
-  GROUP BY order_id");
-  while ($row = mysqli_fetch_object($orderItems)) {
-    $orderItemSummary[(int) $row->order_id] = [
-      'qty' => (int) $row->qty,
-      'goods' => $row->goods
-    ];
+  foreach ($orderItemsByOrder as $orderId => $items) {
+    $qty = 0;
+    $goods = [];
+    foreach ($items as $item) {
+      if ((int) $item->product_variance_id !== $f_variance) {
+        continue;
+      }
+      $qty += (int) $item->quantity;
+      if (trim((string) $item->description) !== '') {
+        $goods[] = trim((string) $item->description);
+      }
+    }
+    if ($qty > 0 || $goods) {
+      $orderItemSummary[$orderId] = [
+        'qty' => $qty,
+        'goods' => implode(' / ', array_unique($goods))
+      ];
+    }
   }
 }
 $orderVerifyMap = [];
@@ -454,7 +452,7 @@ while ($row = mysqli_fetch_object($paymentVerifyRs)) {
 }
 
 $totalQty = 0;
-while ($item = mysqli_fetch_object($trans)) {
+foreach ($transactionRows as $item) {
   print "<tr>";
   print "<td>$i</td>";
   if ($item->src == 'order') {
@@ -493,9 +491,8 @@ while ($item = mysqli_fetch_object($trans)) {
   // }
   // ✅ LORRY COLUMN
   if ($item->src == 'order') {
-    $order = R::load('order', $item->id);
-    $lorryName = $order->lorry_id && isset($lorryMap[$order->lorry_id])
-      ? $lorryMap[$order->lorry_id]
+    $lorryName = $item->lorry_id && isset($lorryMap[$item->lorry_id])
+      ? $lorryMap[$item->lorry_id]
       : '';
     print "<td>$lorryName</td>";
   } else {
