@@ -645,6 +645,28 @@ if (isset($post->withdraw)) {
 $d = isset($get->d) ? $get->d : subDay(5);
 $t = isset($get->t) ? $get->t : today();
 
+// Session-based account_path filter
+if (isset($get->set_account_path) && is_string($get->set_account_path)) {
+    $rawPath = trim($get->set_account_path);
+    if (preg_match('#^/\d+(/\d+)*/?$#', $rawPath)) {
+        $_SESSION['cash_account_path'] = $rawPath;
+        $cleanUrl = '?d=' . urlencode($d) . '&t=' . urlencode($t) . (isset($get->cw) ? '&cw=' . urlencode($get->cw) : '');
+        redir($cleanUrl);
+    }
+}
+if (isset($get->clear_account_path)) {
+    unset($_SESSION['cash_account_path']);
+    $cleanUrl = '?d=' . urlencode($d) . '&t=' . urlencode($t) . (isset($get->cw) ? '&cw=' . urlencode($get->cw) : '');
+    redir($cleanUrl);
+}
+$accountPathFilter = '';
+if (isset($_SESSION['cash_account_path']) && is_string($_SESSION['cash_account_path'])) {
+    $rawPath = trim($_SESSION['cash_account_path']);
+    if (preg_match('#^/\d+(/\d+)*/?$#', $rawPath)) {
+        $accountPathFilter = $rawPath;
+    }
+}
+
 
 // dd([uid(), isset($get->approve) ,isset($get->id)]);
 if (uid() == 1 && isset($get->approve) && isset($get->id)) {
@@ -1288,9 +1310,9 @@ $summary2 = mysqli_fetch_object(select("SELECT
 			UNION
 			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE branch_id=$branch_id AND amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method='Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
+			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'" . ($accountPathFilter !== '' ? " AND e.accountpath LIKE '" . $accountPathFilter . "%'" : " AND e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method='Cash'") . "
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method<>'Cash' AND e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'
+			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'" . ($accountPathFilter !== '' ? " AND e.accountpath LIKE '" . $accountPathFilter . "%'" : " AND e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method<>'Cash'") . "
 			UNION
 			SELECT '' se, 'cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t') AND company=$company->id
 			UNION
@@ -1317,6 +1339,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 		print "<th>Del</th>";
 	}
 	print "</tr>";
+
 	$openingTailColspan = 6 + (uid() == 1 ? 1 : 0);
 	print "<tr class='opening-balance-row'><th colspan='6'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
 	$i = 1;
@@ -1560,9 +1583,22 @@ $summary2 = mysqli_fetch_object(select("SELECT
 			$r .= "<td></td>";
 		}
 		*/
-		if (uid() == 1) {
-			$r .= "<td><a href='#' class='edit-transaction' data-source='$tr->source' data-id='$tr->id' data-bs-toggle='modal' data-bs-target='#editModal'><i class='fa fa-edit' style='color: #0066cc; margin-right: 10px;'></i></a><a class='protected-link' href='?d=$d&t=$t&del=$tr->source&id=$tr->id' target='_blank'><i class='fa fa-trash'></i></a></td>";
+	$eyeIconHtml = '';
+	if ((uid() == 1 || isUserIn(['superadmin'])) && in_array((string) $tr->source, ['expense_account_entry', 'expense_account_entry_bank'], true) && $expenseAccountId > 0) {
+		$eyeAccountPath = getFieldValue('expense_account', 'path', "id=" . (int) $expenseAccountId);
+		if (!empty($eyeAccountPath)) {
+			if ($accountPathFilter !== '' && $accountPathFilter === $eyeAccountPath) {
+				$eyeIconHtml = "<a href='?d=" . urlencode($d) . "&t=" . urlencode($t) . "&cw=" . urlencode($get->cw) . "&clear_account_path=1' title='Remove filter: " . htmlspecialchars($eyeAccountPath) . "'><i class='fa fa-eye-slash' style='color: #d9534f; margin-right: 10px;'></i></a>";
+			} else {
+				$eyeIconHtml = "<a href='?d=" . urlencode($d) . "&t=" . urlencode($t) . "&cw=" . urlencode($get->cw) . "&set_account_path=" . urlencode($eyeAccountPath) . "' title='Filter by: " . htmlspecialchars($eyeAccountPath) . "'><i class='fa fa-eye' style='color: #5cb85c; margin-right: 10px;'></i></a>";
+			}
 		}
+	}
+	$editDeleteHtml = '';
+	if (uid() == 1) {
+		$editDeleteHtml = "<a href='#' class='edit-transaction' data-source='$tr->source' data-id='$tr->id' data-bs-toggle='modal' data-bs-target='#editModal'><i class='fa fa-edit' style='color: #0066cc; margin-right: 10px;'></i></a><a class='protected-link' href='?d=$d&t=$t&del=$tr->source&id=$tr->id' target='_blank'><i class='fa fa-trash'></i></a>";
+	}
+	$r .= "<td>" . $eyeIconHtml . $editDeleteHtml . "</td>";
 		$rowClasses = $tr->source;
 		if ($cashDelta < 0)
 			$rowClasses .= ' cash-out-row';
