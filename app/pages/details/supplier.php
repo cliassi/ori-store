@@ -377,7 +377,7 @@ if ($returnIds) {
 
 foreach ($transactionRows as $row) {
   if ($row->src === 'order') {
-    foreach ($orderItemsByOrder[(int) $row->id] ?? [] as $item) {
+    foreach (isset($orderItemsByOrder[(int) $row->id]) ? $orderItemsByOrder[(int) $row->id] : [] as $item) {
       $description = htmlspecialchars(trim((string) $item->description), ENT_QUOTES, 'UTF-8');
       $size = htmlspecialchars((string) $item->size, ENT_QUOTES, 'UTF-8');
       $unit = htmlspecialchars((string) $item->unit, ENT_QUOTES, 'UTF-8');
@@ -386,7 +386,7 @@ foreach ($transactionRows as $row) {
       $row->particulars .= '<div class="order-item"><span class="item-count">' . (substr_count($row->particulars, 'item-count') + 1) . '.</span> (' . $description . ' ' . $size . ' x ' . $unit . ') <span class="item-price">(' . $cost . ' X <span class="item-qty">' . $quantity . '</span> = ' . ($quantity * $cost) . ')</span></div>';
     }
   } elseif ($row->src === 'goods_return') {
-    foreach ($returnItemsByReturn[(int) $row->id] ?? [] as $item) {
+    foreach (isset($returnItemsByReturn[(int) $row->id]) ? $returnItemsByReturn[(int) $row->id] : [] as $item) {
       $description = htmlspecialchars((string) $item->description, ENT_QUOTES, 'UTF-8');
       $cost = (float) $item->cost;
       $quantity = (float) $item->quantity;
