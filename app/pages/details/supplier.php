@@ -343,7 +343,6 @@ $transactionRows = [];
 $orderIds = [];
 $returnIds = [];
 while ($row = mysqli_fetch_object($trans)) {
-  $row->particulars = '';
   $transactionRows[] = $row;
   if ($row->src === 'order') {
     $orderIds[] = (int) $row->id;
