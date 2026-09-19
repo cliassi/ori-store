@@ -606,6 +606,9 @@ if (isset($get->h)) {
             $returnRow = $returnResult ? mysqli_fetch_object($returnResult) : null;
             $sumReturn = $returnRow ? (float) $returnRow->total_returned : 0;
 
+            $sumCollect = $totalCollectQty;
+            $sumDelivery = $totalDeliveryQty;
+            $sumReturn = $totalReturnQty;
             $sumBalance = $sumCollect - $sumDelivery - $sumReturn;
             ?>
             <tr style="font-weight: bold; background-color: #f0f0f0;">
