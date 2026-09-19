@@ -210,8 +210,7 @@ if (isset($get->h)) {
     if ($collectRows && mysqli_num_rows($collectRows) > 0) {
       mysqli_data_seek($collectRows, 0);
       while ($cRow = mysqli_fetch_object($collectRows)) {
-        $cKey = $cRow->stock_collect_id . '_' . $cRow->product_id . '_' . $cRow->product_variance_id . '_' . $cRow->customer_id;
-        $collectData[$cKey] = $cRow;
+        $collectData[(int) $cRow->stock_collect_item_id] = $cRow;
         if ($cRow->invoice_item_id) {
           if (!isset($invoiceItemCount[$cRow->invoice_item_id])) {
             $invoiceItemCount[$cRow->invoice_item_id] = 0;
@@ -826,6 +825,7 @@ if (isset($get->h)) {
               $collectTotalSql = "SELECT SUM(IFNULL(sci.quantity, 0)) AS total_collected
     FROM stock_collect sc
     INNER JOIN stock_collect_item sci ON sci.stock_collect_id = sc.id
+    INNER JOIN invoice_item ii ON ii.id = sci.invoice_item_id
     WHERE sc.delivery_staff = '$staffNameSql'
       AND (sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59')";
 
@@ -848,7 +848,15 @@ if (isset($get->h)) {
               $deliveryTotalSql = "SELECT SUM(IFNULL(iid.quantity, 0)) AS total_delivered
     FROM invoice_item_delviery iid
     WHERE iid.delivery_staff = '$staffNameSql'
-      AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'";
+      AND iid.delivered_at >= '$startDate 00:00:00' AND iid.delivered_at <= '$endDate 23:59:59'
+      AND EXISTS (
+        SELECT 1
+        FROM stock_collect sc
+        INNER JOIN stock_collect_item sci ON sci.stock_collect_id = sc.id
+        WHERE sc.delivery_staff = '$staffNameSql'
+          AND sc.created_at >= '$startDate 00:00:00' AND sc.created_at <= '$endDate 23:59:59'
+          AND sci.invoice_item_id = iid.invoice_item_id
+      )";
 
               $deliveryTotalResult = select($deliveryTotalSql);
               $totalDelivered = 0;
