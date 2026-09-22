@@ -118,7 +118,7 @@ $store_expense = 0;
 if ($storeAccount) {
   $storePath = $storeAccount->path;
 
-  $store_credit_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) amt FROM `expense_account_entry` WHERE entry_time LIKE '$store_month-%' AND accountpath LIKE CONCAT('$storePath','%')")) ?: (object) ['amt' => 0];
+  $store_credit_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(IF(tran_type='Credit', amount, 0)),0) amt FROM `expense_account_entry` WHERE branch_id=$branch_id AND entry_time LIKE '$store_month-%' AND accountpath LIKE CONCAT('$storePath','%')")) ?: (object) ['amt' => 0];
   $store_credit = (float) $store_credit_row->amt;
 
   // Same schema as $profitSql above: branch comes via customer, not invoice.branch_id
@@ -131,7 +131,7 @@ if ($storeAccount) {
 
   $store_income = $store_credit + ($storePath === '/1/' ? $store_profit : 0);
 
-  $store_expense_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(IF(tran_type='Debit', amount, 0)),0) amt FROM `expense_account_entry` WHERE (`month`='$store_month' OR expense_date LIKE '$store_month-%') AND accountpath LIKE CONCAT('$storePath','%')")) ?: (object) ['amt' => 0];
+  $store_expense_row = mysqli_fetch_object(select("SELECT IFNULL(SUM(IF(tran_type='Debit', amount, 0)),0) amt FROM `expense_account_entry` WHERE branch_id=$branch_id AND expense_date BETWEEN '$store_month_start' AND '$store_month_end 23:59:59' AND accountpath LIKE CONCAT('$storePath','%')")) ?: (object) ['amt' => 0];
   $store_expense = (float) $store_expense_row->amt;
 }
 
@@ -139,6 +139,11 @@ $petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_coll
 $petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
 $bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
 $m = date('M, Y', strtotime("$store_month-01"));
+$storeExpenseParams = ['d' => $store_month_start, 't' => $store_month_end];
+if ($storeAccount) {
+  $storeExpenseParams['accountid'] = (int) $storeAccount->id;
+}
+$storeExpenseUrl = '/store/expense_account_entry/view?' . http_build_query($storeExpenseParams);
 
 // Build the two tables HTML exactly like dashboard
 ob_start();
@@ -196,7 +201,7 @@ ob_start();
             <?php print nf($store_value->amount - $damage->amount - $sreturn->amount); ?></td>
         </tr>
         <tr>
-          <td><a href='/store/expense_account_entry/view?d=<?php print subDay(7); ?>'>Expense (<?php print $m; ?>)</a>
+          <td><a href='<?php print htmlspecialchars($storeExpenseUrl, ENT_QUOTES); ?>'>Expense (<?php print $m; ?>)</a>
           </td>
           <td>:</td>
           <td><?php print nf($store_expense); ?></td>
