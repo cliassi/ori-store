@@ -64,7 +64,11 @@ if (!empty($post->product) && is_array($post->product)) {
   if (!empty($lineParts)) {
     $msg .= ' - ' . implode(', ', $lineParts);
   }
-  notifyUsers($msg);
+  register_shutdown_function(function () use ($msg) {
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    notifyUsers($msg);
+  });
   ?>
   <style>
     .po-container{max-width:720px;margin:0 auto;padding:10px 10px 40px;}
