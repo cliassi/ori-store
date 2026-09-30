@@ -5,10 +5,10 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 }
 
 $items = [
-  ['label' => 'Customer',   'icon' => 'person',        'page' => 'customer_info', 'group' => 'Account'],
+  ['label' => 'Profile',   'icon' => 'person',        'page' => 'customer_info', 'group' => 'Account'],
   ['label' => 'Statement',  'icon' => 'receipt_long',  'page' => 'statement',     'group' => 'Account'],
   ['label' => 'Last Order', 'icon' => 'shopping_bag',  'page' => 'last_order',    'group' => 'Account'],
-  ['label' => 'Payment',    'icon' => 'payments',      'page' => 'payment',       'group' => 'Account'],
+  // ['label' => 'Payment',    'icon' => 'payments',      'page' => 'payment',       'group' => 'Account'],
 ];
 $groups = [];
 foreach ($items as $it) {
