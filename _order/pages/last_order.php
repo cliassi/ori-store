@@ -46,16 +46,16 @@ if ($order && $order->id) {
 </style>
 
 <div class="bg-primary blob-shape text-white">
-  <div class="max-w-sm mx-auto px-4 py-6">
+  <div class="max-w-sm mx-auto px-4 py-3">
     <div class="flex items-center justify-between mb-2">
       <a href="?page=account_menu" class="text-white" aria-label="Back">
         <span class="material-symbols-outlined">arrow_back</span>
       </a>
-      <h1 class="text-lg font-semibold">Last Order</h1>
+      <h1 class="text-lg font-semibold m-0">Last Order</h1>
       <div class="w-6"></div>
     </div>
     <?php if ($order && $order->id): ?>
-      <p class="text-center text-white/90 text-sm">
+      <p class="text-center text-white/90 text-sm m-0">
         Order #<?php echo (int)$order->id; ?>
         <?php if ($orderDate): ?> · <?php echo htmlspecialchars((string)df($orderDate), ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
       </p>
@@ -63,7 +63,7 @@ if ($order && $order->id) {
   </div>
 </div>
 
-<div class="max-w-sm mx-auto px-4 -mt-4 mb-6">
+<div class="max-w-sm mx-auto px-4 mt-3 mb-6">
   <?php if (!$order || !$order->id || empty($items)): ?>
     <div class="bg-white rounded-2xl shadow-sm p-6 text-center text-gray-500">
       No previous order found.
