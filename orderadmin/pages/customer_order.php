@@ -29,7 +29,13 @@ if ($approveId) {
 
     $selectedIds = array_values(array_filter(array_map('intval', (array)$selectedIds)));
     if (empty($selectedIds)) {
-        echo "<script>alert('Please select at least one item to approve.');window.history.back();</script>";
+        $allItemsResult = mysqli_query($c, "SELECT id FROM customer_order_item WHERE customer_order_id = $id");
+        while ($item = $allItemsResult ? mysqli_fetch_object($allItemsResult) : null) {
+            $selectedIds[] = (int)$item->id;
+        }
+    }
+    if (empty($selectedIds)) {
+        echo "<script>alert('This order has no items to approve.');window.history.back();</script>";
         exit;
     }
 
@@ -85,20 +91,23 @@ if ($approveId) {
 }
 
 // Handle delete action
-if (isset($post) && isset($post->action) && $post->action === 'delete' && isset($post->order_id)) {
-    $orderId = (int)$post->order_id;
+if (isset($post) && ((isset($post->delete_id) && $post->delete_id) || (isset($post->action) && $post->action === 'delete' && isset($post->order_id)))) {
+    $orderId = isset($post->delete_id) ? (int)$post->delete_id : (int)$post->order_id;
     $fromRaw = isset($post->from) ? (string)$post->from : '';
     $toRaw = isset($post->to) ? (string)$post->to : '';
     $from = $fromRaw !== '' ? preg_replace('/[^0-9\-]/', '', $fromRaw) : '';
     $to = $toRaw !== '' ? preg_replace('/[^0-9\-]/', '', $toRaw) : '';
-    
-    // First delete related items
-    $deleteItemsSql = "DELETE FROM customer_order_item WHERE customer_order_id = $orderId";
-    mysqli_query($c, $deleteItemsSql);
-    
-    // Then delete the order
-    $deleteOrderSql = "DELETE FROM customer_order WHERE id = $orderId";
-    mysqli_query($c, $deleteOrderSql);
+    $orderResult = mysqli_query($c, "SELECT status FROM customer_order WHERE id = $orderId LIMIT 1");
+    $order = $orderResult ? mysqli_fetch_object($orderResult) : null;
+    if ($order && strtolower((string)$order->status) !== 'approved') {
+        // First delete related items
+        $deleteItemsSql = "DELETE FROM customer_order_item WHERE customer_order_id = $orderId";
+        mysqli_query($c, $deleteItemsSql);
+
+        // Then delete the order
+        $deleteOrderSql = "DELETE FROM customer_order WHERE id = $orderId";
+        mysqli_query($c, $deleteOrderSql);
+    }
     
     // Redirect to refresh the page
     $qs = '';
@@ -340,7 +349,7 @@ $res = mysqli_query($c, $sql);
         echo '<tr>';
         echo '<th colspan="4" style="text-align:center">';
         if (strtolower((string)$row['status']) !== 'approved') {
-          echo '<button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" style="margin-left:5px;" onclick="return confirm(\'Delete this order?\')">Delete</button>';
+          echo '<button type="submit" name="delete_id" value="' . $orderId . '" class="btn btn-danger btn-sm" style="margin-left:5px;" onclick="return confirm(\'Delete this order?\')">Delete</button>';
           print "<span style='margin-left:3rem;'></span>";
           echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm">Approve</button>'; 
         } else {
