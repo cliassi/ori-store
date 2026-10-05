@@ -8,16 +8,10 @@ $post->UID = $_SESSION['UID'];
 // If products are posted, immediately create an order for the current session user and show invoice view
 if (!empty($post->product) && is_array($post->product)) {
   $customerId = isset($_SESSION['UID']) ? $_SESSION['UID'] : (isset($post->customer_id) ? $post->customer_id : null);
-  $inv = R::dispense('customer_order');
-  $inv->status = 'New';
-  $inv->customer_id = $customerId;
-  $inv->invoice_date = isset($post->date) ? $post->date : today();
-  $inv->created_by = 2;
-  R::store($inv);
-
+  $orderDate = isset($post->date) ? $post->date : today();
   $items = [];
   $grand = 0;
-  $customer = R::load("customer", $inv->customer_id);
+  $customer = R::load("customer", $customerId);
   $lineParts = [];
   foreach ($post->product as $id => $qty) {
     $qty = (int)$qty;
@@ -26,6 +20,13 @@ if (!empty($post->product) && is_array($post->product)) {
     if (!$variance || !$variance->id) continue;
     $product = R::load('product', $variance->product_id);
     $price = isset($post->price[$id]) ? (float)$post->price[$id] : (float)$variance->price;
+
+    $inv = R::dispense('customer_order');
+    $inv->status = 'New';
+    $inv->customer_id = $customerId;
+    $inv->invoice_date = $orderDate;
+    $inv->created_by = 2;
+    R::store($inv);
 
     $ii = R::dispense('customer_order_item');
     $ii->customer_order_id = $inv->id;
@@ -36,7 +37,7 @@ if (!empty($post->product) && is_array($post->product)) {
     $ii->cost = $variance->cost;
     $ii->name = $product->name;
     $ii->description = $variance->particulars;
-    $ii->delivery_date = $inv->customer_order_date;
+    $ii->delivery_date = $orderDate;
     R::store($ii);
 
     $desc = trim((string)$variance->particulars);
