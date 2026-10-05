@@ -67,7 +67,7 @@ if (!empty($post->product) && is_array($post->product)) {
   register_shutdown_function(function () use ($msg) {
     if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
     if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-    notifyUsers($msg);
+    // notifyUsers($msg);
   });
   ?>
   <style>
