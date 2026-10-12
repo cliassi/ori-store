@@ -296,8 +296,8 @@ print "<th># </th>
         <th class='w-75'>Particulars</th>
         <th>Lorry</th>
         <th>QTY</th>
-        <th>Credit  </th>
         <th>Debit </th>
+        <th>Credit  </th>
         <th>Balance</th>
         <th>Approve ? </th>";
 print "</tr>";
@@ -515,23 +515,23 @@ foreach ($transactionRows as $item) {
   print "<td class='text-right'>" . ($rowQty !== '' ? $rowQty : '') . "</td>";
 
   if ($item->src == 'order') {
-    print "<td></td>";
     print "<td class='text-right'>" . nf($item->amount) . "</td>";
+    print "<td></td>";
     sum('balance', $item->amount);
     sum('debit', $item->amount);
   } elseif ($item->src == 'goods_return') {
-    print "<td class='text-right'>" . nf($item->amount) . "</td>";
     print "<td></td>";
+    print "<td class='text-right'>" . nf($item->amount) . "</td>";
     sum('balance', 0 - $item->amount);
     sum('credit', $item->amount);
   } elseif ($item->src == 'refund') {
-    print "<td class='text-right'>" . nf($item->amount) . "</td>";
     print "<td></td>";
+    print "<td class='text-right'>" . nf($item->amount) . "</td>";
     sum('balance', 0 - $item->amount);
     sum('credit', $item->amount);
   } else {
-    print "<td class='text-right'>" . nf($item->amount) . "</td>";
     print "<td></td>";
+    print "<td class='text-right'>" . nf($item->amount) . "</td>";
     sum('balance', 0 - $item->amount);
     sum('credit', $item->amount);
   }
@@ -573,8 +573,8 @@ print "
 
 <th class='text-right'>TOTAL</th>
 <th class='text-right'>" . ($f_variance ? number_format($totalQty) : "") . "</th>
-<th class='text-right'>" . nf(sum('credit')) . "</th>
 <th class='text-right'>" . nf(sum('debit')) . "</th>
+<th class='text-right'>" . nf(sum('credit')) . "</th>
 <th class='text-right'>" . nf(sum('balance')) . "</th>
 <th></th>
 </tr>";
