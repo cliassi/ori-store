@@ -296,10 +296,10 @@ print "<th># </th>
         <th class='w-75'>Particulars</th>
         <th>Lorry</th>
         <th>QTY</th>
-        <th>Approve ? </th>
         <th>Credit  </th>
         <th>Debit </th>
-        <th>Balance</th>";
+        <th>Balance</th>
+        <th>Approve ? </th>";
 print "</tr>";
 print "</thead>";
 print "<tbody>";
@@ -514,28 +514,6 @@ foreach ($transactionRows as $item) {
   // Goods column hidden
   print "<td class='text-right'>" . ($rowQty !== '' ? $rowQty : '') . "</td>";
 
-  $isVerified = 0;
-  if ($item->src == 'order') {
-    $isVerified = isset($orderVerifyMap[(int) $item->id]) ? $orderVerifyMap[(int) $item->id] : 0;
-  } elseif ($item->src == 'payment') {
-    $isVerified = isset($paymentVerifyMap[(int) $item->id]) ? $paymentVerifyMap[(int) $item->id] : 0;
-  }
-  $verifyClass = $isVerified ? 'verified' : 'unverified';
-  print "<td style='text-align: center;'><i class='fas fa-check-circle verify-icon $verifyClass' onclick='verifyItem(\"$item->src\", $item->id, this)'></i>";
-
-  if ($isAdmin) {
-    if ($item->src == 'order') {
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
-    } elseif ($item->src == 'goods_return') {
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
-    } elseif ($item->src == 'refund') {
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation4($item->id)'><i class='fas fa-trash'></i></button>";
-    } else {
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation3($item->id)'><i class='fas fa-trash'></i></button>";
-    }
-  }
-  print "</td>";
-
   if ($item->src == 'order') {
     print "<td></td>";
     print "<td class='text-right'>" . nf($item->amount) . "</td>";
@@ -557,7 +535,29 @@ foreach ($transactionRows as $item) {
     sum('balance', 0 - $item->amount);
     sum('credit', $item->amount);
   }
-  print "<td class='text-right'>" . nf(sum('balance')) . "</td></tr>";
+  print "<td class='text-right'>" . nf(sum('balance')) . "</td>";
+
+  $isVerified = 0;
+  if ($item->src == 'order') {
+    $isVerified = isset($orderVerifyMap[(int) $item->id]) ? $orderVerifyMap[(int) $item->id] : 0;
+  } elseif ($item->src == 'payment') {
+    $isVerified = isset($paymentVerifyMap[(int) $item->id]) ? $paymentVerifyMap[(int) $item->id] : 0;
+  }
+  $verifyClass = $isVerified ? 'verified' : 'unverified';
+  print "<td style='text-align: center;'><i class='fas fa-check-circle verify-icon $verifyClass' onclick='verifyItem(\"$item->src\", $item->id, this)'></i>";
+
+  if ($isAdmin) {
+    if ($item->src == 'order') {
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
+    } elseif ($item->src == 'goods_return') {
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+    } elseif ($item->src == 'refund') {
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation4($item->id)'><i class='fas fa-trash'></i></button>";
+    } else {
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation3($item->id)'><i class='fas fa-trash'></i></button>";
+    }
+  }
+  print "</td></tr>";
   $i++;
 }
 print "<tr>
@@ -573,10 +573,10 @@ print "
 
 <th class='text-right'>TOTAL</th>
 <th class='text-right'>" . ($f_variance ? number_format($totalQty) : "") . "</th>
-<th></th>
 <th class='text-right'>" . nf(sum('credit')) . "</th>
 <th class='text-right'>" . nf(sum('debit')) . "</th>
 <th class='text-right'>" . nf(sum('balance')) . "</th>
+<th></th>
 </tr>";
 
 print "</tbody>";
