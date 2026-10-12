@@ -253,6 +253,14 @@
 
     dateModal = new bootstrap.Modal(document.getElementById('dateModal'));
 
+    document.addEventListener('click', function(e) {
+      var trigger = e.target.closest('.consolidated-date-trigger');
+      if (!trigger) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setDate(trigger, trigger.dataset.iids || '');
+    });
+
     // Form submit handler
     document.getElementById('dateForm').addEventListener('submit', function(e) {
       e.preventDefault();

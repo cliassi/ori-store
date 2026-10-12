@@ -425,7 +425,8 @@ $customers = select($query);
               $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
             }
             $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
-            print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a>" : "<span>$ci</span>") . "</div></td>
+            $dateAttr = htmlspecialchars(df($i->dd), ENT_QUOTES);
+            print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' data-dd='$dateAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$i->iid' data-dd='$dateAttr' onClick='setDate(this, $i->iid)'>$ci</a>" : "<span>$ci</span>") . "</div></td>
                             <td>$i->particulars X " . ($restrictedUser ? "<span>$i->quantity</span>" : "<a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$i->quantity</a>") . "</td>";
 
             if ($delivery) {
@@ -534,6 +535,7 @@ $customers = select($query);
     </div>
 
     <script>
+      var canEditConsolidatedDate = <?php echo $canEditDate ? 'true' : 'false'; ?>;
       window.__dcollectCollapsedOnce = window.__dcollectCollapsedOnce || false;
 
       function collapseAllCustomers() {
@@ -584,6 +586,7 @@ $customers = select($query);
             var qty = parseFloat(row.getAttribute('data-qty') || '0') || 0;
             var particulars = row.getAttribute('data-particulars') || '';
             var unitPrice = parseFloat(row.getAttribute('data-unit-price') || '0') || 0;
+            var deliveryDate = row.getAttribute('data-dd') || '';
             var iidCb = row.querySelector('input.iid-date');
             var iid = iidCb && iidCb instanceof HTMLInputElement ? iidCb.value : '';
             if (!vid || qty <= 0) return;
@@ -594,11 +597,13 @@ $customers = select($query);
                 particulars: particulars,
                 qty: qty,
                 unitPrice: unitPrice,
-                iids: iid ? new Set([String(iid)]) : new Set()
+                iids: iid ? new Set([String(iid)]) : new Set(),
+                dates: deliveryDate ? new Set([deliveryDate]) : new Set()
               });
             } else {
               cur.qty += qty;
               if (iid) cur.iids.add(String(iid));
+              if (deliveryDate) cur.dates.add(deliveryDate);
             }
           });
         });
@@ -653,9 +658,13 @@ $customers = select($query);
             }
             wrap.appendChild(cb);
 
-            var a = document.createElement('a');
-            a.href = '#';
-            a.className = 'has-checkbox';
+            var a = document.createElement(canEditConsolidatedDate ? 'a' : 'span');
+            if (canEditConsolidatedDate) {
+              a.href = '#';
+              a.className = 'consolidated-date-trigger';
+              a.dataset.iids = iids.join(',');
+              a.dataset.dd = item.dates.size === 1 ? Array.from(item.dates)[0] : 'Multiple dates';
+            }
             a.textContent = String(serial++);
             wrap.appendChild(a);
 
