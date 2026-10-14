@@ -8,14 +8,13 @@ $uid = (int) UID;
 $invoices = [];
 $historyItems = select("SELECT i.id invoice_id, i.invoice_date,
     c.company customer_name, c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
-    ii.name, ii.description, ii.quantity, ii.price, ii.assigned_to, ss.phone assigned_phone,
-    pv.particulars, p.name product_name
+    ii.description, ii.quantity, ii.price, ii.assigned_to, ss.phone assigned_phone,
+    pv.particulars
   FROM invoice i
   INNER JOIN invoice_item ii ON ii.invoice_id = i.id
   LEFT JOIN customer c ON c.id = i.customer_id
   LEFT JOIN staff_salary ss ON ss.name = ii.assigned_to AND ss.category = 'Delivery Staff'
   LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
-  LEFT JOIN product p ON p.id = ii.product_id
   WHERE i.customer_id = $uid
   ORDER BY i.invoice_date DESC, i.id DESC, ii.id DESC");
 while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
@@ -40,15 +39,9 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
       'total' => 0,
     ];
   }
-  $name = trim((string)$row->name);
+  $name = trim((string)$row->particulars);
   if ($name === '') {
-    $name = trim((string)$row->product_name);
-  }
-  if ($name === '') {
-    $name = trim((string)$row->particulars);
-  }
-  if ($name === '') {
-    $name = (string)$row->description;
+    $name = trim((string)$row->description);
   }
   $qty = (float)$row->quantity;
   $price = (float)$row->price;
@@ -61,7 +54,6 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $invoices[$dateKey]->items[] = (object) [
     'invoice_id' => $invoiceId,
     'name' => $name,
-    'desc' => $row->description,
     'qty' => $qty,
     'price' => $price,
     'total' => $total,
@@ -75,8 +67,12 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
   .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
-  .receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin:12px 0;font-size:12px;}
-  .receipt-meta strong{color:#374151;}
+  .receipt-meta{margin:12px 0;font-size:12px;}
+  .receipt-meta strong,.receipt-assignee-row strong{color:#374151;}
+  .receipt-assignees{margin:10px 0;font-size:12px;}
+  .receipt-assignee-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid #e5e7eb;}
+  .receipt-assignee-row span:first-child{min-width:0;}
+  .receipt-assignee-row span:last-child{text-align:right;white-space:nowrap;}
   .receipt-item{border-top:1px solid #d1d5db;padding:9px 0;}
   .receipt-item-head{display:flex;align-items:flex-start;gap:8px;}
   .receipt-item-invoice{font-size:10px;color:#4b5563;white-space:nowrap;}
