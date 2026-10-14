@@ -368,7 +368,7 @@ $pdf->Cell(140, 0, "");
 $pdf->Output("docs/$ref.pdf",'F');
 convertPdfToImages("docs/$ref.pdf", $ref);
 unlink("docs/$ref.pdf");
-header("location:http://store.apurewater.com/store/app/pages/view/exportables/docs/$ref.jpg");
+header("location:http://43.216.235.55/store/app/pages/view/exportables/docs/$ref.jpg");
 
 
 function convertPdfToImages($pdfFilename, $outputName){
