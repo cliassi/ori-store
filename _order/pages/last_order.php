@@ -101,7 +101,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
                 <div style="flex:1 1 auto; min-width:0;">
                   <div class="po-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></div>
                   <?php if ($it->desc): ?><div class="po-unit"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-                  <?php if ($it->assigned_to !== ''): ?><div class="po-unit">Assigned to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                  <?php if ($it->assigned_to !== ''): ?><div class="po-unit">Assigned delivery to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                   <div class="po-unit">Unit: RM <?php echo number_format($it->price, 2); ?></div>
                 </div>
                 <div class="po-right">

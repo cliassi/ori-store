@@ -37,6 +37,7 @@ if(METHOD == 'add'){
       }
       $staff->user_id = $post->user_id;
       $staff->name = $post->name;
+      $staff->phone = isset($post->phone) ? $post->phone : '';
       $staff->category = 'Delivery Staff';
       $staff->incentive = $post->incentive;
       R::store($staff);
@@ -153,7 +154,7 @@ print "</tbody>";
           </table>
           <?php
           } else{
-            $objs = select('distinct ss.id, su.id as user_id, su.u_fullname, ss.name, ss.incentive', 'staff_salary ss LEFT JOIN sys_user su ON ss.user_id = su.id', "ss.category='Delivery Staff'");
+            $objs = select('distinct ss.id, su.id as user_id, su.u_fullname, ss.name, ss.phone, ss.incentive', 'staff_salary ss LEFT JOIN sys_user su ON ss.user_id = su.id', "ss.category='Delivery Staff'");
             print "<div class='card-header'>
             <div class='row'>
             <div class='col-6'><h5>Staff</h5></div>
