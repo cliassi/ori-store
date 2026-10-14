@@ -224,6 +224,10 @@ print "</tbody>";
                     <lable>Staff Name</lable>
                       <input class='form-control' required name='name' id="name" placeholder="Enter staff name">
                   </div>
+                  <div class='form-group'>
+                    <label for="phone">Phone</label>
+                    <input class='form-control' type="tel" name='phone' id="phone" placeholder="Enter phone number">
+                  </div>
                   <br><div class='row'>
                     <div class='col-sm-3'>              
                       <div class='form-group'>
@@ -266,12 +270,14 @@ print "</tbody>";
             const userId = $(el).data('user-id');
             const name = $(el).data('name');
             const username = $(el).data('username');
+            const phone = $(el).data('phone');
             const incentive = $(el).data('incentive');
 
             console.log(id, userId, name, username, incentive);
             $(".id").val(id);
             $("#user_id").val(userId);
             $("#name").val(name);
+            $("#phone").val(phone);
             $("#incentive").val(incentive);
             
             // Update modal title to show we're editing
@@ -283,6 +289,7 @@ print "</tbody>";
             $(".id").val('');
             $("#user_id").val('');
             $("#name").val('');
+            $("#phone").val('');
             $("#incentive").val('');
             
             // Update modal title for adding
