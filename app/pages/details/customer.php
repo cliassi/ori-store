@@ -647,7 +647,7 @@ while ($remark = mysqli_fetch_object($remarks)) {
     const ids = Array.from(selectedRadios).map(r => r.value).join(',');
 
     // Build the new URL
-    const newPage = "<?php echo $_SERVER['SERVER_NAME']; ?>/store/app/pages/view/exportables/invoice.php?id=" + ids;
+    const newPage = "http://<?php echo $_SERVER['SERVER_NAME']; ?>/store/app/pages/view/exportables/invoice.php?id=" + ids;
 
 
     window.open(newPage, '_blank');
