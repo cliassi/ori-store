@@ -6,21 +6,21 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 
 $uid = (int) UID;
 $invoices = [];
-$historyItems = select("SELECT i.id invoice_id, i.invoice_date, COALESCE(NULLIF(i.salesman, ''), co.salesman) salesman,
+$historyItems = select("SELECT i.id invoice_id, i.invoice_date,
     c.company customer_name, c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
     ii.name, ii.description, ii.quantity, ii.price, ii.assigned_to, ss.phone assigned_phone,
     pv.particulars, p.name product_name
   FROM invoice i
   INNER JOIN invoice_item ii ON ii.invoice_id = i.id
   LEFT JOIN customer c ON c.id = i.customer_id
-  LEFT JOIN customer_order co ON co.id = i.customer_order_id
   LEFT JOIN staff_salary ss ON ss.name = ii.assigned_to AND ss.category = 'Delivery Staff'
   LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
   LEFT JOIN product p ON p.id = ii.product_id
   WHERE i.customer_id = $uid
-  ORDER BY i.id DESC, ii.id DESC");
+  ORDER BY i.invoice_date DESC, i.id DESC, ii.id DESC");
 while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $invoiceId = (int)$row->invoice_id;
+  $dateKey = $row->invoice_date ? (string)$row->invoice_date : 'undated';
   $customerName = trim((string)$row->customer_name);
   if ($customerName === '') {
     $customerName = trim((string)$row->customer_contact);
@@ -28,15 +28,14 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   if ($customerName === '') {
     $customerName = 'Walk-in';
   }
-  if (!isset($invoices[$invoiceId])) {
-    $invoices[$invoiceId] = (object) [
-      'id' => $invoiceId,
+  if (!isset($invoices[$dateKey])) {
+    $invoices[$dateKey] = (object) [
       'date' => $row->invoice_date,
-      'agent' => trim((string)$row->salesman),
       'customer_name' => $customerName,
       'customer_contact' => trim((string)$row->customer_contact),
       'customer_mobile' => trim((string)$row->customer_mobile),
       'customer_city' => trim((string)$row->customer_city),
+      'assignees' => [],
       'items' => [],
       'total' => 0,
     ];
@@ -54,16 +53,20 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $qty = (float)$row->quantity;
   $price = (float)$row->price;
   $total = $qty * $price;
-  $invoices[$invoiceId]->items[] = (object) [
+  $assignedTo = trim((string)$row->assigned_to);
+  $assignedPhone = trim((string)$row->assigned_phone);
+  if ($assignedTo !== '') {
+    $invoices[$dateKey]->assignees[$assignedTo] = $assignedPhone;
+  }
+  $invoices[$dateKey]->items[] = (object) [
+    'invoice_id' => $invoiceId,
     'name' => $name,
     'desc' => $row->description,
-    'assigned_to' => trim((string)$row->assigned_to),
-    'assigned_phone' => trim((string)$row->assigned_phone),
     'qty' => $qty,
     'price' => $price,
     'total' => $total,
   ];
-  $invoices[$invoiceId]->total += $total;
+  $invoices[$dateKey]->total += $total;
 }
 ?>
 <style>
@@ -74,12 +77,15 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
   .receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin:12px 0;font-size:12px;}
   .receipt-meta strong{color:#374151;}
-  .receipt-items{width:100%;border-collapse:collapse;font-size:12px;}
-  .receipt-items th,.receipt-items td{padding:7px 3px;border-top:1px solid #d1d5db;vertical-align:top;}
-  .receipt-items th{font-size:11px;text-align:left;}
-  .receipt-items .numeric{text-align:right;white-space:nowrap;}
-  .receipt-item-name{font-weight:600;}
+  .receipt-item{border-top:1px solid #d1d5db;padding:9px 0;}
+  .receipt-item-head{display:flex;align-items:flex-start;gap:8px;}
+  .receipt-item-invoice{font-size:10px;color:#4b5563;white-space:nowrap;}
+  .receipt-item-name{display:block;flex:1;font-weight:600;min-width:0;}
   .receipt-item-desc{display:block;color:#6b7280;font-size:10px;}
+  .receipt-item-values{display:grid;grid-template-columns:1fr .55fr 1fr;gap:8px;margin-top:6px;font-size:11px;}
+  .receipt-item-value{display:flex;flex-direction:column;gap:2px;}
+  .receipt-item-value:last-child{text-align:right;}
+  .receipt-item-label{font-size:9px;color:#6b7280;}
   .receipt-totals{width:min(100%,240px);margin:12px 0 0 auto;font-size:12px;}
   .receipt-total{display:flex;justify-content:space-between;border-top:1px dashed #9ca3af;margin-top:7px;padding-top:8px;font-size:15px;font-weight:800;}
 </style>
@@ -107,45 +113,42 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
       <?php foreach ($invoices as $invoice): ?>
         <article class="receipt-card">
           <header class="receipt-header">
-            <h2 class="receipt-title">SALES INVOICE</h2>
+            <h2 class="receipt-title">INVOICE</h2>
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
           </header>
           <div class="receipt-meta">
-            <div><strong>Agent:</strong> <?php echo htmlspecialchars($invoice->agent !== '' ? $invoice->agent : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+            <div><strong>Assigned To:</strong>
+              <?php if (empty($invoice->assignees)): ?>—<?php else: ?>
+                <?php $assigneeIndex = 0; foreach ($invoice->assignees as $assigneeName => $assigneePhone): ?>
+                  <?php if ($assigneeIndex > 0): ?>, <?php endif; ?>
+                  <?php echo htmlspecialchars($assigneeName, ENT_QUOTES, 'UTF-8'); ?><?php if ($assigneePhone !== ''): ?> · Phone: <?php echo htmlspecialchars($assigneePhone, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
+                  <?php $assigneeIndex++; ?>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </div>
             <div><strong>Customer:</strong> <?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?><?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?> · <?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></div>
-            <div><strong>Invoice No:</strong> INV<?php echo zerofill($invoice->id, 5); ?></div>
             <div><strong>Sales Date:</strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_mobile !== ''): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
           </div>
-          <table class="receipt-items">
-            <thead>
-              <tr>
-                <th style="width:8%">No.</th>
-                <th style="width:38%">Item</th>
-                <th class="numeric" style="width:19%">Price</th>
-                <th class="numeric" style="width:12%">Qty.</th>
-                <th class="numeric" style="width:23%">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($invoice->items as $index => $it): ?>
-                <tr>
-                  <td><?php echo (int)$index + 1; ?></td>
-                  <td>
-                    <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="receipt-item-list">
+            <?php foreach ($invoice->items as $it): ?>
+              <div class="receipt-item">
+                <div class="receipt-item-head">
+                  <span class="receipt-item-invoice">INV<?php echo zerofill($it->invoice_id, 5); ?></span>
+                  <span class="receipt-item-name">
+                    <?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?>
                     <?php if ($it->desc && trim((string)$it->desc) !== trim((string)$it->name)): ?><span class="receipt-item-desc"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
-                    <?php if ($it->assigned_to !== ''): ?>
-                      <span class="receipt-item-desc">Assigned delivery to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?><?php if ($it->assigned_phone !== ''): ?> · Phone: <?php echo htmlspecialchars($it->assigned_phone, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></span>
-                    <?php endif; ?>
-                  </td>
-                  <td class="numeric">RM <?php echo number_format($it->price, 2); ?></td>
-                  <td class="numeric"><?php echo number_format($it->qty, 0); ?></td>
-                  <td class="numeric">RM <?php echo number_format($it->total, 2); ?></td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
+                  </span>
+                </div>
+                <div class="receipt-item-values">
+                  <div class="receipt-item-value"><span class="receipt-item-label">Price</span><strong>RM <?php echo number_format($it->price, 2); ?></strong></div>
+                  <div class="receipt-item-value"><span class="receipt-item-label">Qty</span><strong><?php echo number_format($it->qty, 0); ?></strong></div>
+                  <div class="receipt-item-value"><span class="receipt-item-label">Total</span><strong>RM <?php echo number_format($it->total, 2); ?></strong></div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
           <div class="receipt-totals">
             <div class="flex justify-between"><span>Subtotal</span><span>RM <?php echo number_format($invoice->total, 2); ?></span></div>
             <div class="receipt-total"><span>Total</span><span>RM <?php echo number_format($invoice->total, 2); ?></span></div>
