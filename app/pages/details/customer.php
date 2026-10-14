@@ -499,7 +499,6 @@ if (isset($get->dir)) {
   } else {
     print "<br><a href='?' class='btn btn-danger'><< BACK</a> ";
   }
-
 } else {
   // print "<a href='?dir=files' class='btn btn-success'>Files</a> ";
 }
@@ -614,10 +613,11 @@ while ($remark = mysqli_fetch_object($remarks)) {
 <script type="text/javascript">
   function addRemarks() {
 
-    <?php //if(uid() != 1): ?>
-    setTimeout(function () {
+    <?php //if(uid() != 1): 
+    ?>
+    setTimeout(function() {
       $(".swal2-textarea").after("<div id='remarks_hints' style='margin-left:30px'></div>");
-      $("#remarks_hints input[type='radio']").click(function () {
+      $("#remarks_hints input[type='radio']").click(function() {
         var text = $(this).parent().text();
         $(".swal2-textarea").val(text);
       })
@@ -625,7 +625,8 @@ while ($remark = mysqli_fetch_object($remarks)) {
 
 
 
-    <?php //endif; ?>
+    <?php //endif; 
+    ?>
 
     Swal.fire({
       title: 'Enter your remarks',
@@ -647,7 +648,7 @@ while ($remark = mysqli_fetch_object($remarks)) {
     const ids = Array.from(selectedRadios).map(r => r.value).join(',');
 
     // Build the new URL
-    const newPage = "http://<?php echo $_SERVER['HTTP_HOST']; ?>/store/app/pages/view/exportables/invoice.php?id=" + ids;
+    const newPage = "http://43.216.235.55/store/app/pages/view/exportables/invoice.php?id=" + ids;
 
 
     window.open(newPage, '_blank');
@@ -668,7 +669,7 @@ while ($remark = mysqli_fetch_object($remarks)) {
 
   }
 
-  $(".delivery-man-item").click(function () {
+  $(".delivery-man-item").click(function() {
     const id = $(this).data('id');
     const val = $(this).text();
     console.log(val);
@@ -705,17 +706,16 @@ while ($remark = mysqli_fetch_object($remarks)) {
       /* Read more about isConfirmed, isDenied below */
       if (result.isConfirmed) {
         $("#update-delivery").trigger('click');
-      } else if (result.isDenied) {
-      }
+      } else if (result.isDenied) {}
     });
   }
 
-  $(".toggle-checkbox").change(function () {
+  $(".toggle-checkbox").change(function() {
     const state = $(this).prop('checked');
     $(this).parent().parent().find("input").prop('checked', state);
   });
 
-  $(".d-icon").click(function () {
+  $(".d-icon").click(function() {
     const id = $(this).data('id');
     const delivered_by = $(".selected-delivery-man").text().trim();
     if (delivered_by == "Select") {
@@ -728,7 +728,10 @@ while ($remark = mysqli_fetch_object($remarks)) {
     } else {
       $(this).addClass('btn-success');
       $(this).removeClass('btn-warning');
-      $.post("/store/ajax/save_state.php", { id: id, delivered_by: delivered_by }, function (res) {
+      $.post("/store/ajax/save_state.php", {
+        id: id,
+        delivered_by: delivered_by
+      }, function(res) {
         console.log(res);
         $("#items").html(res);
       });
@@ -775,7 +778,7 @@ while ($remark = mysqli_fetch_object($remarks)) {
       */
 
 
-  $('input[type="radio"]').mousedown(function (e) {
+  $('input[type="radio"]').mousedown(function(e) {
     if (this.checked) {
       $(this).data('wasChecked', true);
     } else {
@@ -783,13 +786,13 @@ while ($remark = mysqli_fetch_object($remarks)) {
     }
   });
 
-  $('input[type="radio"]').click(function (e) {
+  $('input[type="radio"]').click(function(e) {
     if ($(this).data('wasChecked')) {
       $(this).prop('checked', false).trigger('change');
     }
   });
 
-  $(".remove-file").click(function () {
+  $(".remove-file").click(function() {
     var pin = prompt("Enter Pin");
     if (pin != "") {
       $("#file-to-remove").val($(this).attr("data-path"))
@@ -798,7 +801,7 @@ while ($remark = mysqli_fetch_object($remarks)) {
     }
   });
 
-  $(".remove-folder").click(function () {
+  $(".remove-folder").click(function() {
     var pin = prompt("Enter Pin");
     if (pin != "") {
       $("#folder-to-remove").val($(this).attr("data-path"))
@@ -833,12 +836,11 @@ while ($remark = mysqli_fetch_object($remarks)) {
       invoice_item_id: invoiceItemId,
       date: newDate,
       update_date: 1
-    }, function (response) {
+    }, function(response) {
       $("#modal-change-delivery-date").modal('hide');
       location.reload();
-    }).fail(function () {
+    }).fail(function() {
       alert("Error updating delivery date");
     });
   }
-
 </script>
