@@ -133,7 +133,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
             <?php $i = 1; foreach ($invoice->items as $it): ?>
               <div class="receipt-item">
                 <div class="receipt-item-head">
-                  <span class="receipt-item-invoice"><?php echo $i++; ?>INV<?php echo zerofill($it->invoice_id, 5); ?></span>
+                  <span class="receipt-item-invoice"><?php echo $i++; ?>. INV<?php echo zerofill($it->invoice_id, 5); ?></span>
                   <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 <div class="receipt-item-values">
