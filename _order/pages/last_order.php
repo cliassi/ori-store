@@ -114,7 +114,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
           </header>
           <div class="receipt-meta">
             <div><strong>Agent:</strong> <?php echo htmlspecialchars($invoice->agent !== '' ? $invoice->agent : '—', ENT_QUOTES, 'UTF-8'); ?></div>
-            <div><strong>Customer:</strong> <?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
+            <div><strong>Customer:</strong> <?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?><?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?> · <?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></div>
             <div><strong>Invoice No:</strong> INV<?php echo zerofill($invoice->id, 5); ?></div>
             <div><strong>Sales Date:</strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_mobile !== ''): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
