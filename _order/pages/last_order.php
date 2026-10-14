@@ -135,10 +135,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
               <div class="receipt-item">
                 <div class="receipt-item-head">
                   <span class="receipt-item-invoice">INV<?php echo zerofill($it->invoice_id, 5); ?></span>
-                  <span class="receipt-item-name">
-                    <?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?>
-                    <?php if ($it->desc && trim((string)$it->desc) !== trim((string)$it->name)): ?><span class="receipt-item-desc"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
-                  </span>
+                  <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 <div class="receipt-item-values">
                   <div class="receipt-item-value"><strong>RM <?php echo number_format($it->price, 2); ?></strong></div>
