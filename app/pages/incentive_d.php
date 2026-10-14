@@ -176,6 +176,7 @@ print "</tbody>";
             <tbody>";
             $i = 1;
             while ($obj = mysqli_fetch_object($objs)) {
+              $phone = htmlspecialchars((string)$obj->phone, ENT_QUOTES, 'UTF-8');
               print "<tr>";
               print "<td>$obj->id</td>";
               print "<td class='name'><a href='?s=$obj->u_fullname'><u>$obj->name</u></a></td>";
