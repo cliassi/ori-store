@@ -63,7 +63,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .invoice-card{background:#fff;border-radius:16px;padding:12px;box-shadow:0 1px 4px rgba(15,23,42,.1);}
   .invoice-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
   .invoice-number{font-weight:700;color:#0f172a;font-size:14px;}
-  .invoice-foot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #e5e7eb;margin-top:10px;padding-top:9px;font-size:12px;color:#4b5563;}
+  .invoice-foot{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e5e7eb;margin-top:10px;padding-top:9px;font-size:12px;color:#4b5563;}
 </style>
 
 <div class="bg-primary blob-shape text-white">
