@@ -168,6 +168,7 @@ print "</tbody>";
             <th class='w100'>No</th>
             <th>Name</th>
             <th>Username</th>
+            <th>Phone</th>
             <th class='w150'>Incentive %</th>
             <th class='w100'><span data-bs-toggle='modal' data-bs-target='#productFrommOdal' class='frht btn btn-sm btn-primary' onclick='clearForm()'><i class='fas fa-plus'></i> Staff</span></th>
             </tr>
