@@ -112,21 +112,22 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
           <header class="receipt-header">
             <h2 class="receipt-title">INVOICE</h2>
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle">Contact: <?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+            <?php if ($invoice->customer_mobile !== ''): ?><div class="receipt-subtitle">Phone: <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
           </header>
-          <div class="receipt-meta">
-            <div><strong>Assigned To:</strong>
-              <?php if (empty($invoice->assignees)): ?>—<?php else: ?>
-                <?php $assigneeIndex = 0; foreach ($invoice->assignees as $assigneeName => $assigneePhone): ?>
-                  <?php if ($assigneeIndex > 0): ?>, <?php endif; ?>
-                  <?php echo htmlspecialchars($assigneeName, ENT_QUOTES, 'UTF-8'); ?><?php if ($assigneePhone !== ''): ?> · Phone: <?php echo htmlspecialchars($assigneePhone, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
-                  <?php $assigneeIndex++; ?>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            </div>
-            <div><strong>Customer:</strong> <?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?><?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?> · <?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></div>
-            <div><strong>Sales Date:</strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
-            <?php if ($invoice->customer_mobile !== ''): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+          <div class="receipt-meta"><strong>Sales Date:</strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+          <div class="receipt-assignees">
+            <?php if (empty($invoice->assignees)): ?>
+              <div class="receipt-assignee-row"><span><strong>Assigned To:</strong> —</span><span><strong>Phone:</strong> —</span></div>
+            <?php else: ?>
+              <?php foreach ($invoice->assignees as $assigneeName => $assigneePhone): ?>
+                <div class="receipt-assignee-row">
+                  <span><strong>Assigned To:</strong> <?php echo htmlspecialchars($assigneeName, ENT_QUOTES, 'UTF-8'); ?></span>
+                  <span><strong>Phone:</strong> <?php echo $assigneePhone !== '' ? htmlspecialchars($assigneePhone, ENT_QUOTES, 'UTF-8') : '—'; ?></span>
+                </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </div>
           <div class="receipt-item-list">
             <div class="receipt-item-values receipt-item-values-header"><span>Price</span><span>Qty</span><span>Total</span></div>
