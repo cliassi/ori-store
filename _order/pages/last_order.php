@@ -75,37 +75,49 @@ while ($assignedItems && ($row = mysqli_fetch_object($assignedItems))) {
       <h1 class="text-lg font-semibold m-0">Last Order</h1>
       <div class="w-6"></div>
     </div>
-    <?php if ($order && $order->id): ?>
-      <p class="text-center text-white/90 text-sm m-0">
-        Order #<?php echo (int)$order->id; ?>
-        <?php if ($orderDate): ?> · <?php echo htmlspecialchars((string)df($orderDate), ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
-      </p>
-    <?php endif; ?>
+    <p class="text-center text-white/90 text-sm m-0">Invoices assigned for delivery</p>
   </div>
 </div>
 
 <div class="max-w-sm mx-auto px-4 mt-3 mb-6">
-  <?php if (!$order || !$order->id || empty($items)): ?>
+  <?php if (empty($invoices)): ?>
     <div class="bg-white rounded-2xl shadow-sm p-6 text-center text-gray-500">
-      No previous order found.
+      No assigned orders found.
     </div>
   <?php else: ?>
-    <div class="space-y-2">
-      <?php foreach ($items as $it): ?>
-        <div class="po-card">
-          <div class="po-thumb"><img src="<?php echo htmlspecialchars($it->image, ENT_QUOTES, 'UTF-8'); ?>" alt=""></div>
-          <div style="flex:1 1 auto; min-width:0;">
-            <div class="po-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></div>
-            <div class="po-unit">Unit: RM <?php echo number_format($it->price, 2); ?></div>
+    <div class="space-y-3">
+      <?php foreach ($invoices as $invoice): ?>
+        <div class="invoice-card">
+          <div class="invoice-head">
+            <div>
+              <div class="invoice-number">Invoice #<?php echo (int)$invoice->id; ?></div>
+              <div class="po-unit">Date: <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+            <span class="po-qty-pill">Assigned</span>
           </div>
-          <div class="po-right">
-            <div class="po-total">RM <?php echo number_format($it->total, 2); ?></div>
-            <div class="po-qty-pill">Qty: <span><?php echo (int)$it->qty; ?></span></div>
+          <div class="space-y-2">
+            <?php foreach ($invoice->items as $it): ?>
+              <div class="po-card">
+                <div class="po-thumb"><img src="<?php echo htmlspecialchars($it->image, ENT_QUOTES, 'UTF-8'); ?>" alt=""></div>
+                <div style="flex:1 1 auto; min-width:0;">
+                  <div class="po-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></div>
+                  <?php if ($it->desc): ?><div class="po-unit"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                  <div class="po-unit">Unit: RM <?php echo number_format($it->price, 2); ?></div>
+                </div>
+                <div class="po-right">
+                  <div class="po-total">RM <?php echo number_format($it->total, 2); ?></div>
+                  <div class="po-qty-pill">Qty: <span><?php echo number_format($it->qty, 0); ?></span></div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <div class="invoice-foot">
+            <span>Assigned to: <?php echo htmlspecialchars((string)$invoice->assigned_to, ENT_QUOTES, 'UTF-8'); ?></span>
+            <strong>RM <?php echo number_format($invoice->total, 2); ?></strong>
           </div>
         </div>
       <?php endforeach; ?>
     </div>
-    <div class="mt-3 text-right font-semibold text-gray-900">Grand Total: RM <?php echo number_format($grand, 2); ?></div>
     <div class="mt-4 flex justify-center">
       <a href="?page=home" class="inline-flex items-center gap-2 bg-yellow-400 text-gray-900 rounded-full px-8 py-2 text-sm font-medium no-underline">Return to Home</a>
     </div>
