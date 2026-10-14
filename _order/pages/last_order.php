@@ -80,12 +80,13 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-item{border-top:1px solid #d1d5db;padding:9px 0;}
   .receipt-item-head{display:flex;align-items:flex-start;gap:8px;}
   .receipt-item-invoice{font-size:10px;color:#4b5563;white-space:nowrap;}
-  .receipt-item-name{display:block;flex:1;font-weight:600;min-width:0;}
+  .receipt-item-name{display:block;flex:1;font-size:10px;font-weight:600;min-width:0;}
   .receipt-item-desc{display:block;color:#6b7280;font-size:10px;}
   .receipt-item-values{display:grid;grid-template-columns:1fr .55fr 1fr;gap:8px;margin-top:6px;font-size:11px;}
+  .receipt-item-values-header{font-size:10px;color:#6b7280;margin-top:10px;}
+  .receipt-item-values-header span:last-child{text-align:right;}
   .receipt-item-value{display:flex;flex-direction:column;gap:2px;}
   .receipt-item-value:last-child{text-align:right;}
-  .receipt-item-label{font-size:9px;color:#6b7280;}
   .receipt-totals{width:min(100%,240px);margin:12px 0 0 auto;font-size:12px;}
   .receipt-total{display:flex;justify-content:space-between;border-top:1px dashed #9ca3af;margin-top:7px;padding-top:8px;font-size:15px;font-weight:800;}
 </style>
