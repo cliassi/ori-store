@@ -80,7 +80,6 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-items .numeric{text-align:right;white-space:nowrap;}
   .receipt-item-name{font-weight:600;}
   .receipt-item-desc{display:block;color:#6b7280;font-size:10px;}
-  .receipt-assignment{border-top:1px dashed #9ca3af;margin-top:10px;padding-top:9px;font-size:12px;}
   .receipt-totals{width:min(100%,240px);margin:12px 0 0 auto;font-size:12px;}
   .receipt-total{display:flex;justify-content:space-between;border-top:1px dashed #9ca3af;margin-top:7px;padding-top:8px;font-size:15px;font-weight:800;}
 </style>
