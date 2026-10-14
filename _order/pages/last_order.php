@@ -6,20 +6,35 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 
 $uid = (int) UID;
 $invoices = [];
-$historyItems = select("SELECT i.id invoice_id, i.invoice_date, ii.name, ii.description, ii.quantity, ii.price,
-    ii.assigned_to, pv.image, pv.particulars, p.name product_name
+$historyItems = select("SELECT i.id invoice_id, i.invoice_date, i.salesman, c.company customer_name,
+    c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
+    ii.name, ii.description, ii.quantity, ii.price, ii.assigned_to, ss.phone assigned_phone,
+    pv.particulars, p.name product_name
   FROM invoice i
   INNER JOIN invoice_item ii ON ii.invoice_id = i.id
+  LEFT JOIN customer c ON c.id = i.customer_id
+  LEFT JOIN staff_salary ss ON ss.name = ii.assigned_to AND ss.category = 'Delivery Staff'
   LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
   LEFT JOIN product p ON p.id = ii.product_id
   WHERE i.customer_id = $uid
   ORDER BY i.id DESC, ii.id DESC");
 while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $invoiceId = (int)$row->invoice_id;
+  $customerName = trim((string)$row->customer_name);
+  if ($customerName === '') {
+    $customerName = trim((string)$row->customer_contact);
+  }
+  if ($customerName === '') {
+    $customerName = 'Walk-in';
+  }
   if (!isset($invoices[$invoiceId])) {
     $invoices[$invoiceId] = (object) [
       'id' => $invoiceId,
       'date' => $row->invoice_date,
+      'agent' => trim((string)$row->salesman),
+      'customer_name' => $customerName,
+      'customer_mobile' => trim((string)$row->customer_mobile),
+      'customer_city' => trim((string)$row->customer_city),
       'items' => [],
       'total' => 0,
     ];
@@ -37,12 +52,11 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $qty = (float)$row->quantity;
   $price = (float)$row->price;
   $total = $qty * $price;
-  $imageSrc = getImageOrPlaceholder((string)$row->image, $name);
   $invoices[$invoiceId]->items[] = (object) [
-    'image' => $imageSrc,
     'name' => $name,
     'desc' => $row->description,
     'assigned_to' => trim((string)$row->assigned_to),
+    'assigned_phone' => trim((string)$row->assigned_phone),
     'qty' => $qty,
     'price' => $price,
     'total' => $total,
@@ -52,18 +66,21 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
 ?>
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
-  .po-card{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
-  .po-thumb{width:56px;height:56px;border-radius:12px;overflow:hidden;background:#f3f4f6;flex:0 0 auto;}
-  .po-thumb img{width:100%;height:100%;object-fit:cover;}
-  .po-name{font-weight:600;color:#0f172a;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-  .po-unit{color:#6b7280;font-size:11px;}
-  .po-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:110px;margin-left:auto;}
-  .po-total{font-weight:700;color:#0f172a;font-size:13px;}
-  .po-qty-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 8px;font-size:12px;color:#111827;}
-  .invoice-card{background:#fff;border-radius:16px;padding:12px;box-shadow:0 1px 4px rgba(15,23,42,.1);}
-  .invoice-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
-  .invoice-number{font-weight:700;color:#0f172a;font-size:14px;}
-  .invoice-foot{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e5e7eb;margin-top:10px;padding-top:9px;font-size:12px;color:#4b5563;}
+  .receipt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;color:#111827;box-shadow:0 2px 8px rgba(15,23,42,.08);}
+  .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
+  .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
+  .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
+  .receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin:12px 0;font-size:12px;}
+  .receipt-meta strong{color:#374151;}
+  .receipt-items{width:100%;border-collapse:collapse;font-size:12px;}
+  .receipt-items th,.receipt-items td{padding:7px 3px;border-top:1px solid #d1d5db;vertical-align:top;}
+  .receipt-items th{font-size:11px;text-align:left;}
+  .receipt-items .numeric{text-align:right;white-space:nowrap;}
+  .receipt-item-name{font-weight:600;}
+  .receipt-item-desc{display:block;color:#6b7280;font-size:10px;}
+  .receipt-assignment{border-top:1px dashed #9ca3af;margin-top:10px;padding-top:9px;font-size:12px;}
+  .receipt-totals{width:min(100%,240px);margin:12px 0 0 auto;font-size:12px;}
+  .receipt-total{display:flex;justify-content:space-between;border-top:1px dashed #9ca3af;margin-top:7px;padding-top:8px;font-size:15px;font-weight:800;}
 </style>
 
 <div class="bg-primary blob-shape text-white">
@@ -87,34 +104,52 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   <?php else: ?>
     <div class="space-y-3">
       <?php foreach ($invoices as $invoice): ?>
-        <div class="invoice-card">
-          <div class="invoice-head">
-            <div>
-              <div class="invoice-number">Invoice #<?php echo (int)$invoice->id; ?></div>
-              <div class="po-unit">Date: <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
-            </div>
+        <article class="receipt-card">
+          <header class="receipt-header">
+            <h2 class="receipt-title">SALES INVOICE</h2>
+            <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+          </header>
+          <div class="receipt-meta">
+            <div><strong>Agent:</strong> <?php echo htmlspecialchars($invoice->agent !== '' ? $invoice->agent : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+            <div><strong>Customer:</strong> <?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
+            <div><strong>Invoice No:</strong> INV<?php echo zerofill($invoice->id, 5); ?></div>
+            <div><strong>Sales Date:</strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php if ($invoice->customer_mobile !== ''): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
           </div>
-          <div class="space-y-2">
-            <?php foreach ($invoice->items as $it): ?>
-              <div class="po-card">
-                <div class="po-thumb"><img src="<?php echo htmlspecialchars($it->image, ENT_QUOTES, 'UTF-8'); ?>" alt=""></div>
-                <div style="flex:1 1 auto; min-width:0;">
-                  <div class="po-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></div>
-                  <?php if ($it->desc): ?><div class="po-unit"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-                  <?php if ($it->assigned_to !== ''): ?><div class="po-unit">Assigned delivery to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-                  <div class="po-unit">Unit: RM <?php echo number_format($it->price, 2); ?></div>
-                </div>
-                <div class="po-right">
-                  <div class="po-total">RM <?php echo number_format($it->total, 2); ?></div>
-                  <div class="po-qty-pill">Qty: <span><?php echo number_format($it->qty, 0); ?></span></div>
-                </div>
-              </div>
-            <?php endforeach; ?>
+          <table class="receipt-items">
+            <thead>
+              <tr>
+                <th style="width:8%">No.</th>
+                <th style="width:38%">Item</th>
+                <th class="numeric" style="width:19%">Price</th>
+                <th class="numeric" style="width:12%">Qty.</th>
+                <th class="numeric" style="width:23%">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($invoice->items as $index => $it): ?>
+                <tr>
+                  <td><?php echo (int)$index + 1; ?></td>
+                  <td>
+                    <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php if ($it->desc && trim((string)$it->desc) !== trim((string)$it->name)): ?><span class="receipt-item-desc"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                    <?php if ($it->assigned_to !== ''): ?>
+                      <span class="receipt-item-desc">Assigned delivery to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?><?php if ($it->assigned_phone !== ''): ?> · <?php echo htmlspecialchars($it->assigned_phone, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></span>
+                    <?php endif; ?>
+                  </td>
+                  <td class="numeric">RM <?php echo number_format($it->price, 2); ?></td>
+                  <td class="numeric"><?php echo number_format($it->qty, 0); ?></td>
+                  <td class="numeric">RM <?php echo number_format($it->total, 2); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <div class="receipt-totals">
+            <div class="flex justify-between"><span>Subtotal</span><span>RM <?php echo number_format($invoice->total, 2); ?></span></div>
+            <div class="receipt-total"><span>Total</span><span>RM <?php echo number_format($invoice->total, 2); ?></span></div>
           </div>
-          <div class="invoice-foot">
-            <strong>Total: RM <?php echo number_format($invoice->total, 2); ?></strong>
-          </div>
-        </div>
+        </article>
       <?php endforeach; ?>
     </div>
     <div class="mt-4 flex justify-center">
