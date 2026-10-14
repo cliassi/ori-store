@@ -6,21 +6,20 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 
 $uid = (int) UID;
 $invoices = [];
-$assignedItems = select("SELECT i.id invoice_id, i.invoice_date, ii.name, ii.description, ii.quantity, ii.price,
+$historyItems = select("SELECT i.id invoice_id, i.invoice_date, ii.name, ii.description, ii.quantity, ii.price,
     ii.assigned_to, pv.image, pv.particulars, p.name product_name
   FROM invoice i
   INNER JOIN invoice_item ii ON ii.invoice_id = i.id
   LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
   LEFT JOIN product p ON p.id = ii.product_id
-  WHERE i.customer_id = $uid AND ii.assigned_to IS NOT NULL AND TRIM(ii.assigned_to) <> ''
+  WHERE i.customer_id = $uid
   ORDER BY i.id DESC, ii.id DESC");
-while ($assignedItems && ($row = mysqli_fetch_object($assignedItems))) {
+while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $invoiceId = (int)$row->invoice_id;
   if (!isset($invoices[$invoiceId])) {
     $invoices[$invoiceId] = (object) [
       'id' => $invoiceId,
       'date' => $row->invoice_date,
-      'assigned_to' => $row->assigned_to,
       'items' => [],
       'total' => 0,
     ];
@@ -43,6 +42,7 @@ while ($assignedItems && ($row = mysqli_fetch_object($assignedItems))) {
     'image' => $imageSrc,
     'name' => $name,
     'desc' => $row->description,
+    'assigned_to' => trim((string)$row->assigned_to),
     'qty' => $qty,
     'price' => $price,
     'total' => $total,
@@ -72,17 +72,17 @@ while ($assignedItems && ($row = mysqli_fetch_object($assignedItems))) {
       <a href="?page=account_menu" class="text-white" aria-label="Back">
         <span class="material-symbols-outlined">arrow_back</span>
       </a>
-      <h1 class="text-lg font-semibold m-0">Last Order</h1>
+      <h1 class="text-lg font-semibold m-0">Order History</h1>
       <div class="w-6"></div>
     </div>
-    <p class="text-center text-white/90 text-sm m-0">Invoices assigned for delivery</p>
+    <p class="text-center text-white/90 text-sm m-0">Invoices and items</p>
   </div>
 </div>
 
 <div class="max-w-sm mx-auto px-4 mt-3 mb-6">
   <?php if (empty($invoices)): ?>
     <div class="bg-white rounded-2xl shadow-sm p-6 text-center text-gray-500">
-      No assigned orders found.
+      No order history found.
     </div>
   <?php else: ?>
     <div class="space-y-3">
@@ -93,7 +93,6 @@ while ($assignedItems && ($row = mysqli_fetch_object($assignedItems))) {
               <div class="invoice-number">Invoice #<?php echo (int)$invoice->id; ?></div>
               <div class="po-unit">Date: <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
             </div>
-            <span class="po-qty-pill">Assigned</span>
           </div>
           <div class="space-y-2">
             <?php foreach ($invoice->items as $it): ?>
