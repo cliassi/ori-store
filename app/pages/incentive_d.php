@@ -181,8 +181,9 @@ print "</tbody>";
               print "<td>$obj->id</td>";
               print "<td class='name'><a href='?s=$obj->u_fullname'><u>$obj->name</u></a></td>";
               print "<td class='username'>$obj->u_fullname</td>";
+              print "<td class='phone'>$phone</td>";
               print "<td class='incentive' data-name='$obj->u_fullname'>$obj->incentive</td>";
-              print "<td><a class='btn btn-primary btn-sm' data-id='$obj->id' data-user-id='$obj->user_id' data-name='$obj->name' data-username='$obj->u_fullname' data-incentive='$obj->incentive' onClick='setStaff(this)' data-bs-toggle='modal' data-bs-target='#productFrommOdal'><i class='fas fa-edit'></i></a> <a href='?del&id=$obj->id' class='protected-link btn btn-danger btn-sm'><i class='fas fa-trash'></i></a> </td>";
+              print "<td><a class='btn btn-primary btn-sm' data-id='$obj->id' data-user-id='$obj->user_id' data-name='$obj->name' data-username='$obj->u_fullname' data-phone='$phone' data-incentive='$obj->incentive' onClick='setStaff(this)' data-bs-toggle='modal' data-bs-target='#productFrommOdal'><i class='fas fa-edit'></i></a> <a href='?del&id=$obj->id' class='protected-link btn btn-danger btn-sm'><i class='fas fa-trash'></i></a> </td>";
               print "</tr>";
               $i++;
             }
