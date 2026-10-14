@@ -144,9 +144,9 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
                   </span>
                 </div>
                 <div class="receipt-item-values">
-                  <div class="receipt-item-value"><span class="receipt-item-label">Price</span><strong>RM <?php echo number_format($it->price, 2); ?></strong></div>
-                  <div class="receipt-item-value"><span class="receipt-item-label">Qty</span><strong><?php echo number_format($it->qty, 0); ?></strong></div>
-                  <div class="receipt-item-value"><span class="receipt-item-label">Total</span><strong>RM <?php echo number_format($it->total, 2); ?></strong></div>
+                  <div class="receipt-item-value"><strong>RM <?php echo number_format($it->price, 2); ?></strong></div>
+                  <div class="receipt-item-value"><strong><?php echo number_format($it->qty, 0); ?></strong></div>
+                  <div class="receipt-item-value"><strong>RM <?php echo number_format($it->total, 2); ?></strong></div>
                 </div>
               </div>
             <?php endforeach; ?>
