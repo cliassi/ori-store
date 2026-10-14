@@ -77,7 +77,6 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-item-head{display:flex;align-items:flex-start;gap:8px;}
   .receipt-item-invoice{font-size:10px;color:#4b5563;white-space:nowrap;}
   .receipt-item-name{display:block;flex:1;font-size:10px;font-weight:600;min-width:0;}
-  .receipt-item-desc{display:block;color:#6b7280;font-size:10px;}
   .receipt-item-values{display:grid;grid-template-columns:1fr .55fr 1fr;gap:8px;margin-top:6px;padding-left:54px;box-sizing:border-box;font-size:11px;}
   .receipt-item-values-header{font-size:10px;color:#6b7280;margin-top:10px;}
   .receipt-item-values-header span:last-child{text-align:right;}
@@ -131,10 +130,10 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
           </div>
           <div class="receipt-item-list">
             <div class="receipt-item-values receipt-item-values-header"><span>Price</span><span>Qty</span><span>Total</span></div>
-            <?php foreach ($invoice->items as $it): ?>
+            <?php $i = 1; foreach ($invoice->items as $it): ?>
               <div class="receipt-item">
                 <div class="receipt-item-head">
-                  <span class="receipt-item-invoice">INV<?php echo zerofill($it->invoice_id, 5); ?></span>
+                  <span class="receipt-item-invoice"><?php echo $i++; ?>INV<?php echo zerofill($it->invoice_id, 5); ?></span>
                   <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 <div class="receipt-item-values">
