@@ -3,7 +3,7 @@
    $delete_id = (int)$post->delete_id;
    $orderBean = R::load('customer_order', $delete_id);
    if ($orderBean && $orderBean->id) {
-     if (strtolower((string)$orderBean->status) !== 'approved') {
+     if (!in_array(strtolower((string)$orderBean->status), ['approved', 'ordered'], true)) {
        $itemsBeans = R::find('customer_order_item', ' customer_order_id = ? ', [$delete_id]);
        foreach ($itemsBeans as $item) {
          R::trash($item);
@@ -19,11 +19,11 @@ if(isset($post->approve_id)){
   $approve_id = (int)$post->approve_id;
   // Fetch the order and items
   $orderBean = R::load('customer_order', $approve_id);
-  if ($orderBean && $orderBean->id) {
+  if ($orderBean && $orderBean->id && !in_array(strtolower((string)$orderBean->status), ['approved', 'ordered'], true)) {
     // Insert into invoice
     $invoice = R::dispense('invoice');
     $invoice->customer_id = (int)$orderBean->customer_id;
-    $invoice->order_id = $approve_id;
+    $invoice->customer_order_id = $approve_id;
     $invoice->invoice_date = $orderBean->invoice_date;
     $invoice->delivery_date = $orderBean->invoice_date;
     $invoice->status = 'approved';
@@ -43,7 +43,8 @@ if(isset($post->approve_id)){
     }
 
     // Update order as approved
-    $orderBean->status = 'approved';
+    $orderBean->status = 'ordered';
+    $orderBean->invoice_id = $invoice_id;
     R::store($orderBean);
   }
 
@@ -57,7 +58,7 @@ if (isset($get) && isset($get->approve_form)) {
     exit;
   }
 
-  if (strtolower((string)$order->status) !== 'approved') {
+  if (!in_array(strtolower((string)$order->status), ['approved', 'ordered'], true)) {
     $items = R::find('customer_order_item', ' customer_order_id = ? ', [$id]);
 
     $invoice = R::dispense('invoice');
@@ -79,10 +80,9 @@ if (isset($get) && isset($get->approve_form)) {
       R::store($invItem);
     }
 
-    foreach ($items as $item) {
-      R::trash($item);
-    }
-    R::trash($order);
+    $order->status = 'ordered';
+    $order->invoice_id = $invoice_id;
+    R::store($order);
   }
 
   // redir('?page=customer_order');
@@ -268,7 +268,7 @@ if (isset($get) && isset($get->detail)) {
                   echo '<td class="text-center">'.(int)$o->qty.'</td>';
                   echo '<td class="text-end">'.number_format((float)$o->amount,2).'</td>';
                   echo '<td>';
-                  if (strtolower($o->status) !== 'approved') {
+                  if (!in_array(strtolower((string)$o->status), ['approved', 'ordered'], true)) {
                     echo '<button type="button" class="btn btn-sm btn-success" onclick="event.stopPropagation(); approveOrder('.(int)$o->id.')">Approve</button>';
                     echo ' <button type="button" class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteOrder('.(int)$o->id.')">Delete</button>';
                   }

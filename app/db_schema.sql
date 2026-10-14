@@ -2,7 +2,8 @@
 SQLyog Community v12.4.0 (64 bit)
 MySQL - 10.2.8-MariaDB : Database - store
 *********************************************************************
-*/
+*/
+
 
 /*!40101 SET NAMES utf8 */;
 
@@ -297,6 +298,7 @@ CREATE TABLE `customer_order` (
   `delivered_by` int(10) unsigned DEFAULT NULL,
   `delivery_staff` varchar(128) DEFAULT NULL,
   `customer_id` int(10) unsigned NOT NULL,
+  `invoice_id` int(10) unsigned DEFAULT NULL,
   `note` text DEFAULT NULL,
   `created_by` int(10) unsigned DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
@@ -2092,14 +2094,22 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `coItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-#SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-#SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-FROM `customer_order_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND customer_order_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+#SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+#SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+FROM `customer_order_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND customer_order_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2109,12 +2119,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `deliveredItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\"></span><span class=\"',IFNULL(delivered_at, ' hidden-white'),'\"> <span class=\"item-price\">','<span class=\"item-qty\">', ii.quantity,'</span></span></span></div>' SEPARATOR ' ') INTO items
-FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\"></span><span class=\"',IFNULL(delivered_at, ' hidden-white'),'\"> <span class=\"item-price\">','<span class=\"item-qty\">', ii.quantity,'</span></span></span></div>' SEPARATOR ' ') INTO items
+
+FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2124,12 +2140,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `invoiceItems2`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\"><span class=\"item-qty\">', ii.quantity,'</span></span></div>' SEPARATOR ' ') INTO items
-FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\"><span class=\"item-qty\">', ii.quantity,'</span></span></div>' SEPARATOR ' ') INTO items
+
+FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2139,11 +2161,16 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `returnedItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SELECT GROUP_CONCAT('<div style=\"border-bottom: solid 1px #ccc;\">',description,', <b class=\"frht\">(', cost ,' X ', quantity,' = ',(quantity*cost),')</b></div>' SEPARATOR '') INTO items
-FROM `goods_return_item` WHERE order_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SELECT GROUP_CONCAT('<div style=\"border-bottom: solid 1px #ccc;\">',description,', <b class=\"frht\">(', cost ,' X ', quantity,' = ',(quantity*cost),')</b></div>' SEPARATOR '') INTO items
+
+FROM `goods_return_item` WHERE order_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2153,12 +2180,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stock`(_id INT) RETURNS int(11)
     DETERMINISTIC
-BEGIN
-DECLARE total INT;
-SELECT 
-IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id),0) -
-IFNULL((SELECT SUM(quantity) FROM invoice_item WHERE product_variance_id=_id),0) INTO total;
-RETURN total;
+BEGIN
+
+DECLARE total INT;
+
+SELECT 
+
+IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id),0) -
+
+IFNULL((SELECT SUM(quantity) FROM invoice_item WHERE product_variance_id=_id),0) INTO total;
+
+RETURN total;
+
 END */$$
 DELIMITER ;
 
@@ -2168,14 +2201,22 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `invoiceItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-#SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-#SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+#SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+#SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' ', IFNULL(pv.size,''), ' x ', IFNULL(pv.unit,'') ,' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+SELECT GROUP_CONCAT('<div class=\"order-item\">',IFNULL(ii.description,''), ' <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2185,12 +2226,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `invoiceItemsDelivery`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span> <span class=\"d-icon btn btn-sm btn-warning\"><i class=\"fas fa-shipping-fast\"></i></span></div>' SEPARATOR ' ') INTO items
-FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span> <span class=\"d-icon btn btn-sm btn-warning\"><i class=\"fas fa-shipping-fast\"></i></span></div>' SEPARATOR ' ') INTO items
+
+FROM `invoice_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND invoice_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2200,25 +2247,44 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `orderItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT(
-  '<div class=\"order-item\"><span class=\"item-count\">', 
-  @rank := @rank + 1, 
-  '.</span> (', 
-  #IFNULL(p.name, ''), ' ', 
-  TRIM(IFNULL(ii.description, '')), ' ', 
-  IFNULL(pv.size, ''), ' x ', 
-  IFNULL(pv.unit, '') ,') <span class=\"item-price\">(', 
-  IFNULL(ii.cost, 0) ,' X <span class=\"item-qty\">', 
-  IFNULL(ii.quantity, 0), '</span> = ', 
-  (IFNULL(ii.quantity, 0) * IFNULL(ii.cost, 0)), 
-  ')</span></div>' 
-  SEPARATOR ''
-) INTO items
-FROM `order_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND order_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT(
+
+  '<div class=\"order-item\"><span class=\"item-count\">', 
+
+  @rank := @rank + 1, 
+
+  '.</span> (', 
+
+  #IFNULL(p.name, ''), ' ', 
+
+  TRIM(IFNULL(ii.description, '')), ' ', 
+
+  IFNULL(pv.size, ''), ' x ', 
+
+  IFNULL(pv.unit, '') ,') <span class=\"item-price\">(', 
+
+  IFNULL(ii.cost, 0) ,' X <span class=\"item-qty\">', 
+
+  IFNULL(ii.quantity, 0), '</span> = ', 
+
+  (IFNULL(ii.quantity, 0) * IFNULL(ii.cost, 0)), 
+
+  ')</span></div>' 
+
+  SEPARATOR ''
+
+) INTO items
+
+FROM `order_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND order_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2228,12 +2294,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stock2`(_id INT, _branch_id INT) RETURNS int(11)
     DETERMINISTIC
-BEGIN
-DECLARE total INT;
-SELECT 
-IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id AND branch_id=_branch_id),0) -
-IFNULL((SELECT SUM(quantity) FROM invoice_item WHERE product_variance_id=_id AND branch_id=_branch_id),0) INTO total;
-RETURN total;
+BEGIN
+
+DECLARE total INT;
+
+SELECT 
+
+IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id AND branch_id=_branch_id),0) -
+
+IFNULL((SELECT SUM(quantity) FROM invoice_item WHERE product_variance_id=_id AND branch_id=_branch_id),0) INTO total;
+
+RETURN total;
+
 END */$$
 DELIMITER ;
 
@@ -2243,12 +2315,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCollectItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-FROM `stock_collect_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_collect_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+FROM `stock_collect_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_collect_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2258,12 +2336,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCollectItemsMini`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,')</span></div>' SEPARATOR ' ') INTO items
-FROM `stock_collect_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_collect_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,')</span></div>' SEPARATOR ' ') INTO items
+
+FROM `stock_collect_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_collect_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2273,12 +2357,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCollectItemsQty`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\">',ii.quantity,'</div>' SEPARATOR ' ') INTO items
-FROM `stock_collect_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_collect_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\">',ii.quantity,'</div>' SEPARATOR ' ') INTO items
+
+FROM `stock_collect_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_collect_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2288,13 +2378,20 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCollectItemsQtyDelivered`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-
-SELECT GROUP_CONCAT(CONCAT('<div class="order-item">',(SELECT IFNULL(SUM(IFNULL(quantity,0)),0) FROM `invoice_item` WHERE DATE(invoice_item.delivered_at)=CURDATE() 
-AND invoice_item.product_variance_id=stock_collect_item.product_variance_id),'</div>') SEPARATOR '') INTO items
-FROM `stock_collect_item` WHERE stock_collect_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+
+
+SELECT GROUP_CONCAT(CONCAT('<div class="order-item">',(SELECT IFNULL(SUM(IFNULL(quantity,0)),0) FROM `invoice_item` WHERE DATE(invoice_item.delivered_at)=CURDATE() 
+
+AND invoice_item.product_variance_id=stock_collect_item.product_variance_id),'</div>') SEPARATOR '') INTO items
+
+FROM `stock_collect_item` WHERE stock_collect_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2304,13 +2401,20 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCollectItemsQtyPending`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-
-SELECT GROUP_CONCAT(CONCAT('<div class="order-item ',IF(returned_quantity=0,'pending','returned'),'">',quantity-returned_quantity-(SELECT IFNULL(SUM(IFNULL(quantity,0)),0) FROM `invoice_item` WHERE DATE(invoice_item.delivered_at)=CURDATE() 
-AND invoice_item.product_variance_id=stock_collect_item.product_variance_id),'</div>') SEPARATOR '') INTO items
-FROM `stock_collect_item` WHERE stock_collect_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+
+
+SELECT GROUP_CONCAT(CONCAT('<div class="order-item ',IF(returned_quantity=0,'pending','returned'),'">',quantity-returned_quantity-(SELECT IFNULL(SUM(IFNULL(quantity,0)),0) FROM `invoice_item` WHERE DATE(invoice_item.delivered_at)=CURDATE() 
+
+AND invoice_item.product_variance_id=stock_collect_item.product_variance_id),'</div>') SEPARATOR '') INTO items
+
+FROM `stock_collect_item` WHERE stock_collect_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2320,13 +2424,20 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCollectItemsQtyToReturn`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-
-SELECT GROUP_CONCAT(CONCAT('<div class="order-item ',IF(returned_quantity=0,'pending','returned'),'">',quantity-(SELECT IFNULL(SUM(IFNULL(quantity,0)),0) FROM `invoice_item` WHERE DATE(invoice_item.delivered_at)=CURDATE() 
-AND invoice_item.product_variance_id=stock_collect_item.product_variance_id),'<span class="pad-right-5"></span><span class="btn btn-return btn-sm btn-',IF(returned_quantity=0,'warning','success'),'" data-id="',id,'"><i class="fas fa-people-carry"></i></span></div>') SEPARATOR '') INTO items
-FROM `stock_collect_item` WHERE stock_collect_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+
+
+SELECT GROUP_CONCAT(CONCAT('<div class="order-item ',IF(returned_quantity=0,'pending','returned'),'">',quantity-(SELECT IFNULL(SUM(IFNULL(quantity,0)),0) FROM `invoice_item` WHERE DATE(invoice_item.delivered_at)=CURDATE() 
+
+AND invoice_item.product_variance_id=stock_collect_item.product_variance_id),'<span class="pad-right-5"></span><span class="btn btn-return btn-sm btn-',IF(returned_quantity=0,'warning','success'),'" data-id="',id,'"><i class="fas fa-people-carry"></i></span></div>') SEPARATOR '') INTO items
+
+FROM `stock_collect_item` WHERE stock_collect_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 
@@ -2336,12 +2447,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockCurrent`(_id INT) RETURNS int(11)
     DETERMINISTIC
-BEGIN
-DECLARE total INT;
-SELECT 
-IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id),0) -
-IFNULL((SELECT SUM(quantity) FROM invoice_item ii, invoice i WHERE i.id=ii.invoice_id and product_variance_id=_id AND IFNULL(ii.delivery_date, i.invoice_date) = curdate()),0) INTO total;
-RETURN total;
+BEGIN
+
+DECLARE total INT;
+
+SELECT 
+
+IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id),0) -
+
+IFNULL((SELECT SUM(quantity) FROM invoice_item ii, invoice i WHERE i.id=ii.invoice_id and product_variance_id=_id AND IFNULL(ii.delivery_date, i.invoice_date) = curdate()),0) INTO total;
+
+RETURN total;
+
 END */$$
 DELIMITER ;
 
@@ -2351,12 +2468,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockPending`(_id INT) RETURNS int(11)
     DETERMINISTIC
-BEGIN
-DECLARE total INT;
-SELECT 
-IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id),0) -
-IFNULL((SELECT SUM(quantity) FROM invoice_item ii, invoice i WHERE i.id=ii.invoice_id AND product_variance_id=_id AND IFNULL(ii.delivery_date, i.invoice_date) < curdate()),0) INTO total;
-RETURN total;
+BEGIN
+
+DECLARE total INT;
+
+SELECT 
+
+IFNULL((SELECT SUM(quantity) FROM order_item WHERE product_variance_id=_id),0) -
+
+IFNULL((SELECT SUM(quantity) FROM invoice_item ii, invoice i WHERE i.id=ii.invoice_id AND product_variance_id=_id AND IFNULL(ii.delivery_date, i.invoice_date) < curdate()),0) INTO total;
+
+RETURN total;
+
 END */$$
 DELIMITER ;
 
@@ -2366,12 +2489,18 @@ DELIMITER $$
 
 /*!50003 CREATE FUNCTION `stockReturnItems`(_id INT) RETURNS text CHARSET latin1
     DETERMINISTIC
-BEGIN
-DECLARE items TEXT;
-SET @rank=0;
-SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
-FROM `stock_return_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_return_id=_id;
-RETURN items;
+BEGIN
+
+DECLARE items TEXT;
+
+SET @rank=0;
+
+SELECT GROUP_CONCAT('<div class=\"order-item\"><span class=\"item-count\">', @rank:=@rank+1, '.</span> (', p.name, ' ',ii.description, ' ', pv.size, ' x ', pv.unit ,') <span class=\"item-price\">(', ii.price ,' X <span class=\"item-qty\">', ii.quantity,'</span> = ',(ii.quantity*ii.price),')</span></div>' SEPARATOR ' ') INTO items
+
+FROM `stock_return_item` ii, `product_variance` pv, product p WHERE pv.id=ii.product_variance_id AND p.id=pv.product_id AND stock_return_id=_id;
+
+RETURN items;
+
 END */$$
 DELIMITER ;
 

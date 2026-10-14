@@ -5,32 +5,49 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 }
 
 $uid = (int) UID;
-$order = R::findOne('customer_order', ' customer_id = ? ORDER BY id DESC ', [$uid]);
-$items = [];
-$grand = 0;
-$orderDate = '';
-
-if ($order && $order->id) {
-  $orderDate = $order->invoice_date ?: ($order->customer_order_date ?: $order->created_at);
-  $rows = R::find('customer_order_item', ' customer_order_id = ? ', [$order->id]);
-  foreach ($rows as $row) {
-    $qty = (int)$row->quantity;
-    $price = (float)$row->price;
-    $total = $qty * $price;
-    $grand += $total;
-    $variance = $row->product_variance_id ? R::load('product_variance', $row->product_variance_id) : null;
-    $imageSrc = ($variance && !empty($variance->image))
-      ? getImageOrPlaceholder($variance->image, $row->name)
-      : getImageOrPlaceholder('', $row->name);
-    $items[] = (object) [
-      'image' => $imageSrc,
-      'name' => $row->name ? $row->name : $row->description,
-      'desc' => $row->description,
-      'qty' => $qty,
-      'price' => $price,
-      'total' => $total,
+$invoices = [];
+$assignedItems = select("SELECT i.id invoice_id, i.invoice_date, ii.name, ii.description, ii.quantity, ii.price,
+    ii.assigned_to, pv.image, pv.particulars, p.name product_name
+  FROM invoice i
+  INNER JOIN invoice_item ii ON ii.invoice_id = i.id
+  LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
+  LEFT JOIN product p ON p.id = ii.product_id
+  WHERE i.customer_id = $uid AND ii.assigned_to IS NOT NULL AND TRIM(ii.assigned_to) <> ''
+  ORDER BY i.id DESC, ii.id DESC");
+while ($assignedItems && ($row = mysqli_fetch_object($assignedItems))) {
+  $invoiceId = (int)$row->invoice_id;
+  if (!isset($invoices[$invoiceId])) {
+    $invoices[$invoiceId] = (object) [
+      'id' => $invoiceId,
+      'date' => $row->invoice_date,
+      'assigned_to' => $row->assigned_to,
+      'items' => [],
+      'total' => 0,
     ];
   }
+  $name = trim((string)$row->name);
+  if ($name === '') {
+    $name = trim((string)$row->product_name);
+  }
+  if ($name === '') {
+    $name = trim((string)$row->particulars);
+  }
+  if ($name === '') {
+    $name = (string)$row->description;
+  }
+  $qty = (float)$row->quantity;
+  $price = (float)$row->price;
+  $total = $qty * $price;
+  $imageSrc = getImageOrPlaceholder((string)$row->image, $name);
+  $invoices[$invoiceId]->items[] = (object) [
+    'image' => $imageSrc,
+    'name' => $name,
+    'desc' => $row->description,
+    'qty' => $qty,
+    'price' => $price,
+    'total' => $total,
+  ];
+  $invoices[$invoiceId]->total += $total;
 }
 ?>
 <style>
@@ -43,6 +60,10 @@ if ($order && $order->id) {
   .po-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:110px;margin-left:auto;}
   .po-total{font-weight:700;color:#0f172a;font-size:13px;}
   .po-qty-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 8px;font-size:12px;color:#111827;}
+  .invoice-card{background:#fff;border-radius:16px;padding:12px;box-shadow:0 1px 4px rgba(15,23,42,.1);}
+  .invoice-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+  .invoice-number{font-weight:700;color:#0f172a;font-size:14px;}
+  .invoice-foot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #e5e7eb;margin-top:10px;padding-top:9px;font-size:12px;color:#4b5563;}
 </style>
 
 <div class="bg-primary blob-shape text-white">

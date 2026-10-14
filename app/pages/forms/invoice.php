@@ -92,20 +92,6 @@ if (METHOD == 'edit' && defined('ID')) {
     // dd($post->price[31]);
     foreach ($post->product as $id => $qty) {
       $obj = R::dispense("invoice");
-      if(isset($post->customer_order_id)){
-        $delete_id = (int)$post->customer_order_id;
-        $orderBean = R::load('customer_order', $delete_id);
-        if ($orderBean && $orderBean->id) {
-          if (strtolower((string)$orderBean->status) !== 'approved') {
-            $itemsBeans = R::find('customer_order_item', ' customer_order_id = ? ', [$delete_id]);
-            foreach ($itemsBeans as $item) {
-              R::trash($item);
-            }
-            R::trash($orderBean);
-          }
-        }
-      }
-      
       $obj->status = "New";
       if (METHOD == 'edit' && defined('ID')) {
         $obj = R::load('invoice', ID);
@@ -121,8 +107,19 @@ if (METHOD == 'edit' && defined('ID')) {
       // $obj->delivery_date = $post->delivery_date;
       // $obj->note = $post->note;
       $obj->created_by = uid();
+      if (isset($post->customer_order_id)) {
+        $orderBean = R::load('customer_order', (int)$post->customer_order_id);
+        if ($orderBean && $orderBean->id) {
+          $obj->customer_order_id = (int)$orderBean->id;
+        }
+      }
 
       R::store($obj);
+      if (isset($post->customer_order_id) && isset($orderBean) && $orderBean->id) {
+        $orderBean->status = 'ordered';
+        $orderBean->invoice_id = $obj->id;
+        R::store($orderBean);
+      }
       if (METHOD == 'edit' && defined('ID')) {
         del("invoice_item", "invoice_id=" . ID);
       }
