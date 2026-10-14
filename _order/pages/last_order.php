@@ -136,7 +136,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
                     <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php if ($it->desc && trim((string)$it->desc) !== trim((string)$it->name)): ?><span class="receipt-item-desc"><?php echo htmlspecialchars((string)$it->desc, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
                     <?php if ($it->assigned_to !== ''): ?>
-                      <span class="receipt-item-desc">Assigned delivery to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?><?php if ($it->assigned_phone !== ''): ?> · <?php echo htmlspecialchars($it->assigned_phone, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></span>
+                      <span class="receipt-item-desc">Assigned delivery to: <?php echo htmlspecialchars($it->assigned_to, ENT_QUOTES, 'UTF-8'); ?><?php if ($it->assigned_phone !== ''): ?> · Phone: <?php echo htmlspecialchars($it->assigned_phone, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></span>
                     <?php endif; ?>
                   </td>
                   <td class="numeric">RM <?php echo number_format($it->price, 2); ?></td>
