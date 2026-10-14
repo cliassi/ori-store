@@ -6,13 +6,14 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 
 $uid = (int) UID;
 $invoices = [];
-$historyItems = select("SELECT i.id invoice_id, i.invoice_date, i.salesman, c.company customer_name,
-    c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
+$historyItems = select("SELECT i.id invoice_id, i.invoice_date, COALESCE(NULLIF(i.salesman, ''), co.salesman) salesman,
+    c.company customer_name, c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
     ii.name, ii.description, ii.quantity, ii.price, ii.assigned_to, ss.phone assigned_phone,
     pv.particulars, p.name product_name
   FROM invoice i
   INNER JOIN invoice_item ii ON ii.invoice_id = i.id
   LEFT JOIN customer c ON c.id = i.customer_id
+  LEFT JOIN customer_order co ON co.id = i.customer_order_id
   LEFT JOIN staff_salary ss ON ss.name = ii.assigned_to AND ss.category = 'Delivery Staff'
   LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
   LEFT JOIN product p ON p.id = ii.product_id
@@ -33,6 +34,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
       'date' => $row->invoice_date,
       'agent' => trim((string)$row->salesman),
       'customer_name' => $customerName,
+      'customer_contact' => trim((string)$row->customer_contact),
       'customer_mobile' => trim((string)$row->customer_mobile),
       'customer_city' => trim((string)$row->customer_city),
       'items' => [],
