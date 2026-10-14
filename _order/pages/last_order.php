@@ -133,6 +133,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
             <?php if ($invoice->customer_mobile !== ''): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
           </div>
           <div class="receipt-item-list">
+            <div class="receipt-item-values receipt-item-values-header"><span>Price</span><span>Qty</span><span>Total</span></div>
             <?php foreach ($invoice->items as $it): ?>
               <div class="receipt-item">
                 <div class="receipt-item-head">
