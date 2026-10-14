@@ -78,7 +78,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-item-invoice{font-size:10px;color:#4b5563;white-space:nowrap;}
   .receipt-item-name{display:block;flex:1;font-size:10px;font-weight:600;min-width:0;}
   .receipt-item-desc{display:block;color:#6b7280;font-size:10px;}
-  .receipt-item-values{display:grid;grid-template-columns:1fr .55fr 1fr;gap:8px;margin-top:6px;font-size:11px;}
+  .receipt-item-values{display:grid;grid-template-columns:1fr .55fr 1fr;gap:8px;margin-top:6px;padding-left:54px;box-sizing:border-box;font-size:11px;}
   .receipt-item-values-header{font-size:10px;color:#6b7280;margin-top:10px;}
   .receipt-item-values-header span:last-child{text-align:right;}
   .receipt-item-value{display:flex;flex-direction:column;gap:2px;}
