@@ -93,7 +93,7 @@ orderadminSeedAdminDashboardPermissions();
 $dashboardSections = [
     'main-services' => [
         'title' => 'Main Services',
-        'pages' => ['dashboard', 'customer_due', 'customer', 'expenses', 'customer_order', 'order', 'collect', 'cnr', 'pending_order', 'delivery_status', 'permission'],
+        'pages' => ['petty_cash', 'customer_due', 'customer', 'expenses', 'customer_order', 'order', 'collect', 'cnr', 'pending_order', 'delivery_status', 'permission'],
         'items' => [],
     ],
     'product-sales' => [
