@@ -313,9 +313,8 @@ function orderadminDashboardItems()
 {
     return [
         // Row 1
-        ['label' => 'Dashboard', 'icon' => 'view-grid', 'page' => 'dashboard'],
+        ['label' => 'Petty Cash', 'icon' => 'currency-dollar', 'page' => 'petty_cash'],
         ['label' => 'Supplier', 'icon' => 'user-add', 'page' => 'supplier_add'],
-        // ['label' => 'Petty Cash', 'icon' => 'currency-dollar', 'page' => 'petty_cash'],
         ['label' => 'Cus Due', 'icon' => 'cash', 'page' => 'customer_due'],
         ['label' => 'Customer', 'icon' => 'shopping-cart', 'page' => 'customer'],
         // Row 2
