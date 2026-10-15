@@ -57,7 +57,7 @@ $escape = function ($value) {
 ?>
 <style>
     .permission-page { max-width: 42rem; margin: 0 auto; padding: 1.5rem .75rem; }
-    .permission-table { width: 100%; border-collapse: collapse; background: #e7f2e3; border: 1px solid #2f4f2f33; border-radius: 18px; overflow: hidden; }
+    .permission-table { width: 100%; border-collapse: collapse; background: #f7f7f7; border: 1px solid #2f4f2f33; border-radius: 18px; overflow: hidden; }
     .permission-table th, .permission-table td { padding: .75rem; border-bottom: 1px solid #2f4f2f33; text-align: left; }
     .permission-table tr:last-child td { border-bottom: 0; }
     .permission-icon { color: #47773f !important; font-size: 42px; line-height: 1; }
