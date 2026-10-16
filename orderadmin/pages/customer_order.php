@@ -99,23 +99,34 @@ if (isset($post) && ((isset($post->delete_id) && $post->delete_id) || (isset($po
     $to = $toRaw !== '' ? preg_replace('/[^0-9\-]/', '', $toRaw) : '';
     $orderResult = mysqli_query($c, "SELECT status FROM customer_order WHERE id = $orderId LIMIT 1");
     $order = $orderResult ? mysqli_fetch_object($orderResult) : null;
+    $deleteMessage = 'Could not delete this order. Please try again.';
     if ($order && strtolower((string)$order->status) !== 'approved') {
-        // First delete related items
-        $deleteItemsSql = "DELETE FROM customer_order_item WHERE customer_order_id = $orderId";
-        mysqli_query($c, $deleteItemsSql);
-
-        // Then delete the order
-        $deleteOrderSql = "DELETE FROM customer_order WHERE id = $orderId";
-        mysqli_query($c, $deleteOrderSql);
+        $deleteItemsResult = mysqli_query($c, "DELETE FROM customer_order_item WHERE customer_order_id = $orderId");
+        if ($deleteItemsResult) {
+            $deleteOrderResult = mysqli_query($c, "DELETE FROM customer_order WHERE id = $orderId");
+            if ($deleteOrderResult && mysqli_affected_rows($c) > 0) {
+                $deleteMessage = '';
+            }
+        }
+    } elseif ($order) {
+        $deleteMessage = 'Approved orders cannot be deleted.';
+    } else {
+        $deleteMessage = 'Order not found.';
     }
     
-    // Redirect to refresh the page
-    $qs = '';
-    if ($from !== '' && $to !== '') {
-        $qs = '&from=' . urlencode($from) . '&to=' . urlencode($to);
+    $redirectUrl = '?page=customer_order';
+    if ($from !== '') {
+        $redirectUrl .= '&from=' . urlencode($from);
     }
-    // header("Location: ?page=customer_order" . $qs);
-    // exit;
+    if ($to !== '') {
+        $redirectUrl .= '&to=' . urlencode($to);
+    }
+    if ($deleteMessage === '') {
+        echo '<script>window.location.replace(' . json_encode($redirectUrl) . ');</script>';
+    } else {
+        echo '<script>alert(' . json_encode($deleteMessage) . ');window.location.replace(' . json_encode($redirectUrl) . ');</script>';
+    }
+    exit;
 }
 
 // Get filter parameters
@@ -254,6 +265,26 @@ $res = mysqli_query($c, $sql);
     border-radius: 8px;
     margin-bottom: 15px;
   }
+
+  .order-actions {
+    position: relative;
+    height: 52px;
+    text-align: center;
+  }
+
+  .order-actions .approve-button {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .order-actions .delete-button {
+    position: absolute;
+    right: 8px;
+    width: 40px;
+    min-width: 40px;
+    padding: 5px !important;
+  }
 </style>
 
 <form class="filter-form" method="get" action="">
@@ -347,11 +378,10 @@ $res = mysqli_query($c, $sql);
         // Keep actions visible (even when collapsed) like requested
         echo '<tfoot>';
         echo '<tr>';
-        echo '<th colspan="4" style="text-align:center">';
+        echo '<th colspan="4" class="order-actions">';
         if (strtolower((string)$row['status']) !== 'approved') {
-          echo '<button type="submit" name="delete_id" value="' . $orderId . '" class="btn btn-danger btn-sm" style="margin-left:5px;" onclick="return confirm(\'Delete this order?\')">Delete</button>';
-          print "<span style='margin-left:3rem;'></span>";
-          echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm">Approve</button>'; 
+          echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm approve-button" onclick="return confirm(\'Approve this order?\')">Approve</button>';
+          echo '<button type="button" class="btn btn-danger btn-sm delete-button" onclick="deleteOrder(' . $orderId . ')" aria-label="Delete order" title="Delete order"><span class="material-icons" aria-hidden="true">delete</span></button>';
         } else {
           echo '<span class="badge bg-success">Approved</span>';
         }
@@ -370,8 +400,23 @@ $res = mysqli_query($c, $sql);
   </div>
 </div>
 
+<form id="coDeleteForm" method="post" action="?page=customer_order" style="display:none">
+  <input type="hidden" name="delete_id" id="coDeleteId" value="">
+  <input type="hidden" name="from" value="<?php echo htmlspecialchars($fromDate, ENT_QUOTES); ?>">
+  <input type="hidden" name="to" value="<?php echo htmlspecialchars($toDate, ENT_QUOTES); ?>">
+</form>
+
 <script>
   (function () {
+    window.deleteOrder = function (id) {
+      if (!confirm('Delete this order? This cannot be undone.')) return;
+      var input = document.getElementById('coDeleteId');
+      var form = document.getElementById('coDeleteForm');
+      if (!input || !form) return;
+      input.value = id;
+      form.submit();
+    };
+
     document.addEventListener('click', function (e) {
       var toggleEl = e.target.closest('.order-toggle');
       if (!toggleEl) return;
