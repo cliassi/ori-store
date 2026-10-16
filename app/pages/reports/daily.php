@@ -27,6 +27,16 @@ $hotel_start_date = '2023-01-18 23:59:59';
 $d = isset($get->d) ? $get->d : today();
 $t = isset($get->t) ? $get->t : today();
 
+$pettyCashSummary = mysqli_fetch_object(select("SELECT
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash`) add_cash,
+  (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover,
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `expense_account_entry` WHERE payment_method='Cash') cash_expense,
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `payment` WHERE payment_method='Cash') cash_payment,
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw`) withdraw"));
+$pettyCashBalance = $pettyCashSummary
+  ? $pettyCashSummary->cash_handover + $pettyCashSummary->add_cash - $pettyCashSummary->withdraw - $pettyCashSummary->cash_payment - $pettyCashSummary->cash_expense
+  : 0;
+
 if (isset($get->shift)) {
   $shift = (string) $get->shift;
   if ($shift === 'prev' || $shift === 'next') {
@@ -41,6 +51,13 @@ if (!isUserIn(['apple', 'superadmin', 'melon', 'lemon', 'orange', 'mango', 'berr
 }
 
 if (isset($post->collect_cash)) {
+  $cashCollectionAmount = isset($post->amount) && is_numeric($post->amount) ? (float) $post->amount : 0;
+  if ($pettyCashBalance + $cashCollectionAmount >= 30000) {
+    alert("Cannot collect: Petty Cash plus Collection Amount Cash cannot be RM30,000 or more.");
+    redir("?");
+    return;
+  }
+
   if (isUserIn(["superadmin", "lemon", "ebrahim"])) {
     $handover = R::findOne("bd_handover", "branch_id=? AND date=?", [$branch_id, date("Y-m-d", strtotime($post->date))]);
   } else {
@@ -504,11 +521,22 @@ $userList = userList();
 </table>
 <?php
 // if(isUserIn(['apple', 'superadmin', 'orange'])){
-print "<div class='center' style='font-weight:700'><form method='post'>Collection Amount Cash <input type='number' name='amount' value='$credit' required step='.05' class='form-control form-control-fluid'>  Bank <input type='number' name='bank_amount' value='$credit_b' required step='.05' class='form-control form-control-fluid'>";
+print "<div class='center' style='font-weight:700'><form method='post' id='cash-collection-form'>Collection Amount Cash <input type='number' name='amount' value='$credit' required step='.05' class='form-control form-control-fluid'>  Bank <input type='number' name='bank_amount' value='$credit_b' required step='.05' class='form-control form-control-fluid'>";
 if ($canPickPast || isUserIn(["superadmin", "ebrahim", "lemon"])) {
   print "<input type='date' class='form-control form-control-fluid' value='" . today() . "' name='date'>";
 }
 print " <button type='submit' class='btn btn-primary' name='collect_cash'> Collect</button> </form><br>";
+?>
+<script>
+  document.getElementById('cash-collection-form').addEventListener('submit', function (event) {
+    var cashAmount = parseFloat(this.elements.amount.value) || 0;
+    if (<?php echo json_encode((float) $pettyCashBalance); ?> + cashAmount >= 30000) {
+      event.preventDefault();
+      alert('Cannot collect: Petty Cash plus Collection Amount Cash cannot be RM30,000 or more.');
+    }
+  });
+</script>
+<?php
 // print "<div class='center'><form method='post'>Collection Amount Bank <input type='number' name='bank_amount' value='' required step='.05' class='form-control-fluid'> <button type='submit' class='btn btn-danger' name='collect_cash'> Collect</button> </form><br><br><br>";
 // }
 ?>

@@ -13,6 +13,8 @@ if ($mon && preg_match('/^\d{4}-\d{2}-\d{2}$/', $mon)) {
   $mon = substr($mon, 0, 7);
 }
 
+$date = '';
+$last = '';
 $filter1 = "branch_id=$branch_id";            // cw_cash, cw_bank, cw_withdraw (entry_time scope when mon)
 $filter = "branch_id=$branch_id";            // created_at scope for most tables
 $filter_exp = "branch_id=$branch_id";          // expense_account_entry (expense_date scope when mon)
@@ -57,12 +59,12 @@ if (!$summary) {
 }
 
 $summary2 = mysqli_fetch_object(select("SELECT 
-  (SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE branch_id=$branch_id) add_cash, 
-  (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE branch_id=$branch_id GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover, 
-  (SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
-  (SELECT SUM(IFNULL(amount,0)) FROM `payment` WHERE payment_method='Cash' AND $filter) cash_payment, 
-  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id) cash, 
-  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id) withdraw"));
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash`) add_cash,
+  (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover,
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `expense_account_entry` WHERE payment_method='Cash') cash_expense,
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `payment` WHERE payment_method='Cash') cash_payment,
+  (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0) cash,
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw`) withdraw"));
 if (!$summary2) {
   $summary2 = (object) [
     'add_cash' => 0,
