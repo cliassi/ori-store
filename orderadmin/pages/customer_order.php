@@ -280,10 +280,20 @@ $res = mysqli_query($c, $sql);
 
   .order-actions .delete-button {
     position: absolute;
-    right: 8px;
-    width: 40px;
-    min-width: 40px;
-    padding: 5px !important;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    margin-right: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: #f0f0f0 !important;
+    border-color: #e0e0e0 !important;
+    color: #888 !important;
+    font-size: 18px;
+    line-height: 30px;
   }
 </style>
 
@@ -381,7 +391,7 @@ $res = mysqli_query($c, $sql);
         echo '<th colspan="4" class="order-actions">';
         if (strtolower((string)$row['status']) !== 'approved') {
           echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm approve-button" onclick="return confirm(\'Approve this order?\')">Approve</button>';
-          echo '<button type="button" class="btn btn-danger btn-sm delete-button" onclick="deleteOrder(' . $orderId . ')" aria-label="Delete order" title="Delete order"><span class="material-icons" aria-hidden="true">delete</span></button>';
+          echo '<button type="button" class="btn btn-sm delete-button" onclick="deleteOrder(' . $orderId . ')" aria-label="Delete order" title="Delete order">&times;</button>';
         } else {
           echo '<span class="badge bg-success">Approved</span>';
         }
