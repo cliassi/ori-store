@@ -30,7 +30,7 @@ $summary = mysqli_fetch_object(select("SELECT
   (SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE $filter1) add_cash, 
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND $filter1) cash, 
   (SELECT SUM(IFNULL(amount,0)) FROM `cw_bank` WHERE $filter1) bank, 
-  (SELECT SUM(IFNULL(amount,0)) FROM `cw_cash_withdraw` WHERE $filter1) withdraw, 
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE $filter1) withdraw, 
   (SELECT SUM(IFNULL(amount,0)) FROM `bd_handover` WHERE $filter) cash_handover, 
   (SELECT SUM(IFNULL(bank_amount,0)) FROM `bd_handover` WHERE $filter) bank_handover,
   (SELECT SUM(IFNULL(amount,0)) FROM `payment` WHERE payment_method='Cash' AND $filter) cash_payment, 
@@ -62,7 +62,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
   (SELECT SUM(IFNULL(amount,0)) FROM `expense_account_entry` WHERE payment_method='Cash' AND $filter_exp) cash_expense, 
   (SELECT SUM(IFNULL(amount,0)) FROM `payment` WHERE payment_method='Cash' AND $filter) cash_payment, 
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id) cash, 
-  (SELECT SUM(IFNULL(amount,0)) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id) withdraw"));
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id) withdraw"));
 if (!$summary2) {
   $summary2 = (object) [
     'add_cash' => 0,
@@ -135,8 +135,8 @@ if ($storeAccount) {
   $store_expense = (float) $store_expense_row->amt;
 }
 
-$petty_cash = $summary->add_cash - abs($summary->withdraw) + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
-$petty_cash = $summary2->cash_handover + $summary2->add_cash - abs($summary2->withdraw) - $summary2->cash_payment - $summary2->cash_expense;
+$petty_cash = $summary->add_cash - $summary->withdraw + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
+$petty_cash = $summary2->cash_handover + $summary2->add_cash - $summary2->withdraw - $summary2->cash_payment - $summary2->cash_expense;
 $bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
 $m = date('M, Y', strtotime("$store_month-01"));
 $storeExpenseParams = ['d' => $store_month_start, 't' => $store_month_end];
@@ -162,7 +162,7 @@ ob_start();
         <tr>
           <td>Invested Cash Capital</td>
           <td>:</td>
-          <td><?php print nf($summary2->cash - abs($summary2->withdraw)); ?></td>
+          <td><?php print nf($summary2->cash - $summary2->withdraw); ?></td>
         </tr>
         <tr>
           <td>Bank</td>
