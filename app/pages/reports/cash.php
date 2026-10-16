@@ -850,11 +850,11 @@ $summary2 = mysqli_fetch_object(select("SELECT
     (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND expense_date < '$d') cash_expense,
     (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND `date` < '$d') cash_payment,
     (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND `date` < '$d') cash,
-    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE `date` < '$d') withdraw"));
+    (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE company=$cwId AND `date` < '$d') withdraw"));
 
 	$petty_cash_value = $summary2->cash_handover
 		+ $summary2->add_cash
-		- abs($summary2->withdraw)
+		- $summary2->withdraw
 		- $summary2->cash_payment
 		- $summary2->cash_expense;
 	$petty_cash_value_str = number_format($petty_cash_value, 2, '.', ',');
@@ -1293,11 +1293,11 @@ $summary2 = mysqli_fetch_object(select("SELECT
     (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND expense_date < '$d') cash_expense,
     (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND `date` < '$d') cash_payment,
     (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND `date` < '$d') cash,
-    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE `date` < '$d') withdraw"));
+    (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE company=$company->id AND `date` < '$d') withdraw"));
 
 	$total = $summary2->cash_handover
 		+ $summary2->add_cash
-		- abs($summary2->withdraw)
+		- $summary2->withdraw
 		- $summary2->cash_payment
 		- $summary2->cash_expense;
 
