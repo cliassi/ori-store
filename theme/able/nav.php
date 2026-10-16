@@ -39,6 +39,10 @@
   [data-pc-layout=horizontal] .pc-sidebar .pc-navbar>.pc-item>.pc-link>.pc-arrow {
     margin-left: 0 !important;
   }
+
+  [data-pc-layout=horizontal] .pc-sidebar .pc-link{
+    padding: 4px !important;
+  }
 </style>
 
 
