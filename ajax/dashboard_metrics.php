@@ -64,6 +64,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `expense_account_entry` WHERE payment_method='Cash') cash_expense,
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `payment` WHERE payment_method='Cash') cash_payment,
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0) cash,
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE company=1) petty_cash_withdraw,
   (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw`) withdraw"));
 if (!$summary2) {
   $summary2 = (object) [
@@ -72,6 +73,7 @@ if (!$summary2) {
     'cash_expense' => 0,
     'cash_payment' => 0,
     'cash' => 0,
+    'petty_cash_withdraw' => 0,
     'withdraw' => 0
   ];
 }
@@ -138,7 +140,7 @@ if ($storeAccount) {
 }
 
 $petty_cash = $summary->add_cash - $summary->withdraw + $summary->cash_collection - $summary->cash_payment - $summary->cash_expense;
-$petty_cash = $summary2->cash_handover + $summary2->add_cash - $summary2->withdraw - $summary2->cash_payment - $summary2->cash_expense;
+$petty_cash = $summary2->cash_handover + $summary2->add_cash - $summary2->petty_cash_withdraw - $summary2->cash_payment - $summary2->cash_expense;
 $bank = $summary->bank_handover - $summary->bank_expense - $summary->bank_payment;
 $m = date('M, Y', strtotime("$store_month-01"));
 $storeExpenseParams = ['d' => $store_month_start, 't' => $store_month_end];
