@@ -1261,7 +1261,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	print "</div>";
 	print "<div class='col-md-5'>";
 	if (isUserIn(['superadmin', 'emon', 'orange', 'parvez']) || uid() == 45) {
-		print "<a data-bs-toggle='modal' data-bs-target='.invest' class='btn btn-warning'>Asset Invest</a>" . space(5);
+		// print "<a data-bs-toggle='modal' data-bs-target='.invest' class='btn btn-warning'>Asset Invest</a>" . space(5);
 		print "<a data-bs-toggle='modal' data-bs-target='.withdraw' class='btn btn-primary'>Cash Withdraw</a>" . space(5);
 	}
 	if (isUserIn(['superadmin', 'emon', 'orange', 'parvez']) || uid() == 45) {
@@ -1272,9 +1272,10 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	}
 	print "</div>";
 	print "<div class='col-md-2'>";
-	print "<a class='btn btn-sm btn-danger' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=1&t=capex'>Capex</a>" . space(5);
-	print "<a class='btn btn-sm btn-warning' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=3&t=opex'>Opex</a>";
-	print "</div>";
+  print "<a class='btn btn-sm btn-danger' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=1'>Expense</a>" . space(5);
+  // print "<a class='btn btn-sm btn-danger' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=1&t=capex'>Capex</a>" . space(5);
+  // print "<a class='btn btn-sm btn-warning' style='font-size: 1.2rem;' href='/store/expense_account/carwash?company=3&t=opex'>Opex</a>";
+  print "</div>";
 	print "</div>";
 
 
