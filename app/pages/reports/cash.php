@@ -1610,7 +1610,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 
 	$investment_period_total = getSum("investment", "amount", "date BETWEEN '$d' AND '$t' AND trash=0");
 
-	print "<tr><th colspan='2' class='text-right'>Total Investment</th><th class='right text-danger' colspan='1'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>" . nf($cashInTotal) . "</th><th></th><th class='right'>" . nf($cashOutTotal) . "</th><th class='right'>" . nf($total) . "</th><th></th><th class='right'>" . nf($bankInTotal) . "</th><th class='right'>" . nf($bankOutTotal) . "</th><th class='right'>" . nf(sum('bank')) . "</th>" . (uid() == 1 ? "<th></th>" : "") . "<th></th><th></th></tr>";
+	print "<tr><th colspan='2' class='text-right'>Total Investment</th><th class='right text-danger' colspan='1'><a href='../invest'>" . nf($investment_period_total) . "</a></th><th class='right'>" . nf($cashInTotal) . "</th><th class='right'>" . nf($cashOutTotal) . "</th><th class='right'>" . nf($total) . "</th><th></th><th class='right'>" . nf($bankInTotal) . "</th><th class='right'>" . nf($bankOutTotal) . "</th><th class='right'>" . nf(sum('bank')) . "</th>" . (uid() == 1 ? "<th></th>" : "") . "<th></th><th></th></tr>";
 
 	if (uid() == 1) {
 		print "<tr><td colspan='14' class='cntr'><button class='btn btn-success'>Approve Selected</button></td></tr>";
