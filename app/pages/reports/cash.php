@@ -1333,7 +1333,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	// print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Cash In</th><th class='w120'></th><th>Cash Out</th><th class='w120'></th><th>Balance</th><th></th>";
 
 	//<th><a href='add_cash'>Add Cash</a><br><a href='widthdraw'>Cash Withdraw</a></th><th>Invested Capital</th>
-	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th width='80px'></th><th>Cash Out</th><th>Balance</th><th>Manager</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Status</th><th>Approval</th>";
+	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th width='20px'></th><th>Cash Out</th><th>Balance</th><th>Manager</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Status</th><th>Approval</th>";
 	if (uid() == 1) {
 		print "<th>Del</th>";
 	}
