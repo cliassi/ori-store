@@ -802,7 +802,6 @@ if (isset($get->petty_cash_currency)) {
 	ensurePettyCashCurrencyTables();
 
 	$cwId = isset($get->cw) ? intval($get->cw) : 3;
-	$bId = isset($branch_id) ? intval($branch_id) : 1;
 
 	$startDate = isset($get->start_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $get->start_date) ? $get->start_date : date('Y-m-d');
 	$endDate = isset($get->end_date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $get->end_date) ? $get->end_date : date('Y-m-d');
@@ -846,12 +845,12 @@ if (isset($get->petty_cash_currency)) {
 	$d = date('Y-m-d', strtotime($endDate . ' +1 day'));
 
 $summary2 = mysqli_fetch_object(select("SELECT 
-    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash` WHERE branch_id=$branch_id AND `date` < '$d') add_cash, 
-    (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE branch_id=$branch_id AND `date` < '$d' GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover, 
-    (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND branch_id=$branch_id AND expense_date < '$d') cash_expense, 
-    (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND branch_id=$branch_id AND `date` < '$d') cash_payment, 
-    (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id AND `date` < '$d') cash, 
-    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id AND `date` < '$d') withdraw"));
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash` WHERE `date` < '$d') add_cash,
+    (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE `date` < '$d' GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover,
+    (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND expense_date < '$d') cash_expense,
+    (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND `date` < '$d') cash_payment,
+    (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND `date` < '$d') cash,
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE `date` < '$d') withdraw"));
 
 	$petty_cash_value = $summary2->cash_handover
 		+ $summary2->add_cash
@@ -1280,21 +1279,21 @@ $summary2 = mysqli_fetch_object(select("SELECT
 
 
 
-	$collection = getSum("cw_payment", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND date<'$d'");
-	$handover_cash = getSum("bd_handover", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND amount>0 AND date<'$d'");
-	$handover_bank = getSum("bd_handover", "bank_amount", "(branch_id = $branch_id OR branch_id IS NULL) AND bank_amount>0 AND date<'$d'");
-	$withdraw = getSum("cw_cash_withdraw", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND date<'$d'");
+	$collection = getSum("cw_payment", "amount", "date<'$d'");
+	$handover_cash = getSum("bd_handover", "amount", "amount>0 AND date<'$d'");
+	$handover_bank = getSum("bd_handover", "bank_amount", "bank_amount>0 AND date<'$d'");
+	$withdraw = getSum("cw_cash_withdraw", "amount", "date<'$d'");
 	// $withdraw2 = getSum('cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id
 	// $expense_entry = getSum("expense_account_entry", "amount", "payment_method='Cash' AND tran_type='Debit' AND company=$company->id AND entry_time<'$d'");
-	$expense_entry = getSum("expense_account_entry", "amount", "(branch_id = $branch_id OR branch_id IS NULL) AND tran_type='Debit' AND company=$company->id AND expense_date<'$d'");
+	$expense_entry = getSum("expense_account_entry", "amount", "tran_type='Debit' AND company=$company->id AND expense_date<'$d'");
 
 	$summary2 = mysqli_fetch_object(select("SELECT 
-    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash` WHERE branch_id=$branch_id AND `date` < '$d') add_cash, 
-    (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE branch_id=$branch_id AND `date` < '$d' GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover, 
-    (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND branch_id=$branch_id AND expense_date < '$d') cash_expense, 
-    (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND branch_id=$branch_id AND `date` < '$d') cash_payment, 
-    (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND branch_id=$branch_id AND `date` < '$d') cash, 
-    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE branch_id=$branch_id AND `date` < '$d') withdraw"));
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash` WHERE `date` < '$d') add_cash,
+    (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` WHERE `date` < '$d' GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover,
+    (SELECT IFNULL(SUM(amount),0) FROM `expense_account_entry` WHERE payment_method='Cash' AND expense_date < '$d') cash_expense,
+    (SELECT IFNULL(SUM(amount),0) FROM `payment` WHERE payment_method='Cash' AND `date` < '$d') cash_payment,
+    (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND `date` < '$d') cash,
+    (SELECT IFNULL(SUM(amount),0) FROM `cw_cash_withdraw` WHERE `date` < '$d') withdraw"));
 
 	$total = $summary2->cash_handover
 		+ $summary2->add_cash
@@ -1306,25 +1305,25 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	//CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) 
 	//CONCAT(IF(e.expense_date IS NULL, '', DATE_FORMAT(e.entry_time, '%e-%b-%Y')), ' ',e.particulars) 
 	$trans = select("SELECT * FROM (
-			SELECT '' se, 'bd_handover' source, h.id, h.amount, concat(h.`date`, ' 23:59:59') `date`, h.created_at entry_time, h.created_by entry_by, 'Bank & Cash Handover from Daily Collection' particulars, h.`status`, '' ref, '' done_by, '' done_time, 0 checked FROM bd_handover h JOIN (SELECT MAX(id) id FROM bd_handover WHERE branch_id=$branch_id AND (amount>0 OR bank_amount > 0) AND date BETWEEN '$d' AND '$t' GROUP BY `date`) latest ON h.id = latest.id
+			SELECT '' se, 'bd_handover' source, h.id, h.amount, concat(h.`date`, ' 23:59:59') `date`, h.created_at entry_time, h.created_by entry_by, 'Bank & Cash Handover from Daily Collection' particulars, h.`status`, '' ref, '' done_by, '' done_time, 0 checked FROM bd_handover h JOIN (SELECT MAX(id) id FROM bd_handover WHERE (amount>0 OR bank_amount > 0) AND date BETWEEN '$d' AND '$t' GROUP BY `date`) latest ON h.id = latest.id
 			UNION
-			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE branch_id=$branch_id AND amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
+			SELECT '' se, 'cw_payment' source, 0 id, SUM(amount) amount, date, entry_time, entry_by, 'Total Bank Collection' particulars, '', '','','', 0 checked FROM cw_payment WHERE amount>0 AND company=$company->id AND (date BETWEEN '$d' AND '$t') AND particulars NOT LIKE '%cash%' GROUP BY DATE
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'" . ($accountPathFilter !== '' ? " AND e.accountpath LIKE '" . $accountPathFilter . "%'" : " AND e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method='Cash'") . "
+			SELECT ea.breadcrumbs se, 'expense_account_entry' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'" . ($accountPathFilter !== '' ? " AND e.accountpath LIKE '" . $accountPathFilter . "%'" : " AND e.company=$company->id AND e.payment_method='Cash'") . "
 			UNION
-			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'" . ($accountPathFilter !== '' ? " AND e.accountpath LIKE '" . $accountPathFilter . "%'" : " AND e.branch_id=$branch_id AND e.company=$company->id AND e.payment_method<>'Cash'") . "
+			SELECT ea.breadcrumbs se, 'expense_account_entry_bank' source, e.id, e.amount, e.expense_date `date`, e.entry_time, e.entry_by, e.particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM expense_account_entry e LEFT JOIN  expense_account ea ON e.accountid=ea.id WHERE e.tran_type='Debit' AND e.expense_date  BETWEEN '$d 00:00:00' AND '$t 23:59:59'" . ($accountPathFilter !== '' ? " AND e.accountpath LIKE '" . $accountPathFilter . "%'" : " AND e.company=$company->id AND e.payment_method<>'Cash'") . "
 			UNION
-			SELECT '' se, 'cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t') AND company=$company->id
+			SELECT '' se, 'cw_cash_withdraw' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash_withdraw WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id
 			UNION
-			SELECT '' se, 'cw_cash' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND company=$company->id AND amount>0
+			SELECT '' se, 'cw_cash' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_cash WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id AND amount>0
 			UNION
-			SELECT '' se, 'cw_outlet' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_outlet WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND company=$company->id
+			SELECT '' se, 'cw_outlet' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_outlet WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id
 			UNION
-			SELECT cash_id se, 'cw_bank' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_bank WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND company=$company->id
+			SELECT cash_id se, 'cw_bank' source, id, amount, `date`, entry_time, entry_by, particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM cw_bank WHERE (date BETWEEN '$d' AND '$t') AND company=$company->id
 			UNION
-			SELECT '' se, 'payment_cash' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Cash'
+			SELECT '' se, 'payment_cash' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE (date BETWEEN '$d' AND '$t') AND payment_method='Cash'
 			UNION
-			SELECT '' se, 'payment_bank' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE  branch_id=$branch_id AND (date BETWEEN '$d' AND '$t')  AND payment_method='Bank'
+			SELECT '' se, 'payment_bank' source, id, amount, `date`, created_at entry_time, created_by entry_by, description particulars, `status`, '' ref, '' done_by, '' done_time, 0 checked FROM payment WHERE (date BETWEEN '$d' AND '$t') AND payment_method='Bank'
 		) t ORDER BY date");
 
 	// print "SELECT 'hotel_statement_worker_payment' source, p.id, p.amount, p.date, p.entry_time, CONCAT('<u>', h.name, '</u> er staff <u>', w.name, '</u>, ', DATE_FORMAT(CONCAT(s.month,'-01'), '%b %Y'), ' maser salary ', p.particulars), IFNULL(p.approved_by, 'Pending') status, '' ref FROM `hotel_statement_worker_payment` p, `hotel_statement_worker` w, `hotel_statement` s, `hotel` h WHERE p.worker=w.id AND w.statement=s.id AND s.hotel=h.id AND p.date>'$hotel_start_date' AND (p.date BETWEEN '$d' AND '$t') AND (p.particulars LIKE 'Petty Cash theke%' OR p.particulars LIKE 'Me2 te%')";
