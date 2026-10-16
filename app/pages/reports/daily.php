@@ -527,25 +527,44 @@ $userList = userList();
 </table>
 <?php
 // if(isUserIn(['apple', 'superadmin', 'orange'])){
-print "<div class='center' style='font-weight:700'><form method='post' id='cash-collection-form' onsubmit='return validateCashCollection(this)'>Collection Amount Cash <input type='number' name='amount' value='$credit' required step='.05' class='form-control form-control-fluid'>  Bank <input type='number' name='bank_amount' value='$credit_b' required step='.05' class='form-control form-control-fluid'>";
+$cashCollectionTotal = $pettyCashBalance + (float) $credit;
+$cashLimitReached = !$pettyCashSummary || $cashCollectionTotal >= 30000;
+print "<div class='center' style='font-weight:700'><form method='post' id='cash-collection-form' onsubmit='return validateCashCollection()'>Collection Amount Cash <input type='number' name='amount' id='cash-collection-amount' value='$credit' required step='.05' class='form-control form-control-fluid'>  Bank <input type='number' name='bank_amount' value='$credit_b' required step='.05' class='form-control form-control-fluid'>";
 if ($canPickPast || isUserIn(["superadmin", "ebrahim", "lemon"])) {
   print "<input type='date' class='form-control form-control-fluid' value='" . today() . "' name='date'>";
 }
-print " <button type='submit' class='btn btn-primary' name='collect_cash' onclick='return validateCashCollection(this.form)'> Collect</button> </form><br>";
+print " <button type='submit' class='btn btn-primary' id='cash-collection-submit' name='collect_cash'" . ($cashLimitReached ? " disabled" : "") . "> Collect</button> </form><div id='cash-collection-limit-message' class='text-danger mt-2' role='alert'></div><br>";
 ?>
 <script>
-  function validateCashCollection(form) {
-    var pettyCash = <?php echo json_encode((float) $pettyCashBalance); ?>;
-    var cashAmount = parseFloat(form.elements.amount.value) || 0;
-    var totalAfterCollection = pettyCash + cashAmount;
-    if (totalAfterCollection >= 30000) {
-      alert('Cannot submit. Total after collection would be RM ' +
+  var pettyCashAvailable = <?php echo $pettyCashSummary ? 'true' : 'false'; ?>;
+  var pettyCash = <?php echo json_encode((float) $pettyCashBalance); ?>;
+  var cashInput = document.getElementById('cash-collection-amount');
+  var collectButton = document.getElementById('cash-collection-submit');
+  var limitMessage = document.getElementById('cash-collection-limit-message');
+
+  function updateCashCollectionLimit() {
+    var cashAmount = parseFloat(cashInput.value) || 0;
+    var totalAfterCollection = Math.round((pettyCash + cashAmount) * 100) / 100;
+    collectButton.disabled = !pettyCashAvailable || totalAfterCollection >= 30000;
+
+    if (!pettyCashAvailable) {
+      limitMessage.textContent = 'Cannot verify Petty Cash; collection is disabled.';
+    } else if (totalAfterCollection >= 30000) {
+      limitMessage.textContent = 'Cannot submit: total would be RM ' +
         totalAfterCollection.toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2}) +
-        '; the limit is RM30,000.');
-      return false;
+        '; the limit is RM30,000.';
+    } else {
+      limitMessage.textContent = '';
     }
-    return true;
   }
+
+  function validateCashCollection() {
+    updateCashCollectionLimit();
+    return !collectButton.disabled;
+  }
+
+  cashInput.addEventListener('input', updateCashCollectionLimit);
+  updateCashCollectionLimit();
 </script>
 <?php
 // print "<div class='center'><form method='post'>Collection Amount Bank <input type='number' name='bank_amount' value='' required step='.05' class='form-control-fluid'> <button type='submit' class='btn btn-danger' name='collect_cash'> Collect</button> </form><br><br><br>";
