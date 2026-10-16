@@ -1333,7 +1333,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	// print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th></th><th>User</th><th>Cash In</th><th class='w120'></th><th>Cash Out</th><th class='w120'></th><th>Balance</th><th></th>";
 
 	//<th><a href='add_cash'>Add Cash</a><br><a href='widthdraw'>Cash Withdraw</a></th><th>Invested Capital</th>
-	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th>Cash Out</th><th>Balance</th><th>Manager</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Status</th><th>AP</th>";
+	print "<tr><th>No.</th><th>Date</th><th>Particulars</th><th>Cash In</th><th>Cash Out</th><th>Balance</th><th>Bank In</th><th>Bank Out</th><th>Balance</th><th>Status</th><th>AP</th>";
 	if (uid() == 1) {
 		print "<th>Del</th>";
 	}
@@ -1355,7 +1355,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 		$bankBefore = sum('bank');
 
 		$r = "<td title='$tr->entry_time > $tr->status'>" . df($tr->date) . "</td>";
-		$r .= "<td class='particulars pre-wrap'>";
+		$r .= "<td class='particulars pre-wrap' title='{$userList[$tr->entry_by]}'>";
 
 		$particularsHtml = $tr->particulars;
 		$applyVerified = false;
@@ -1557,7 +1557,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 		// $r .= "<td class='center select-cell' data-cashout='" . ($cashDelta < 0 ? abs($cashDelta) : 0) . "'></td>";
 		$r .= "<td class='center select-cell $cashOutClass' data-cashout='" . ($cashDelta < 0 ? abs($cashDelta) : 0) . "'>" . $cashOut . "</td>";
 		$r .= "<td class='rht'>" . nf($cashAfter) . "</td>";
-		$r .= "<td title='$tr->source'><small>" . $userList[$tr->entry_by] . "</small></td>";
+		// $r .= "<td title='$tr->source'><small>" . $userList[$tr->entry_by] . "</small></td>";
 		$r .= "<td class='right'>" . $bankIn . "</td>";
 		$r .= "<td class='$bankOutClass'>" . $bankOut . "</td>";
 		$r .= "<td class='rht'>" . nf($bankAfter) . "</td>";
