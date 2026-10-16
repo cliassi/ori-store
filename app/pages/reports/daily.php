@@ -533,25 +533,33 @@ print "<div class='center' style='font-weight:700'><form method='post' id='cash-
 if ($canPickPast || isUserIn(["superadmin", "ebrahim", "lemon"])) {
   print "<input type='date' class='form-control form-control-fluid' value='" . today() . "' name='date'>";
 }
-print " <button type='submit' class='btn btn-primary' id='cash-collection-submit' name='collect_cash'" . ($cashLimitReached ? " disabled" : "") . "> Collect</button> </form><div id='cash-collection-limit-message' class='text-danger mt-2' role='alert'></div><br>";
+print " <button type='submit' class='btn btn-primary' id='cash-collection-submit' name='collect_cash'" . ($cashLimitReached ? " disabled" : "") . "> Collect</button> </form>";
+print "<small id='petty-cash-hint' class='text-muted'>Petty Cash: RM " . nf($pettyCashBalance) . "</small><div id='cash-collection-limit-message' class='text-danger mt-2' role='alert'></div><br>";
 ?>
 <script>
   var pettyCashAvailable = <?php echo $pettyCashSummary ? 'true' : 'false'; ?>;
   var pettyCash = <?php echo json_encode((float) $pettyCashBalance); ?>;
   var cashInput = document.getElementById('cash-collection-amount');
   var collectButton = document.getElementById('cash-collection-submit');
+  var pettyCashHint = document.getElementById('petty-cash-hint');
   var limitMessage = document.getElementById('cash-collection-limit-message');
 
   function updateCashCollectionLimit() {
     var cashAmount = parseFloat(cashInput.value) || 0;
     var totalAfterCollection = Math.round((pettyCash + cashAmount) * 100) / 100;
+    var formatRM = function (amount) {
+      return amount.toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    };
     collectButton.disabled = !pettyCashAvailable || totalAfterCollection >= 30000;
+    pettyCashHint.textContent = pettyCashAvailable
+      ? 'Petty Cash: RM ' + formatRM(pettyCash) + ' + Cash Collection: RM ' + formatRM(cashAmount) + ' = RM ' + formatRM(totalAfterCollection)
+      : 'Petty Cash balance is unavailable.';
 
     if (!pettyCashAvailable) {
       limitMessage.textContent = 'Cannot verify Petty Cash; collection is disabled.';
     } else if (totalAfterCollection >= 30000) {
       limitMessage.textContent = 'Cannot submit: total would be RM ' +
-        totalAfterCollection.toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2}) +
+        formatRM(totalAfterCollection) +
         '; the limit is RM30,000.';
     } else {
       limitMessage.textContent = '';
