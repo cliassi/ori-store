@@ -1582,17 +1582,18 @@ $summary2 = mysqli_fetch_object(select("SELECT
 			$r .= "<td></td>";
 		}
 		*/
-	// $eyeIconHtml = '';
-	// if ((uid() == 1 || isUserIn(['superadmin'])) && in_array((string) $tr->source, ['expense_account_entry', 'expense_account_entry_bank'], true) && $expenseAccountId > 0) {
-	// 	$eyeAccountPath = getFieldValue('expense_account', 'path', "id=" . (int) $expenseAccountId);
-	// 	if (!empty($eyeAccountPath)) {
-	// 		if ($accountPathFilter !== '' && $accountPathFilter === $eyeAccountPath) {
-	// 			$eyeIconHtml = "<a href='?d=" . urlencode($d) . "&t=" . urlencode($t) . "&cw=" . urlencode($get->cw) . "&clear_account_path=1' title='Remove filter: " . htmlspecialchars($eyeAccountPath) . "'><i class='fa fa-eye-slash' style='color: #d9534f; margin-right: 10px;'></i></a>";
-	// 		} else {
-	// 			$eyeIconHtml = "<a href='?d=" . urlencode($d) . "&t=" . urlencode($t) . "&cw=" . urlencode($get->cw) . "&set_account_path=" . urlencode($eyeAccountPath) . "' title='Filter by: " . htmlspecialchars($eyeAccountPath) . "'><i class='fa fa-eye' style='color: #5cb85c; margin-right: 10px;'></i></a>";
-	// 		}
-	// 	}
-	// }
+	$eyeIconHtml = '';
+	if ((uid() == 1 || isUserIn(['superadmin'])) && in_array((string) $tr->source, ['expense_account_entry', 'expense_account_entry_bank'], true) && $expenseAccountId > 0) {
+		$eyeAccountPath = getFieldValue('expense_account', 'path', "id=" . (int) $expenseAccountId);
+		if (!empty($eyeAccountPath)) {
+			if ($accountPathFilter !== '' && $accountPathFilter === $eyeAccountPath) {
+				$eyeIconHtml = "<a href='?d=" . urlencode($d) . "&t=" . urlencode($t) . "&cw=" . urlencode($get->cw) . "&clear_account_path=1' title='Remove filter: " . htmlspecialchars($eyeAccountPath) . "'><i class='fa fa-eye-slash' style='color: #d9534f; margin-right: 10px;'></i></a>";
+			} else {
+				$eyeIconHtml = "<a href='?d=" . urlencode($d) . "&t=" . urlencode($t) . "&cw=" . urlencode($get->cw) . "&set_account_path=" . urlencode($eyeAccountPath) . "' title='Filter by: " . htmlspecialchars($eyeAccountPath) . "'><i class='fa fa-eye' style='color: #5cb85c; margin-right: 10px;'></i></a>";
+			}
+		}
+	}
+    $eyeIconHtml = '';
 	$editDeleteHtml = '';
 	if (uid() == 1) {
 		$editDeleteHtml = "<a href='#' class='edit-transaction' data-source='$tr->source' data-id='$tr->id' data-bs-toggle='modal' data-bs-target='#editModal'><i class='fa fa-edit' style='color: #0066cc; margin-right: 10px;'></i></a><a class='protected-link' href='?d=$d&t=$t&del=$tr->source&id=$tr->id' target='_blank'><i class='fa fa-trash'></i></a>";
