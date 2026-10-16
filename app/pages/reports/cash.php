@@ -1267,7 +1267,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	if (isUserIn(['superadmin', 'emon', 'orange', 'parvez']) || uid() == 45) {
 		print "<a data-bs-toggle='modal' data-bs-target='.cash' class='btn btn-primary'>Add Cash</a>" . space(5);
 		// print "<a data-bs-toggle='modal' data-bs-target='.bankdeposit' class='btn btn-success'>Bank Deposit</a>".space(5);
-		print "<a data-bs-toggle='modal' data-bs-target='.outlet' class='btn btn-secondary'>Petty Cash to Outlet Account</a>";
+		// print "<a data-bs-toggle='modal' data-bs-target='.outlet' class='btn btn-secondary'>Petty Cash to Outlet Account</a>";
 		// print "<a data-bs-toggle='modal' data-bs-target='.bank' class='btn btn-secondary'>Petty Cash to Bank</a>";
 	}
 	print "</div>";

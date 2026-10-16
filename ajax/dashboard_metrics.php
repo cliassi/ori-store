@@ -30,7 +30,7 @@ $summary = mysqli_fetch_object(select("SELECT
   (SELECT SUM(IFNULL(amount,0)) FROM `cw_cash` WHERE $filter1) add_cash, 
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `cw_cash` WHERE amount>0 AND $filter1) cash, 
   (SELECT SUM(IFNULL(amount,0)) FROM `cw_bank` WHERE $filter1) bank, 
-  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE $filter1) withdraw, 
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE $filter1) withdraw,
   (SELECT SUM(IFNULL(amount,0)) FROM `bd_handover` WHERE $filter) cash_handover, 
   (SELECT SUM(IFNULL(bank_amount,0)) FROM `bd_handover` WHERE $filter) bank_handover,
   (SELECT SUM(IFNULL(amount,0)) FROM `payment` WHERE payment_method='Cash' AND $filter) cash_payment, 
