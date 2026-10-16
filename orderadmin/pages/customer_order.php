@@ -302,16 +302,16 @@ $res = mysqli_query($c, $sql);
   <input type="hidden" name="page" value="customer_order">
   <div class="row g-2">
     <div class="col-6">
-      <label class="form-label">From</label>
-      <input type="date" name="from" class="form-control" value="<?php echo htmlspecialchars($fromDate); ?>">
+      <!-- <label class="form-label">From</label> -->
+      <input type="date" name="from" class="form-control" value="<?php echo htmlspecialchars($fromDate); ?>" onchange="this.form.submit()">
     </div>
     <div class="col-6">
-      <label class="form-label">To</label>
-      <input type="date" name="to" class="form-control" value="<?php echo htmlspecialchars($toDate); ?>">
+      <!-- <label class="form-label">To</label> -->
+      <input type="date" name="to" class="form-control" value="<?php echo htmlspecialchars($toDate); ?>" onchange="this.form.submit()">
     </div>
-    <div class="col-12">
+    <!-- <div class="col-12">
       <button type="submit" class="btn btn-primary w-100">Filter</button>
-    </div>
+    </div> -->
   </div>
 </form>
 
