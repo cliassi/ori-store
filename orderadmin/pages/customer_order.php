@@ -133,7 +133,7 @@ if (isset($post) && ((isset($post->delete_id) && $post->delete_id) || (isset($po
 $fromDate = date('Y-m-d', strtotime('-5 days'));
 $toDate = date('Y-m-d');
 
-$get = (object)(isset($_GET) ? $_GET : []);
+$get = isset($get) ? $get : (object)(isset($_GET) ? $_GET : []);
 if (isset($get) && isset($get->from) && $get->from) {
     $fromDate = preg_replace('/[^0-9\-]/', '', (string)$get->from);
     $_SESSION['co_from'] = $fromDate;
