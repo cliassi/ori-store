@@ -1340,7 +1340,7 @@ $summary2 = mysqli_fetch_object(select("SELECT
 	print "</tr>";
 
 	$openingTailColspan = 6 + (uid() == 1 ? 1 : 0);
-	print "<tr class='opening-balance-row'><th colspan='6'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
+	print "<tr class='opening-balance-row'><th colspan='5'>Opening Balance</th><th>" . nf($total) . "</th><th colspan='" . $openingTailColspan . "'></th></tr>";
 	$i = 1;
 	// vd($opening);
 	$userList = userList();
