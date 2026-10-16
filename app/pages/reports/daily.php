@@ -534,7 +534,7 @@ if ($canPickPast || isUserIn(["superadmin", "ebrahim", "lemon"])) {
   print "<input type='date' class='form-control form-control-fluid' value='" . today() . "' name='date'>";
 }
 print " <button type='submit' class='btn btn-primary' id='cash-collection-submit' name='collect_cash'" . ($cashLimitReached ? " disabled" : "") . "> Collect</button> </form>";
-print "<small id='petty-cash-hint' class='text-muted'>Petty Cash: RM " . nf($pettyCashBalance) . "</small><div id='cash-collection-limit-message' class='text-danger mt-2' role='alert'></div><br>";
+print "<hr><div id='petty-cash-hint' class='text-muted'>Petty Cash: RM " . nf($pettyCashBalance) . "</div><div id='cash-collection-limit-message' class='text-danger mt-2' role='alert'></div><br>";
 ?>
 <script>
   var pettyCashAvailable = <?php echo $pettyCashSummary ? 'true' : 'false'; ?>;
