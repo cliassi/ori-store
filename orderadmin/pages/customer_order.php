@@ -136,9 +136,15 @@ $toDate = date('Y-m-d');
 $get = (object)(isset($_GET) ? $_GET : []);
 if (isset($get) && isset($get->from) && $get->from) {
     $fromDate = preg_replace('/[^0-9\-]/', '', (string)$get->from);
+    $_SESSION['co_from'] = $fromDate;
+} elseif (!empty($_SESSION['co_from'])) {
+    $fromDate = preg_replace('/[^0-9\-]/', '', (string)$_SESSION['co_from']);
 }
 if (isset($get) && isset($get->to) && $get->to) {
     $toDate = preg_replace('/[^0-9\-]/', '', (string)$get->to);
+    $_SESSION['co_to'] = $toDate;
+} elseif (!empty($_SESSION['co_to'])) {
+    $toDate = preg_replace('/[^0-9\-]/', '', (string)$_SESSION['co_to']);
 }
 
 // Fetch orders
@@ -303,11 +309,11 @@ $res = mysqli_query($c, $sql);
   <div class="row g-2">
     <div class="col-6">
       <!-- <label class="form-label">From</label> -->
-      <input type="date" name="from" class="form-control" value="<?php echo htmlspecialchars($fromDate); ?>" onchange="this.form.submit()">
+      <input type="date" name="from" class="form-control" value="<?php echo htmlspecialchars($fromDate); ?>" onchange="filterOrders()">
     </div>
     <div class="col-6">
       <!-- <label class="form-label">To</label> -->
-      <input type="date" name="to" class="form-control" value="<?php echo htmlspecialchars($toDate); ?>" onchange="this.form.submit()">
+      <input type="date" name="to" class="form-control" value="<?php echo htmlspecialchars($toDate); ?>" onchange="filterOrders()">
     </div>
     <!-- <div class="col-12">
       <button type="submit" class="btn btn-primary w-100">Filter</button>
@@ -418,6 +424,15 @@ $res = mysqli_query($c, $sql);
 </form>
 
 <script>
+  function filterOrders() {
+    var from = document.querySelector('input[name="from"]').value;
+    var to = document.querySelector('input[name="to"]').value;
+    var url = '?page=customer_order';
+    if (from) url += '&from=' + encodeURIComponent(from);
+    if (to) url += '&to=' + encodeURIComponent(to);
+    window.location.href = url;
+  }
+
   (function () {
     window.deleteOrder = function (id) {
       if (!confirm('Delete this order? This cannot be undone.')) return;
