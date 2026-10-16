@@ -32,7 +32,7 @@ $pettyCashSummary = mysqli_fetch_object(select("SELECT
   (SELECT IFNULL(SUM(h.amount),0) FROM (SELECT MAX(id) id FROM `bd_handover` GROUP BY `date`) latest JOIN `bd_handover` h ON h.id=latest.id) cash_handover,
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `expense_account_entry` WHERE payment_method='Cash') cash_expense,
   (SELECT IFNULL(SUM(IFNULL(amount,0)),0) FROM `payment` WHERE payment_method='Cash') cash_payment,
-  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw`) withdraw"));
+  (SELECT IFNULL(SUM(ABS(IFNULL(amount,0))),0) FROM `cw_cash_withdraw` WHERE company=1) withdraw"));
 $pettyCashBalance = $pettyCashSummary
   ? $pettyCashSummary->cash_handover + $pettyCashSummary->add_cash - $pettyCashSummary->withdraw - $pettyCashSummary->cash_payment - $pettyCashSummary->cash_expense
   : 0;
