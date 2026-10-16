@@ -268,14 +268,15 @@ $res = mysqli_query($c, $sql);
 
   .order-actions {
     position: relative;
-    height: 52px;
+    height: 40px;
     text-align: center;
   }
 
   .order-actions .approve-button {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
   }
 
   .order-actions .delete-button {
