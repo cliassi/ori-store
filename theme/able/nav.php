@@ -31,6 +31,14 @@
     border-radius: 5px;
     background-clip border-box;
   }
+
+  .pc-sidebar .pc-micon {
+    margin: 0 !important;
+  }
+
+  [data-pc-layout=horizontal] .pc-sidebar .pc-navbar>.pc-item>.pc-link>.pc-arrow {
+    margin-left: 0 !important;
+  }
 </style>
 
 
@@ -230,7 +238,6 @@ foreach ($menus as $key => $menu) {
         $menu_content .= "</div>
         </li>
         ";
-
       } else {
         $menu_content .= "<li class='pc-item item-$key'>
         <a href='" . ROOT . "/$key' class='pc-link'>
@@ -288,10 +295,12 @@ $branches = R::find('branch', '1=1 ORDER BY name');
 
 
 <script type="text/javascript">
-  $("#search-key").keyup(function () {
+  $("#search-key").keyup(function() {
     const key = $("#search-key").val().trim();
     if (key.length > 1) {
-      $.post('/store/ajax/search_customer.php', { key: key })
+      $.post('/store/ajax/search_customer.php', {
+          key: key
+        })
         .done((response) => {
           $("#search-result-wrapper").html(response);
           $("#content-wrapper").hide();
@@ -302,16 +311,20 @@ $branches = R::find('branch', '1=1 ORDER BY name');
     }
   });
 
-  $("#branch-selector").change(function () {
+  $("#branch-selector").change(function() {
     const branchId = $(this).val();
     if (branchId) {
       $.ajax({
         type: 'POST',
         url: '/store/ajax/switch_branch.php',
-        data: { branch_id: branchId },
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        data: {
+          branch_id: branchId
+        },
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
         dataType: 'json',
-        success: function (response) {
+        success: function(response) {
           if (response.success) {
             window.location.reload();
           }
