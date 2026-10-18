@@ -66,7 +66,8 @@ function totp_code($secret, $timestamp)
 	$key = totp_base32_decode($secret);
 	$counter = (int) floor($timestamp / 30);
 	$high = (int) floor($counter / 4294967296);
-	$low = $counter % 4294967296;
+	// Avoid modulo here: on 32-bit PHP, 4294967296 becomes a float and is cast to zero.
+	$low = (int) ($counter - ($high * 4294967296));
 	$hash = hash_hmac('sha1', pack('N2', $high, $low), $key, true);
 	$offset = ord($hash[strlen($hash) - 1]) & 15;
 	$binary = ((ord($hash[$offset]) & 127) << 24)
