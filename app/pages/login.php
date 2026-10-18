@@ -4,6 +4,7 @@ error_reporting(E_ALL);
 header('Cache-Control: no-store, private');
 $msg = "";
 $pendingKey = APP . '_totp_pending';
+$messageKey = APP . '_totp_message';
 if(isset($get->logout)){
   if (session_status() == PHP_SESSION_NONE) {
       session_start();
@@ -12,15 +13,27 @@ if(isset($get->logout)){
   unset($_SESSION[ROOT.'_loggedin']);
   unset($_SESSION['branch_id']);
   unset($_SESSION['branch_name']);
-  unset($_SESSION[$pendingKey], $_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user']);
+  unset($_SESSION[$pendingKey], $_SESSION[$messageKey], $_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user']);
   unset($_SESSION);
   redir(ROOT);
+}
+if (isset($_SESSION[$messageKey])) {
+  $msg = (string) $_SESSION[$messageKey];
+  unset($_SESSION[$messageKey]);
 }
 if (isset($_SESSION[$pendingKey])) {
   $pending = $_SESSION[$pendingKey];
   if (!is_array($pending) || !isset($pending['expires']) || $pending['expires'] < time()) {
     unset($_SESSION[$pendingKey]);
     $msg = 'Your authentication session expired. Please sign in again.';
+  } elseif ($pending['stage'] === 'enroll' && (isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET') === 'GET') {
+    if (!empty($pending['rendered'])) {
+      unset($_SESSION[$pendingKey]);
+      $msg = 'Enrollment was cleared because the setup page was refreshed. Please sign in again.';
+    } else {
+      $pending['rendered'] = true;
+      $_SESSION[$pendingKey] = $pending;
+    }
   }
 }
 if (isset($post->email) && is_string($post->email) && isset($post->password) && is_string($post->password) && isset($post->login)) {
@@ -43,6 +56,7 @@ if (isset($post->email) && is_string($post->email) && isset($post->password) && 
           'stage' => !empty($user->totp_configured) ? 'verify' : 'enroll',
           'expires' => time() + 600,
           'attempts' => 0,
+          'rendered' => false,
           'csrf' => bin2hex(totp_random_bytes(32)),
           'return_to' => $url
         );
@@ -51,7 +65,7 @@ if (isset($post->email) && is_string($post->email) && isset($post->password) && 
         }
         $_SESSION[$pendingKey] = $pending;
         unset($_SESSION[APP . '_id'], $_SESSION[APP . '_role'], $_SESSION[APP . '_rolecode'], $_SESSION[APP . '_role_name'], $_SESSION[APP . '_fullname'], $_SESSION[APP . '_pin'], $_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user']);
-        $msg = '';
+        _redirectTotpLogin();
       } elseif (!_completeTotpLogin($user->id, $url, 0)) {
         $msg = 'Your account is not available. Please sign in again.';
       }
@@ -67,8 +81,9 @@ if (isset($post->email) && is_string($post->email) && isset($post->password) && 
 if (isset($_SESSION[$pendingKey]) && isset($post->totp_submit)) {
   $pending = $_SESSION[$pendingKey];
   if (!isset($post->totp_csrf) || !hash_equals($pending['csrf'], (string) $post->totp_csrf)) {
-    $msg = 'The verification request expired. Please sign in again.';
     unset($_SESSION[$pendingKey]);
+    $_SESSION[$messageKey] = 'The verification request expired. Please sign in again.';
+    _redirectTotpLogin();
   } else {
     try {
       if ($pending['stage'] === 'enroll') {
@@ -86,11 +101,13 @@ if (isset($_SESSION[$pendingKey]) && isset($post->totp_submit)) {
         $pending['attempts']++;
         if ($pending['attempts'] >= 5) {
           unset($_SESSION[$pendingKey]);
-          $msg = 'Too many invalid codes. Please sign in again.';
+          $_SESSION[$messageKey] = 'Too many invalid codes. Please sign in again.';
         } else {
+          $pending['rendered'] = false;
           $_SESSION[$pendingKey] = $pending;
-          $msg = 'Invalid authenticator code. Please try again.';
+          $_SESSION[$messageKey] = 'Invalid authenticator code. Please try again.';
         }
+        _redirectTotpLogin();
       } else {
         if ($pending['stage'] === 'enroll' && !_storeTotpSecret($pending['user_id'], $secret)) {
           throw new RuntimeException('Authenticator enrollment could not be saved.');
@@ -98,13 +115,15 @@ if (isset($_SESSION[$pendingKey]) && isset($post->totp_submit)) {
         $_SESSION[APP . '_totp_stepup_last_counter'] = $counter;
         if (!_completeTotpLogin($pending['user_id'], $pending['return_to'], 1)) {
           unset($_SESSION[$pendingKey]);
-          $msg = 'Your account is not available. Please sign in again.';
+          $_SESSION[$messageKey] = 'Your account is not available. Please sign in again.';
+          _redirectTotpLogin();
         }
       }
     } catch (Throwable $error) {
       error_log('TOTP verification failed at stage ' . (isset($pending['stage']) ? $pending['stage'] : 'unknown') . ' (' . get_class($error) . '): ' . $error->getMessage());
-      $msg = 'Authenticator verification is unavailable. Please contact an administrator.';
       unset($_SESSION[$pendingKey]);
+      $_SESSION[$messageKey] = 'Authenticator verification is unavailable. Please contact an administrator.';
+      _redirectTotpLogin();
     }
   }
 }
@@ -267,6 +286,12 @@ function _checkLogin($username, $password)
     $failed->close();
   }
   return false;
+}
+
+function _redirectTotpLogin()
+{
+  header('Location: ' . rtrim(ROOT, '/') . '/?q=auth/login', true, 303);
+  exit;
 }
 
 function _loadTotpAccount($userId)

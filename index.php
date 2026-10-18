@@ -38,7 +38,7 @@ if (loggedin()) {
         $user = false;
     }
     if (!$user || !(int) $user->u_status || ((int) $user->totp_enabled === 1 && (empty($_SESSION[APP . '_totp_verified']) || (int) (isset($_SESSION[APP . '_totp_verified_user']) ? $_SESSION[APP . '_totp_verified_user'] : 0) !== $userId || empty($user->totp_configured)))) {
-        unset($_SESSION[ROOT . '_loggedin'], $_SESSION[ROOT . '_username'], $_SESSION[APP . '_id'], $_SESSION[APP . '_role'], $_SESSION[APP . '_rolecode'], $_SESSION[APP . '_role_name'], $_SESSION[APP . '_fullname'], $_SESSION[APP . '_pin'], $_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user'], $_SESSION[APP . '_totp_pending']);
+        unset($_SESSION[ROOT . '_loggedin'], $_SESSION[ROOT . '_username'], $_SESSION[APP . '_id'], $_SESSION[APP . '_role'], $_SESSION[APP . '_rolecode'], $_SESSION[APP . '_role_name'], $_SESSION[APP . '_fullname'], $_SESSION[APP . '_pin'], $_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user'], $_SESSION[APP . '_totp_pending'], $_SESSION[APP . '_totp_message']);
         unset($_SESSION['branch_id'], $_SESSION['branch_name'], $_SESSION[APP . '_branch']);
     }
 }
