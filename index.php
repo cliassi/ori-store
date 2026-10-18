@@ -2,6 +2,7 @@
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
+ob_start();
 session_start();
 
 date_default_timezone_set('Asia/Kuala_Lumpur');
@@ -9,6 +10,7 @@ require_once ('env.php');
 require_once ('core/config.php');
 require_once ('core/functions.php');
 require_once ('core/f.inc.php');
+require_once ('core/totp.php');
 ensureDcollectPrivileges();
 $get = array();
 foreach ($_GET as $key => $value) {
@@ -22,6 +24,24 @@ foreach ($_POST as $key => $value) {
 }
 unset($_POST);
 $post = (object) $post;
+
+if (loggedin()) {
+    $userId = (int) uid();
+    $stmt = $c->prepare("SELECT u_status, COALESCE(totp_enabled, 0) AS totp_enabled, (u_totp_secret IS NOT NULL AND u_totp_secret <> '') AS totp_configured FROM sys_user WHERE id = ?");
+    if ($stmt) {
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result ? $result->fetch_object() : false;
+        $stmt->close();
+    } else {
+        $user = false;
+    }
+    if (!$user || !(int) $user->u_status || ((int) $user->totp_enabled === 1 && (empty($_SESSION[APP . '_totp_verified']) || (int) ($_SESSION[APP . '_totp_verified_user'] ?? 0) !== $userId || empty($user->totp_configured)))) {
+        unset($_SESSION[ROOT . '_loggedin'], $_SESSION[ROOT . '_username'], $_SESSION[APP . '_id'], $_SESSION[APP . '_role'], $_SESSION[APP . '_rolecode'], $_SESSION[APP . '_role_name'], $_SESSION[APP . '_fullname'], $_SESSION[APP . '_pin'], $_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user'], $_SESSION[APP . '_totp_pending']);
+        unset($_SESSION['branch_id'], $_SESSION['branch_name'], $_SESSION[APP . '_branch']);
+    }
+}
 
 $page = 'home';
 if(!loggedin()){

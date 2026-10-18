@@ -36,6 +36,9 @@ if (isset($post->save)) {
 		} else {
 			$object->u_status = 0;
 		}
+		if ((int) uid() === 1) {
+			$object->totp_enabled = isset($post->totp_enabled) && (string) $post->totp_enabled === '1' ? 1 : 0;
+		}
 		if (isset($post->pin))
 			$object->u_pin = md5($post->pin);
 		if (isset($post->pin))
@@ -136,6 +139,10 @@ print "<table align='center' class=''>
 	<tr><td>Fullname</td><td><input type='text' name='fullname' value='$object->u_fullname' class='required form-control' /></td></tr>";
 print "<tr><td>Username</td><td><input type='text' name='username' value='$object->u_username' class='required form-control' /></td></tr>";
 print "<tr><td>Active</td><td><input type='checkbox' name='active' $checked value='1' class='required' /></td></tr>";
+if ((int) uid() === 1) {
+	$totpChecked = (int) $object->totp_enabled === 1 ? "checked" : "";
+	print "<tr><td>Require Google Authenticator</td><td><input type='checkbox' name='totp_enabled' $totpChecked value='1' /></td></tr>";
+}
 echo "<tr><td>PIN</td><td><input type='text' name='pin' value='$object->u_pin' class='form-control' /></td></tr>";
 echo "<tr><td>Password</td><td><input type='password' name='password' value='' class='form-control' /></td></tr>";
 // echo "<tr ck><td>Confirm Password ".space(5)."</td><td><input type='password' name='conf_password' value='' class='form-control' /></td></tr>";

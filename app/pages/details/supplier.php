@@ -111,20 +111,32 @@ $adminIds = [1, 45, 47];
 $isAdmin = in_array(uid(), $adminIds);
 
 if (isset($post->idToDelete) && $isAdmin) {
+  if (!totp_require_step_up('supplier_order_delete', (int) $post->idToDelete)) {
+    return;
+  }
   $inv = R::load("order", $post->idToDelete);
   del("order_item", "order_id='$inv->id'");
   R::trash($inv);
 }
 if (isset($post->idToDelete2)) {
+  if (!totp_require_step_up('supplier_goods_return_delete', (int) $post->idToDelete2)) {
+    return;
+  }
   $col = R::load("goods_return", $post->idToDelete2);
   del("goods_return_item", "order_id=$post->idToDelete2");
   R::trash($col);
 }
 if (isset($post->idToDelete3) && $isAdmin) {
+  if (!totp_require_step_up('supplier_payment_delete', (int) $post->idToDelete3)) {
+    return;
+  }
   $col = R::load("payment", $post->idToDelete3);
   R::trash($col);
 }
 if (isset($post->idToDelete4)) {
+  if (!totp_require_step_up('supplier_refund_delete', (int) $post->idToDelete4)) {
+    return;
+  }
   $col = R::load("refund", $post->idToDelete4);
   R::trash($col);
 }

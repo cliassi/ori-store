@@ -85,6 +85,9 @@ if(isset($post->update_expense)){
 
 if(isUserIn($uaccs) && isset($get->del)){
 	if(isset($get->conf)){		
+			if (!totp_require_step_up('bank_transaction_delete', (int) $get->del)) {
+				return;
+			}
 			$object = R::load("bank_transaction_item", $get->del);
 			$object->trash = 1;
 			$object->removed_by = uid();

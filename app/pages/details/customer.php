@@ -54,6 +54,9 @@ if (isset($post->deliver)) {
 }
 
 if (uid() == 1 && isset($get->delids)) {
+  if (!totp_require_step_up('customer_invoice_bulk_delete', (string) $get->delids)) {
+    return;
+  }
   if (isset($get->delids)) {
     del("invoice_item", "invoice_id IN ($get->delids)");
     del("invoice", "id IN ($get->delids)");
@@ -62,11 +65,17 @@ if (uid() == 1 && isset($get->delids)) {
 }
 
 if (isset($post->idToDelete)) {
+  if (!totp_require_step_up('customer_invoice_statement_delete', (int) $post->idToDelete)) {
+    return;
+  }
   $inv = R::load("invoice", $post->idToDelete);
   del("invoice_item", "invoice_id='$inv->id'");
   R::trash($inv);
 }
 if (isset($post->idToDelete2)) {
+  if (!totp_require_step_up('customer_collection_salary_delete', (int) $post->idToDelete2)) {
+    return;
+  }
   $col = R::load("collection", $post->idToDelete2);
   R::trash($col);
 }

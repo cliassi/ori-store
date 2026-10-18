@@ -1,4 +1,40 @@
 <?php
+$totpResetMessage = '';
+$totpResetCsrfKey = APP . '_totp_reset_csrf';
+if ((int) uid() === 1 && isset($post->totp_reset)) {
+	if (!isset($post->totp_reset_csrf, $_SESSION[$totpResetCsrfKey]) || $_SESSION[$totpResetCsrfKey] === '' || !hash_equals($_SESSION[$totpResetCsrfKey], (string) $post->totp_reset_csrf)) {
+		$totpResetMessage = 'Authenticator reset request rejected. Refresh the page and try again.';
+	} else {
+		$userId = filter_var($post->totp_reset, FILTER_VALIDATE_INT, array('options' => array('min_range' => 2)));
+		if ($userId === false) {
+			$totpResetMessage = 'Invalid user selected.';
+		} else {
+			global $c;
+			$stmt = $c->prepare("UPDATE sys_user SET u_totp_secret = NULL WHERE id = ? AND id > 1 AND totp_enabled = 1");
+			if ($stmt) {
+				$stmt->bind_param('i', $userId);
+				$totpResetMessage = $stmt->execute() && $stmt->affected_rows === 1 ? 'Authenticator enrollment reset.' : 'No enrolled user was reset.';
+				$stmt->close();
+				if ($totpResetMessage === 'Authenticator enrollment reset.') {
+					try {
+						$_SESSION[$totpResetCsrfKey] = bin2hex(totp_random_bytes(32));
+					} catch (Throwable $error) {
+						$_SESSION[$totpResetCsrfKey] = '';
+					}
+				}
+			} else {
+				$totpResetMessage = 'Authenticator reset is unavailable.';
+			}
+		}
+	}
+}
+if ((int) uid() === 1 && !isset($_SESSION[$totpResetCsrfKey])) {
+	try {
+		$_SESSION[$totpResetCsrfKey] = bin2hex(totp_random_bytes(32));
+	} catch (Throwable $error) {
+		$_SESSION[$totpResetCsrfKey] = '';
+	}
+}
 if (uid() == 1) {
 	if (isset($get->token)) {
 		$token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
@@ -20,6 +56,7 @@ if (uid() == 1 && isset($get->loginas)) {
 
 	$user = mysqli_fetch_object($users);
 
+	unset($_SESSION[APP . '_totp_verified'], $_SESSION[APP . '_totp_verified_user'], $_SESSION[APP . '_totp_pending'], $_SESSION[APP . '_totp_stepup_pending'], $_SESSION[APP . '_totp_stepup_last_counter']);
 	$_SESSION['store_id'] = $user->id;
 	$_SESSION['store_role'] = $user->role;
 	$_SESSION['store_role_name'] = $user->role_name;
@@ -56,7 +93,7 @@ $users = select("u.*, GROUP_CONCAT(r_name SEPARATOR ', ') AS roles", "sys_user u
 print "<table class='table table-bordered table-striped' width='100%'>";
 //<th>Owner</th><th>Logged In?</th><th>Email</th>
 print "<thead>
-	<th>Sl.</th><th>Name</th><th style='width: 50px;'>Entry</th><th>Username</th><th>PIN</th><th>Password</th><th>Notification</th><th>Roles</th><th>User Since</th><th>Status</th><th>Last IP</th><th>Last Login Time</th><th>" . options2('user', '', array('add')) . "</th>
+	<th>Sl.</th><th>Name</th><th style='width: 50px;'>Entry</th><th>Username</th><th>PIN</th><th>Password</th><th>Notification</th><th>Roles</th><th>User Since</th><th>Status</th><th>Last IP</th><th>Last Login Time</th><th>Authenticator</th><th>" . options2('user', '', array('add')) . "</th>
 	</thead>";
 print "<tbody>";
 $i = 1;
@@ -92,14 +129,26 @@ while ($user = mysqli_fetch_object($users)) {
 	print "<td>$user->u_last_ip</td>";
 	// print "<td>$user->u_loggedin</td>";
 	print "<td>$user->u_last_login_time</td>";
+	print "<td>" . ((int) $user->totp_enabled === 1 ? (!empty($user->u_totp_secret) ? 'Required - enrolled' : 'Required - enrollment needed') : 'Disabled');
+	if ((int) uid() === 1 && (int) $user->totp_enabled === 1 && !empty($user->u_totp_secret)) {
+		print "<form method='post' onsubmit=\"return confirm('Reset this user\\'s authenticator? They must enroll again at next sign-in.');\">
+			<input type='hidden' name='totp_reset' value='" . (int) $user->id . "' />
+			<input type='hidden' name='totp_reset_csrf' value='" . htmlspecialchars($_SESSION[$totpResetCsrfKey], ENT_QUOTES, 'UTF-8') . "' />
+			<button type='submit' class='btn btn-warning btn-sm'>Reset</button>
+		</form>";
+	}
+	print "</td>";
 	// print "<td>$user->u_email</td>";
 	print "<td>" . options2('user', $user->id, array(($user->u_status ? 'deactivate' : 'activate'), 'edit', 'remove', 'reset_password')) . "</td>";
 	print "</tr>";
 	$i++;
 }
 print "</tbody>";
-print "<tfoot><tr><th colspan='13'>" . options2('', '', array('add')) . "</th></tr></tfoot>";
+print "<tfoot><tr><th colspan='14'>" . options2('', '', array('add')) . "</th></tr></tfoot>";
 print "</table><br /><br />";
+if ($totpResetMessage !== '') {
+	print "<p class='text-center'>" . htmlspecialchars($totpResetMessage, ENT_QUOTES, 'UTF-8') . "</p>";
+}
 ?>
 
 <div class="center">
