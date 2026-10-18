@@ -198,7 +198,7 @@ function totp_require_step_up($action, $target)
 	if ((int) $account->totp_enabled !== 1) {
 		return true;
 	}
-	if (empty($_SESSION[APP . '_totp_verified']) || (int) ($_SESSION[APP . '_totp_verified_user'] ?? 0) !== $userId) {
+	if (empty($_SESSION[APP . '_totp_verified']) || (int) (isset($_SESSION[APP . '_totp_verified_user']) ? $_SESSION[APP . '_totp_verified_user'] : 0) !== $userId) {
 		totp_step_up_render(false, 'Please sign in again to verify your authenticator.');
 		return false;
 	}
