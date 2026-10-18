@@ -108,28 +108,56 @@ function totp_encryption_key()
 
 function totp_encrypt_secret($secret)
 {
-	$nonce = totp_random_bytes(12);
-	$tag = '';
-	$ciphertext = openssl_encrypt($secret, 'aes-256-gcm', totp_encryption_key(), OPENSSL_RAW_DATA, $nonce, $tag, 'ori-store-totp-v1');
-	if ($ciphertext === false || strlen($tag) !== 16) {
+	$key = totp_encryption_key();
+	$encryptionKey = hash_hmac('sha256', 'ori-store-totp-v2-encryption', $key, true);
+	$macKey = hash_hmac('sha256', 'ori-store-totp-v2-authentication', $key, true);
+	$iv = totp_random_bytes(16);
+	$ciphertext = openssl_encrypt($secret, 'aes-256-cbc', $encryptionKey, OPENSSL_RAW_DATA, $iv);
+	if ($ciphertext === false) {
 		throw new RuntimeException('TOTP secret encryption failed.');
 	}
-	return 'v1:' . base64_encode($nonce . $tag . $ciphertext);
+	$mac = hash_hmac('sha256', "ori-store-totp-v2\0" . $iv . $ciphertext, $macKey, true);
+	return 'v2:' . base64_encode($iv . $ciphertext . $mac);
 }
 
 function totp_decrypt_secret($encrypted)
 {
-	if (!is_string($encrypted) || strpos($encrypted, 'v1:') !== 0) {
+	if (!is_string($encrypted)) {
 		throw new RuntimeException('Unsupported encrypted TOTP secret.');
 	}
-	$payload = base64_decode(substr($encrypted, 3), true);
-	if ($payload === false || strlen($payload) < 29) {
-		throw new RuntimeException('Invalid encrypted TOTP secret.');
+
+	if (strpos($encrypted, 'v2:') === 0) {
+		$payload = base64_decode(substr($encrypted, 3), true);
+		if ($payload === false || strlen($payload) < 64 || (strlen($payload) - 48) % 16 !== 0) {
+			throw new RuntimeException('Invalid encrypted TOTP secret.');
+		}
+		$iv = substr($payload, 0, 16);
+		$ciphertext = substr($payload, 16, strlen($payload) - 48);
+		$mac = substr($payload, -32);
+		$key = totp_encryption_key();
+		$encryptionKey = hash_hmac('sha256', 'ori-store-totp-v2-encryption', $key, true);
+		$macKey = hash_hmac('sha256', 'ori-store-totp-v2-authentication', $key, true);
+		$expectedMac = hash_hmac('sha256', "ori-store-totp-v2\0" . $iv . $ciphertext, $macKey, true);
+		if (!hash_equals($expectedMac, $mac)) {
+			throw new RuntimeException('TOTP secret authentication failed.');
+		}
+		$secret = openssl_decrypt($ciphertext, 'aes-256-cbc', $encryptionKey, OPENSSL_RAW_DATA, $iv);
+	} elseif (strpos($encrypted, 'v1:') === 0) {
+		if (!defined('PHP_VERSION_ID') || PHP_VERSION_ID < 70100) {
+			throw new RuntimeException('This PHP version cannot decrypt legacy TOTP secrets.');
+		}
+		$payload = base64_decode(substr($encrypted, 3), true);
+		if ($payload === false || strlen($payload) < 29) {
+			throw new RuntimeException('Invalid encrypted TOTP secret.');
+		}
+		$nonce = substr($payload, 0, 12);
+		$tag = substr($payload, 12, 16);
+		$ciphertext = substr($payload, 28);
+		$secret = openssl_decrypt($ciphertext, 'aes-256-gcm', totp_encryption_key(), OPENSSL_RAW_DATA, $nonce, $tag, 'ori-store-totp-v1');
+	} else {
+		throw new RuntimeException('Unsupported encrypted TOTP secret.');
 	}
-	$nonce = substr($payload, 0, 12);
-	$tag = substr($payload, 12, 16);
-	$ciphertext = substr($payload, 28);
-	$secret = openssl_decrypt($ciphertext, 'aes-256-gcm', totp_encryption_key(), OPENSSL_RAW_DATA, $nonce, $tag, 'ori-store-totp-v1');
+
 	if ($secret === false) {
 		throw new RuntimeException('TOTP secret decryption failed.');
 	}
