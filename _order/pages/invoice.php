@@ -1,5 +1,8 @@
 <?php
-$post->UID = $_SESSION['UID'];
+if (!isset($post)) {
+  $post = (object)[];
+}
+$post->UID = isset($_SESSION['UID']) ? $_SESSION['UID'] : null;
 // customer_order creation/edition page (mobile) - adapted from _resources/pages/forms/customer_order.php
 // Expects POST from home.php as product[<variance_id>] => qty and optional customer_id
 
@@ -143,12 +146,13 @@ if (!empty($post->product) && is_array($post->product)) {
     font-size: 1rem;
     text-align: center;
     margin: 0 24px;padding: 15px 0;font-weight:500;
-    display: block;
-<div style="display:flex;align-items:center;gap:10px;">
-  
+    display: block;">
+  <div style="display:flex;align-items:center;gap:10px;">
+
   <span>Order has been Confirmed <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style="width:1.6em;height:1.6em;">
     <path fill="rgb(34, 181, 94)" d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM438 209.7C427.3 201.9 412.3 204.3 404.5 215L285.1 379.2L233 327.1C223.6 317.7 208.4 317.7 199.1 327.1C189.8 336.5 189.7 351.7 199.1 361L271.1 433C276.1 438 282.9 440.5 289.9 440C296.9 439.5 303.3 435.9 307.4 430.2L443.3 243.2C451.1 232.5 448.7 217.5 438 209.7z"/>
   </svg></span>
+  </div>
 </div>
     <!-- <div class="po-meta">Order date: <?php echo htmlspecialchars($orderDate); ?></div> -->
 
