@@ -96,6 +96,9 @@ function totp_verify($secret, $code, $timestamp = null, $window = 1)
 function totp_encryption_key()
 {
 	$encoded = getenv('TOTP_ENCRYPTION_KEY');
+	if ($encoded === false && defined('TOTP_ENCRYPTION_KEY')) {
+		$encoded = constant('TOTP_ENCRYPTION_KEY');
+	}
 	$key = is_string($encoded) ? base64_decode(trim($encoded), true) : false;
 	if ($key === false || strlen($key) !== 32) {
 		throw new RuntimeException('TOTP_ENCRYPTION_KEY must be a Base64-encoded 32-byte key.');
