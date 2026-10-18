@@ -8,6 +8,7 @@ if (isset($post->save)) {
     $obj->company = $post->company;
     $obj->contact = $post->contact;
     $obj->mobile = $post->mobile;
+    $obj->active = 1;
     // $obj->city = $post->city;
     // $obj->address = $post->address;
     $obj->created_by = uid();
