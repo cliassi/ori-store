@@ -36,14 +36,15 @@ if (!empty($post->product) && is_array($post->product)) {
 
   $currentBalance = customerLedgerBalance($customerId);
   $projectedBalance = $currentBalance + $grand;
-  if ($projectedBalance > 0) {
+  if (customerOrderWouldExceedBalance($customerId, $grand)) {
     ?>
     <div style="max-width:720px;margin:0 auto;padding:24px 12px;text-align:center;">
       <div style="background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.08);">
         <h2 style="font-size:18px;margin:0 0 12px;color:#dc2626;">Order Rejected</h2>
-        <p style="margin:0 0 8px;color:#334155;">This customer has an outstanding amount due.</p>
+        <p style="margin:0 0 8px;color:#334155;">This order would exceed the customer's balance limit.</p>
         <p style="margin:0;color:#64748b;">Current Balance: RM <?php echo number_format($currentBalance, 2); ?></p>
         <p style="margin:0;color:#64748b;">Order Total: RM <?php echo number_format($grand, 2); ?></p>
+        <p style="margin:0;color:#64748b;">Balance Limit: RM <?php echo number_format(CUSTOMER_BALANCE_LIMIT, 2); ?></p>
         <p style="margin:0 0 16px;font-weight:700;color:#dc2626;">Projected Balance: RM <?php echo number_format($projectedBalance, 2); ?></p>
         <a href="javascript:history.back()" style="display:inline-block;padding:10px 24px;border-radius:9999px;background:#f3f4f6;color:#111827;text-decoration:none;">Back</a>
       </div>
@@ -209,7 +210,7 @@ if (isset($post->save)) {
   if (customerOrderWouldExceedBalance($saveCustomerId, $saveOrderTotal)) {
     $currentBalance = customerLedgerBalance($saveCustomerId);
     $projectedBalance = $currentBalance + $saveOrderTotal;
-    $orderBalanceError = "Order rejected. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($saveOrderTotal, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
+    $orderBalanceError = "Order rejected. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($saveOrderTotal, 2) . ", limit RM " . number_format(CUSTOMER_BALANCE_LIMIT, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
   }
 
   // Create multiple customer_orders: one customer_order per product selected

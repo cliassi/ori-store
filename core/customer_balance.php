@@ -1,4 +1,6 @@
 <?php
+define('CUSTOMER_BALANCE_LIMIT', 2000);
+
 function customerLedgerBalance($customerId)
 {
   $customerId = (int) $customerId;
@@ -12,5 +14,5 @@ function customerLedgerBalance($customerId)
 
 function customerOrderWouldExceedBalance($customerId, $amount)
 {
-  return customerLedgerBalance($customerId) + (float) $amount > 0;
+  return customerLedgerBalance($customerId) + (float) $amount > CUSTOMER_BALANCE_LIMIT;
 }

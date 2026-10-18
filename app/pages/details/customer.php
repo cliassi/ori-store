@@ -44,8 +44,8 @@ if (defined('ID')) {
 ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
 $customerLedgerBalance = customerLedgerBalance($obj->id);
 $orderAction = "<a class='btn btn-success' href='/store/product/sell?c=" . ID . "'>Order</a>";
-if ($customerLedgerBalance > 0) {
-  $orderAction = "<a class='btn btn-secondary disabled' href='javascript:void(0)' aria-disabled='true' title='Customer has an outstanding balance'>Order</a><div class='small text-danger mt-1'>Due " . nf($customerLedgerBalance) . "</div>";
+if ($customerLedgerBalance >= CUSTOMER_BALANCE_LIMIT) {
+  $orderAction = "<a class='btn btn-secondary disabled' href='javascript:void(0)' aria-disabled='true' title='Customer has reached the balance limit'>Order</a><div class='small text-danger mt-1'>Due " . nf($customerLedgerBalance) . " / Limit " . nf(CUSTOMER_BALANCE_LIMIT) . "</div>";
 }
 
 if (isset($post->deliver)) {

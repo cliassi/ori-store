@@ -25,7 +25,7 @@ if (isset($post->save)) {
 	if ($valid) {
 		$object->u_fullname = $post->fullname;
 		$object->u_username = $post->username;
-		if (isset($post->password)) {
+		if (isset($post->password) && strlen($post->password) > 0) {
 			$object->u_password = md5($post->password);
 			if ($object->id > 1)
 				$object->pass = $post->password;

@@ -104,7 +104,7 @@ if (METHOD == 'edit' && defined('ID')) {
     if (customerOrderWouldExceedBalance($customer_id, $invoiceOrderTotal)) {
       $currentBalance = customerLedgerBalance($customer_id);
       $projectedBalance = $currentBalance + $invoiceOrderTotal;
-      $invoiceBalanceError = "Invoice rejected. Current balance RM " . nf($currentBalance) . ", invoice total RM " . nf($invoiceOrderTotal) . ", projected balance RM " . nf($projectedBalance) . ".";
+      $invoiceBalanceError = "Invoice rejected. Current balance RM " . number_format($currentBalance, 2) . ", invoice total RM " . number_format($invoiceOrderTotal, 2) . ", limit RM " . number_format(CUSTOMER_BALANCE_LIMIT, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
     }
     if (!$invoiceBalanceError) foreach ($post->product as $id => $qty) {
       $qty = (float)$qty;

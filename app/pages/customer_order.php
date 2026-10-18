@@ -27,8 +27,8 @@ if(isset($post->approve_id)){
     }
     $currentBalance = customerLedgerBalance($orderBean->customer_id);
     $projectedBalance = $currentBalance + $orderTotal;
-    if ($projectedBalance > 0) {
-      $orderApprovalError = "Invoice rejected. Current balance RM " . nf($currentBalance) . ", order total RM " . nf($orderTotal) . ", projected balance RM " . nf($projectedBalance) . ".";
+    if (customerOrderWouldExceedBalance($orderBean->customer_id, $orderTotal)) {
+      $orderApprovalError = "Invoice rejected. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($orderTotal, 2) . ", limit RM " . number_format(CUSTOMER_BALANCE_LIMIT, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
     } else {
       // Insert into invoice
       $invoice = R::dispense('invoice');
@@ -76,8 +76,8 @@ if (isset($get) && isset($get->approve_form)) {
     }
     $currentBalance = customerLedgerBalance($order->customer_id);
     $projectedBalance = $currentBalance + $orderTotal;
-    if ($projectedBalance > 0) {
-      echo '<div class="alert alert-danger">Invoice rejected. Current balance RM ' . nf($currentBalance) . ', order total RM ' . nf($orderTotal) . ', projected balance RM ' . nf($projectedBalance) . '.</div>';
+    if (customerOrderWouldExceedBalance($order->customer_id, $orderTotal)) {
+      echo '<div class="alert alert-danger">Invoice rejected. Current balance RM ' . number_format($currentBalance, 2) . ', order total RM ' . number_format($orderTotal, 2) . ', limit RM ' . number_format(CUSTOMER_BALANCE_LIMIT, 2) . ', projected balance RM ' . number_format($projectedBalance, 2) . '.</div>';
     } else {
       $invoice = R::dispense('invoice');
       $invoice->customer_id = (int)$order->customer_id;
