@@ -20,32 +20,42 @@ if(isset($post->approve_id)){
   // Fetch the order and items
   $orderBean = R::load('customer_order', $approve_id);
   if ($orderBean && $orderBean->id && !in_array(strtolower((string)$orderBean->status), ['approved', 'ordered'], true)) {
-    // Insert into invoice
-    $invoice = R::dispense('invoice');
-    $invoice->customer_id = (int)$orderBean->customer_id;
-    $invoice->customer_order_id = $approve_id;
-    $invoice->invoice_date = $orderBean->invoice_date;
-    $invoice->delivery_date = $orderBean->invoice_date;
-    $invoice->status = 'approved';
-    $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
-    $invoice_id = R::store($invoice);
-
-    // Insert each item into invoice_item
     $itemsBeans = R::findAll('customer_order_item', ' customer_order_id = ? ', [$approve_id]);
+    $orderTotal = 0;
     foreach ($itemsBeans as $item) {
-      $invItem = R::dispense('invoice_item');
-      $invItem->invoice_id = $invoice_id;
-      $invItem->product_id = isset($item->product_id) ? (int)$item->product_id : null;
-      $invItem->product_variance_id = isset($item->product_variance_id) ? (int)$item->product_variance_id : null;
-      $invItem->quantity = isset($item->quantity) ? (float)$item->quantity : 0.0;
-      $invItem->price = isset($item->price) ? (float)$item->price : 0.0;
-      R::store($invItem);
+      $orderTotal += (float)$item->quantity * (float)$item->price;
     }
+    $currentBalance = customerLedgerBalance($orderBean->customer_id);
+    $projectedBalance = $currentBalance + $orderTotal;
+    if ($projectedBalance > 0) {
+      $orderApprovalError = "Invoice rejected. Current balance RM " . nf($currentBalance) . ", order total RM " . nf($orderTotal) . ", projected balance RM " . nf($projectedBalance) . ".";
+    } else {
+      // Insert into invoice
+      $invoice = R::dispense('invoice');
+      $invoice->customer_id = (int)$orderBean->customer_id;
+      $invoice->customer_order_id = $approve_id;
+      $invoice->invoice_date = $orderBean->invoice_date;
+      $invoice->delivery_date = $orderBean->invoice_date;
+      $invoice->status = 'approved';
+      $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
+      $invoice_id = R::store($invoice);
 
-    // Update order as approved
-    $orderBean->status = 'ordered';
-    $orderBean->invoice_id = $invoice_id;
-    R::store($orderBean);
+      // Insert each item into invoice_item
+      foreach ($itemsBeans as $item) {
+        $invItem = R::dispense('invoice_item');
+        $invItem->invoice_id = $invoice_id;
+        $invItem->product_id = isset($item->product_id) ? (int)$item->product_id : null;
+        $invItem->product_variance_id = isset($item->product_variance_id) ? (int)$item->product_variance_id : null;
+        $invItem->quantity = isset($item->quantity) ? (float)$item->quantity : 0.0;
+        $invItem->price = isset($item->price) ? (float)$item->price : 0.0;
+        R::store($invItem);
+      }
+
+      // Update order as approved
+      $orderBean->status = 'ordered';
+      $orderBean->invoice_id = $invoice_id;
+      R::store($orderBean);
+    }
   }
 
 }
@@ -60,29 +70,38 @@ if (isset($get) && isset($get->approve_form)) {
 
   if (!in_array(strtolower((string)$order->status), ['approved', 'ordered'], true)) {
     $items = R::find('customer_order_item', ' customer_order_id = ? ', [$id]);
-
-    $invoice = R::dispense('invoice');
-    $invoice->customer_id = (int)$order->customer_id;
-    $invoice->customer_order_id = (int)$order->id;
-    $invoice->invoice_date = $order->invoice_date;
-    $invoice->delivery_date = $order->invoice_date;
-    $invoice->status = 'approved';
-    $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
-    $invoice_id = R::store($invoice);
-
+    $orderTotal = 0;
     foreach ($items as $item) {
-      $invItem = R::dispense('invoice_item');
-      $invItem->invoice_id = (int)$invoice_id;
-      $invItem->product_id = isset($item->product_id) ? (int)$item->product_id : null;
-      $invItem->product_variance_id = isset($item->product_variance_id) ? (int)$item->product_variance_id : null;
-      $invItem->quantity = isset($item->quantity) ? (float)$item->quantity : 0.0;
-      $invItem->price = isset($item->price) ? (float)$item->price : 0.0;
-      R::store($invItem);
+      $orderTotal += (float)$item->quantity * (float)$item->price;
     }
+    $currentBalance = customerLedgerBalance($order->customer_id);
+    $projectedBalance = $currentBalance + $orderTotal;
+    if ($projectedBalance > 0) {
+      echo '<div class="alert alert-danger">Invoice rejected. Current balance RM ' . nf($currentBalance) . ', order total RM ' . nf($orderTotal) . ', projected balance RM ' . nf($projectedBalance) . '.</div>';
+    } else {
+      $invoice = R::dispense('invoice');
+      $invoice->customer_id = (int)$order->customer_id;
+      $invoice->customer_order_id = (int)$order->id;
+      $invoice->invoice_date = $order->invoice_date;
+      $invoice->delivery_date = $order->invoice_date;
+      $invoice->status = 'approved';
+      $invoice->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
+      $invoice_id = R::store($invoice);
 
-    $order->status = 'ordered';
-    $order->invoice_id = $invoice_id;
-    R::store($order);
+      foreach ($items as $item) {
+        $invItem = R::dispense('invoice_item');
+        $invItem->invoice_id = (int)$invoice_id;
+        $invItem->product_id = isset($item->product_id) ? (int)$item->product_id : null;
+        $invItem->product_variance_id = isset($item->product_variance_id) ? (int)$item->product_variance_id : null;
+        $invItem->quantity = isset($item->quantity) ? (float)$item->quantity : 0.0;
+        $invItem->price = isset($item->price) ? (float)$item->price : 0.0;
+        R::store($invItem);
+      }
+
+      $order->status = 'ordered';
+      $order->invoice_id = $invoice_id;
+      R::store($order);
+    }
   }
 
   // redir('?page=customer_order');
@@ -160,6 +179,9 @@ if (isset($get) && isset($get->detail)) {
       </div>
       <div class="card-body">
         <?php
+        if (isset($orderApprovalError) && $orderApprovalError) {
+          echo "<div class='alert alert-danger'>$orderApprovalError</div>";
+        }
         $today = date('Y-m-d');
         $defaultFrom = date('Y-m-d', strtotime('-5 days'));
 

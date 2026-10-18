@@ -1,5 +1,6 @@
 <?php
 require_once "f.inc.php";
+require_once __DIR__ . '/../core/customer_balance.php';
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
     $dir = $dir == '' ? 'uploads_files' : $dir;

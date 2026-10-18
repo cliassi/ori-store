@@ -42,6 +42,11 @@ if (defined('ID')) {
   $obj = R::load('customer', ID);
 }
 ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
+$customerLedgerBalance = customerLedgerBalance($obj->id);
+$orderAction = "<a class='btn btn-success' href='/store/product/sell?c=" . ID . "'>Order</a>";
+if ($customerLedgerBalance > 0) {
+  $orderAction = "<a class='btn btn-secondary disabled' href='javascript:void(0)' aria-disabled='true' title='Customer has an outstanding balance'>Order</a><div class='small text-danger mt-1'>Due " . nf($customerLedgerBalance) . "</div>";
+}
 
 if (isset($post->deliver)) {
   foreach ($post->delivered_by as $key => $value) {
@@ -201,7 +206,7 @@ print "<form method='post'>
                   <table id='simpletable' class='table table-striped table-bordered nowrap'>
                     <thead>
                       <tr>
-                        <th class='text-center'><a class='btn btn-success' href='/store/product/sell?c=" . ID . "'>Order</a></th>
+                        <th class='text-center'>$orderAction</th>
                         <th class='text-center'><a class='btn btn-warning' href='../../collection/add?customer=" . ID . "'>Collection</a></th>
                         <th class='text-center'>
                         <a class='btn btn-danger'>Refund</a>";

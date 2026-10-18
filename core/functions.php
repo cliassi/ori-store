@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/customer_balance.php';
 
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {

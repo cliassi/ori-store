@@ -10,6 +10,7 @@ if (!empty($post->product) && is_array($post->product)) {
   $customerId = isset($_SESSION['UID']) ? $_SESSION['UID'] : (isset($post->customer_id) ? $post->customer_id : null);
   $orderDate = isset($post->date) ? $post->date : today();
   $items = [];
+  $orderRows = [];
   $grand = 0;
   $customer = R::load("customer", $customerId);
   $lineParts = [];
@@ -19,7 +20,43 @@ if (!empty($post->product) && is_array($post->product)) {
     $variance = R::load('product_variance', $id);
     if (!$variance || !$variance->id) continue;
     $product = R::load('product', $variance->product_id);
-    $price = isset($post->price[$id]) ? (float)$post->price[$id] : (float)$variance->price;
+    $customPrice = R::findOne('customer_product_variance', 'customer_id=? AND product_variance_id=?', [$customerId, $id]);
+    $price = $customPrice ? (float)$customPrice->price : (float)$variance->price;
+    $lineTotal = $price * $qty;
+
+    $orderRows[] = (object) [
+      'qty' => $qty,
+      'price' => $price,
+      'total' => $lineTotal,
+      'variance' => $variance,
+      'product' => $product,
+    ];
+    $grand += $lineTotal;
+  }
+
+  $currentBalance = customerLedgerBalance($customerId);
+  $projectedBalance = $currentBalance + $grand;
+  if ($projectedBalance > 0) {
+    ?>
+    <div style="max-width:720px;margin:0 auto;padding:24px 12px;text-align:center;">
+      <div style="background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+        <h2 style="font-size:18px;margin:0 0 12px;color:#dc2626;">Order Rejected</h2>
+        <p style="margin:0 0 8px;color:#334155;">This customer has an outstanding amount due.</p>
+        <p style="margin:0;color:#64748b;">Current Balance: RM <?php echo number_format($currentBalance, 2); ?></p>
+        <p style="margin:0;color:#64748b;">Order Total: RM <?php echo number_format($grand, 2); ?></p>
+        <p style="margin:0 0 16px;font-weight:700;color:#dc2626;">Projected Balance: RM <?php echo number_format($projectedBalance, 2); ?></p>
+        <a href="javascript:history.back()" style="display:inline-block;padding:10px 24px;border-radius:9999px;background:#f3f4f6;color:#111827;text-decoration:none;">Back</a>
+      </div>
+    </div>
+    <?php
+    return;
+  }
+
+  foreach ($orderRows as $orderRow) {
+    $qty = $orderRow->qty;
+    $price = $orderRow->price;
+    $variance = $orderRow->variance;
+    $product = $orderRow->product;
 
     $inv = R::dispense('customer_order');
     $inv->status = 'New';
@@ -48,16 +85,14 @@ if (!empty($post->product) && is_array($post->product)) {
       $lineParts[] = $desc . ' (' . $qty.')';
     }
 
-    $line = (object) [
+    $items[] = (object) [
       'image' => getImageOrPlaceholder($variance->image, $variance->name),
       'name' => $product->name,
       'desc' => $variance->particulars,
       'qty' => $qty,
       'price' => $price,
-      'total' => $price * $qty,
+      'total' => $orderRow->total,
     ];
-    $items[] = $line;
-    $grand += $line->total;
   }
 
   $customerName = isset($customer->contact) ? trim((string)$customer->company) : '';
@@ -157,8 +192,28 @@ if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
 
 // Handle save
 if (isset($post->save)) {
-  // Create multiple customer_orders: one customer_order per product selected
+  $saveCustomerId = isset($post->customer_id) ? (int)$post->customer_id : 0;
+  $saveOrderTotal = 0;
   if (!empty($post->product) && is_array($post->product)) {
+    foreach ($post->product as $id => $qty) {
+      $qty = (int)$qty;
+      if ($qty <= 0) continue;
+      $variance = R::load('product_variance', $id);
+      if (!$variance || !$variance->id) continue;
+      $customPrice = R::findOne('customer_product_variance', 'customer_id=? AND product_variance_id=?', [$saveCustomerId, $id]);
+      $price = $customPrice ? (float)$customPrice->price : (float)$variance->price;
+      $saveOrderTotal += $price * $qty;
+    }
+  }
+  $orderBalanceError = '';
+  if (customerOrderWouldExceedBalance($saveCustomerId, $saveOrderTotal)) {
+    $currentBalance = customerLedgerBalance($saveCustomerId);
+    $projectedBalance = $currentBalance + $saveOrderTotal;
+    $orderBalanceError = "Order rejected. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($saveOrderTotal, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
+  }
+
+  // Create multiple customer_orders: one customer_order per product selected
+  if (!$orderBalanceError && !empty($post->product) && is_array($post->product)) {
     foreach ($post->product as $id => $qty) {
       $qty = (int)$qty;
       if ($qty <= 0) continue;
@@ -189,7 +244,8 @@ if (isset($post->save)) {
       $ii->product_id = $product->id;
       $ii->product_variance_id = $variance->id;
       $ii->quantity = $qty;
-      $ii->price = isset($post->price[$id]) ? $post->price[$id] : $variance->price;
+      $customPrice = R::findOne('customer_product_variance', 'customer_id=? AND product_variance_id=?', [$saveCustomerId, $id]);
+      $ii->price = $customPrice ? $customPrice->price : $variance->price;
       $ii->cost = $variance->cost;
       $ii->name = $product->name;
       $ii->description = $variance->particulars;
@@ -198,23 +254,25 @@ if (isset($post->save)) {
     }
   }
 
-  // Clear all cart_qty localStorage variables after successful save
-  echo "<script>
-    // Remove all cart_qty_* keys from localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('cart_qty_')) {
-        localStorage.removeItem(key);
-        i--; // Adjust index since we removed an item
+  if (!$orderBalanceError) {
+    // Clear all cart_qty localStorage variables after successful save
+    echo "<script>
+      // Remove all cart_qty_* keys from localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('cart_qty_')) {
+          localStorage.removeItem(key);
+          i--; // Adjust index since we removed an item
+        }
       }
+    </script>";
+
+    // Redirect to customer details like the reference implementation
+    if (isset($post->customer_id)) {
+      redir("?page=customer_details&id={$post->customer_id}");
+    } else {
+      redir("?page=home");
     }
-  </script>";
-  
-  // Redirect to customer details like the reference implementation
-  if (isset($post->customer_id)) {
-    redir("?page=customer_details&id={$post->customer_id}");
-  } else {
-    redir("?page=home");
   }
 }
 ?>
@@ -322,6 +380,9 @@ if (isset($post->save)) {
 </style>
 
 <form method="post" class="inv-compact">
+  <?php if (isset($orderBalanceError) && $orderBalanceError): ?>
+    <div class="alert alert-danger"><?php echo $orderBalanceError; ?></div>
+  <?php endif; ?>
   <input type='hidden' name='UID' value='<?php print $post->UID; ?>' >
   <div class="row">
     <div class="col-sm-12">
