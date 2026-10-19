@@ -258,7 +258,7 @@ print "<th width='20px'>No. </th>
 <th width='50px'>D&D</th>
         <th width='50px'>Ref No. </th>
         <th>Particulars</th>
-        <th width='50px'>Delivery</th>
+        <th width='50px'></th>
         <th width='50px'>Invoice By</th>
         <th width='50px'>Approve?</th>
         <th width='20px'></th>
@@ -359,12 +359,12 @@ while ($item = mysqli_fetch_object($trans)) {
 
 
     print "</td>";
-    print "<td>";
+    print "<td class='text-center'>";
     print "<table class='table table-bordered table-items'>";
     $k = 1;
     $pv = R::load("product_variance", $oi->product_variance_id);
     print "<tr>
-        <td title='$deliveryTooltip'>";
+        <td title='$deliveryTooltip' class='text-center'>";
     print "<button title='$deliveryTooltip' class='btn btn-sm " . ($oi->delivered_by ? "btn-success" : "btn-warning") . " selected-delivery-man' type='button' aria-expanded='false'><i class='fas fa-shipping-fast'></i> <span></span></button>";
     // <div class='dropdown-menu'>";
     // $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
