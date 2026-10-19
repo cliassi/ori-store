@@ -309,7 +309,9 @@ while ($item = mysqli_fetch_object($trans)) {
     print "<td class='text-center' title='$item->sort_date'>" . ($i - $counter + 10) . "</td>";
   }
   // print "<td>".df($item->sort_date).(date('Ymd', strtotime($item->date)) != date('Ymd', strtotime($item->created_at)) ? " (".df($item->date).")":"")."</td>";
-  print "<td class='text-center'>" . df($item->sort_date) . "" . (($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'><a href='javascript:void(0)' onclick='openDeliveryDateModal(" . $item->id . ", " . $item->id2 . ", \"" . $item->dd . "\")' style='color: #0066cc; cursor: pointer;'>" . df($item->dd) . "</a></div>" : '')) . "</td>";
+  print "<td class='text-center'>" . df($item->sort_date);
+  // . "" . (($item->src == 'invoice' ? "<div style='border-top: solid 1px #555'><a href='javascript:void(0)' onclick='openDeliveryDateModal(" . $item->id . ", " . $item->id2 . ", \"" . $item->dd . "\")' style='color: #0066cc; cursor: pointer;'>" . df($item->dd) . "</a></div>" : '')) . 
+  print "</td>";
   if ($item->src == 'invoice') {
     $delivered_by = "Select";
     if ($item->delivered_by) {
