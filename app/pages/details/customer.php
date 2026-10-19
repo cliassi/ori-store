@@ -49,7 +49,7 @@ $orderAction = "<a class='btn btn-success' href='/store/product/sell?c=" . ID . 
 $customerBalanceWarning = isset($_SESSION['customer_balance_warning']) ? $_SESSION['customer_balance_warning'] : '';
 unset($_SESSION['customer_balance_warning']);
 if (!$customerBalanceWarning && $customerLedgerBalance > $customerDueLimit) {
-  $customerBalanceWarning = "Current customer due RM " . number_format($customerLedgerBalance, 2) . "<br>Exceeds the due limit of RM " . number_format($customerDueLimit, 2) . ".";
+  $customerBalanceWarning = "Current customer due RM " . number_format($customerLedgerBalance, 2) . "\nExceeds the due limit of RM " . number_format($customerDueLimit, 2) . ".";
 }
 
 if (isset($post->deliver)) {
@@ -196,7 +196,7 @@ if ($customerBalanceWarning) {
     . "<strong> " . htmlspecialchars((string)$obj->company, ENT_QUOTES, 'UTF-8') . "</strong><br>"
     // . "Contact: " . htmlspecialchars((string)$obj->contact, ENT_QUOTES, 'UTF-8') . "<br>"
     . "" . htmlspecialchars((string)$obj->mobile, ENT_QUOTES, 'UTF-8') . "<br><br><div style='color:#ff0000;'>"
-    . htmlspecialchars($customerBalanceWarning, ENT_QUOTES, 'UTF-8')
+    . nl2br(htmlspecialchars($customerBalanceWarning, ENT_QUOTES, 'UTF-8'), false)
     . "</div>";
   print "<script>
     document.addEventListener('DOMContentLoaded', function () {
