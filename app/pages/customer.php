@@ -45,7 +45,7 @@ if (METHOD == 'add') {
   // vd($fields);
   $objs = R::find('customer', "branch_id = $branch_id OR branch_id IS NULL");
   $contant = "";
-  ?>
+?>
   <div class="row">
     <!-- Zero config table start -->
     <div class="col-sm-12">
@@ -57,7 +57,7 @@ if (METHOD == 'add') {
             </div>
             <div class="col"><input class="form-control" placeholder="Search Customer"
                 value='<?php if (isset($get->key))
-                  print $get->key; ?>' id="search"></div>
+                          print $get->key; ?>' id="search"></div>
           </div>
 
         </div>
@@ -66,7 +66,7 @@ if (METHOD == 'add') {
             <table id="customer-table" class="table table-striped table-bordered nowrap">
               <thead>
                 <tr>
-                  <th>Sl.</th>
+                  <th class='text-center'>Sl.</th>
                   <?php foreach ($fields as $key => $value)
                     if (isset($value['label']))
                       print "<th>{$value['label']}</th>"; ?>
@@ -78,7 +78,7 @@ if (METHOD == 'add') {
                 $i = 1;
                 foreach ($objs as $key => $obj) {
                   print "<tr>";
-                  print "<td>" . ($i++) . "</td>";
+                  print "<td class='text-center'>" . ($i++) . "</td>";
                   foreach ($fields as $key => $value) {
                     if (isset($value['display'])) {
                       $printed = false;
@@ -158,11 +158,11 @@ if (METHOD == 'add') {
     }
   </style>
   <script>
-    $(document).ready(function () {
-      $('#search').on('keyup', function () {
+    $(document).ready(function() {
+      $('#search').on('keyup', function() {
         var searchKey = $(this).val().toLowerCase(); // Get the search value and convert to lowercase
 
-        $('table tbody tr').each(function () {
+        $('table tbody tr').each(function() {
           var rowText = $(this).text().toLowerCase(); // Get the text content of the row and convert to lowercase
 
           if (rowText.includes(searchKey)) {
@@ -176,6 +176,5 @@ if (METHOD == 'add') {
         $("#search").trigger('keyup');
       <?php } ?>
     });
-
   </script>
 <?php } ?>
