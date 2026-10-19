@@ -31,6 +31,7 @@ if (METHOD == 'add') {
     "company" => ["label" => "Shop Name", "display" => '', 'link' => 'details'],
     "contact" => ["label" => "Contact Person", "display" => ''],
     "mobile" => ["label" => "C.P. Mobile", "display" => ''],
+    "due_limit" => ["label" => "Due Limit", "display" => ''],
     "city" => ["label" => "<a href='area'>Area</a>", "display" => ''],
     // "address" => ["label"=>"Shop Address", "display"=>''],
     "image" => ["label" => "Photo", "display" => '', 'type' => 'image'],
