@@ -192,10 +192,10 @@ if (isset($post->save_delivery_date)) {
 }
 
 if ($customerBalanceWarning) {
-  $customerBalanceWarningHtml = "<div style='color:#ff0000;text-align:left;'>"
-    . "Customer: " . htmlspecialchars((string)$obj->company, ENT_QUOTES, 'UTF-8') . "</strong><br>"
+  $customerBalanceWarningHtml = "<div style='color:#000;text-align:center;'>"
+    . "<strong>Customer: " . htmlspecialchars((string)$obj->company, ENT_QUOTES, 'UTF-8') . "</strong><br>"
     // . "Contact: " . htmlspecialchars((string)$obj->contact, ENT_QUOTES, 'UTF-8') . "<br>"
-    . "Mobile: " . htmlspecialchars((string)$obj->mobile, ENT_QUOTES, 'UTF-8') . "<br><br><strong>"
+    . "Mobile: " . htmlspecialchars((string)$obj->mobile, ENT_QUOTES, 'UTF-8') . "<br><br><div style='color:#ff0000;'>"
     . htmlspecialchars($customerBalanceWarning, ENT_QUOTES, 'UTF-8')
     . "</div>";
   print "<script>
