@@ -77,7 +77,7 @@ if (isset($get) && isset($get->approve_form)) {
     $currentBalance = customerLedgerBalance($order->customer_id);
     $projectedBalance = $currentBalance + $orderTotal;
     if (customerOrderExceedsDueLimit($order->customer_id, $orderTotal)) {
-      echo '<div class="alert alert-warning">Invoice warning. Current balance RM ' . number_format($currentBalance, 2) . ', order total RM ' . number_format($orderTotal, 2) . ', due limit RM ' . number_format(customerDueLimit($order->customer_id), 2) . ', projected balance RM ' . number_format($projectedBalance, 2) . '.</div>';
+      $orderApprovalWarning = "Invoice warning. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($orderTotal, 2) . ", due limit RM " . number_format(customerDueLimit($order->customer_id), 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
     }
 
     $invoice = R::dispense('invoice');
@@ -180,7 +180,15 @@ if (isset($get) && isset($get->detail)) {
       <div class="card-body">
         <?php
         if (isset($orderApprovalWarning) && $orderApprovalWarning) {
-          echo "<div class='alert alert-warning'>$orderApprovalWarning</div>";
+          echo "<script>
+            document.addEventListener('DOMContentLoaded', function () {
+              Swal.fire({
+                icon: 'warning',
+                title: 'Customer due limit exceeded',
+                text: " . json_encode($orderApprovalWarning, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . "
+              });
+            }, { once: true });
+          </script>";
         }
         $today = date('Y-m-d');
         $defaultFrom = date('Y-m-d', strtotime('-5 days'));

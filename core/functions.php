@@ -385,10 +385,16 @@ function buildForm($formItems = [], $_class = 'form-group')
         } elseif ($fi['type'] == 'html') {
             $form .= "<div class='col-{$fi['col']}'>{$fi['html']}</div>";
         } else {
+            $inputAttributes = '';
+            foreach (['step', 'min', 'max'] as $attribute) {
+                if (isset($fi[$attribute])) {
+                    $inputAttributes .= " $attribute='" . htmlspecialchars((string) $fi[$attribute], ENT_QUOTES, 'UTF-8') . "'";
+                }
+            }
             $form .= "<div class='col-{$fi['col']}'>
                 <div class='$class'>
                     <label for='$key'>{$fi['label']}</label>
-                    <input type='{$fi['type']}' class='form-control' name='$key' id='$key' value='{$fi['value']}'{$required}>
+                    <input type='{$fi['type']}' class='form-control' name='$key' id='$key' value='{$fi['value']}'{$required}{$inputAttributes}>
                 </div>
             </div>";
         }

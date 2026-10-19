@@ -173,9 +173,6 @@ if (METHOD == 'edit' && defined('ID')) {
 <!-- [ Main Content ] start -->
 <form method="post">
   <?php
-    if (isset($invoiceBalanceWarning) && $invoiceBalanceWarning) {
-      print "<div class='alert alert-warning'>$invoiceBalanceWarning</div>";
-    }
     if(isset($post->customer_order_id)){
       print "<input type='hidden' name='customer_order_id' value='$post->customer_order_id'>";
     }

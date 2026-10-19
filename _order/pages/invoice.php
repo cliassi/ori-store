@@ -130,9 +130,15 @@ if (!empty($post->product) && is_array($post->product)) {
 
   <div class="po-container">
     <?php if ($orderBalanceWarning): ?>
-      <div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:12px;padding:12px;margin-bottom:12px;font-size:13px;">
-        <?php echo $orderBalanceWarning; ?>
-      </div>
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Customer due limit exceeded',
+            text: <?php echo json_encode($orderBalanceWarning, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>
+          });
+        }, { once: true });
+      </script>
     <?php endif; ?>
     <div class="po-title" style="
     color: #008048;
@@ -379,9 +385,6 @@ if (isset($post->save)) {
 </style>
 
 <form method="post" class="inv-compact">
-  <?php if (isset($orderBalanceWarning) && $orderBalanceWarning): ?>
-    <div class="alert alert-warning"><?php echo $orderBalanceWarning; ?></div>
-  <?php endif; ?>
   <input type='hidden' name='UID' value='<?php print $post->UID; ?>' >
   <div class="row">
     <div class="col-sm-12">

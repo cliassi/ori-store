@@ -46,8 +46,10 @@ if (defined('ID')) {
 $customerLedgerBalance = customerLedgerBalance($obj->id);
 $customerDueLimit = customerDueLimit($obj->id);
 $orderAction = "<a class='btn btn-success' href='/store/product/sell?c=" . ID . "'>Order</a>";
-if ($customerLedgerBalance >= $customerDueLimit) {
-  $orderAction .= "<div class='small text-warning mt-1'>Due " . nf($customerLedgerBalance) . " / Limit " . nf($customerDueLimit) . "</div>";
+$customerBalanceWarning = isset($_SESSION['customer_balance_warning']) ? $_SESSION['customer_balance_warning'] : '';
+unset($_SESSION['customer_balance_warning']);
+if (!$customerBalanceWarning && $customerLedgerBalance > $customerDueLimit) {
+  $customerBalanceWarning = "Current customer balance RM " . number_format($customerLedgerBalance, 2) . " exceeds the due limit of RM " . number_format($customerDueLimit, 2) . ".";
 }
 
 if (isset($post->deliver)) {
@@ -189,9 +191,16 @@ if (isset($post->save_delivery_date)) {
   R::store($invoice);
 }
 
-if (isset($_SESSION['customer_balance_warning'])) {
-  print "<div class='alert alert-warning'>" . $_SESSION['customer_balance_warning'] . "</div>";
-  unset($_SESSION['customer_balance_warning']);
+if ($customerBalanceWarning) {
+  print "<script>
+    document.addEventListener('DOMContentLoaded', function () {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Customer due limit exceeded',
+        text: " . json_encode($customerBalanceWarning, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . "
+      });
+    }, { once: true });
+  </script>";
 }
 
 print "<form method='post'>

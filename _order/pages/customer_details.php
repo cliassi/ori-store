@@ -169,15 +169,19 @@ $users = userList();
 </div>
 
 <?php if ($customerBalanceWarning): ?>
-<div class="max-w-sm mx-auto -mt-4 mb-2">
-    <div class="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-3 text-sm">
-        <?php echo $customerBalanceWarning; ?>
-    </div>
-</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Customer due limit exceeded',
+            text: <?php echo json_encode($customerBalanceWarning, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>
+        });
+    }, { once: true });
+</script>
 <?php endif; ?>
 
 <!-- Action Buttons -->
-<div class="max-w-sm mx-auto <?php echo $customerBalanceWarning ? 'mt-2' : '-mt-4'; ?> mb-2">
+<div class="max-w-sm mx-auto -mt-4 mb-2">
     <div class="bg-white rounded-2xl shadow-sm p-4">
         <div class="grid grid-cols-3 gap-3">
             <a href="?page=home&customer=<?php echo $get->id; ?>" class="bg-green-500 hover:bg-green-600 text-white text-center p-1 rounded-lg font-medium transition-colors">
@@ -394,7 +398,6 @@ if($remarks->num_rows > 0):
     <input type="hidden" name='idToDelete2' id='idToDelete2'>
 </form>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // Set last balance from due amount when page loads
 document.addEventListener('DOMContentLoaded', function() {

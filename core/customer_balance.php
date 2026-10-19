@@ -1,6 +1,22 @@
 <?php
 function customerDueLimit($customerId)
 {
+  static $columnChecked = false;
+  if (!$columnChecked) {
+    if (function_exists('ensureMysqlColumn')) {
+      $columnChecked = ensureMysqlColumn('customer', 'due_limit', 'DECIMAL(12,2) NOT NULL DEFAULT 1500') !== false;
+    } else {
+      global $c;
+      if (isset($c)) {
+        $column = $c->query("SHOW COLUMNS FROM `customer` LIKE 'due_limit'");
+        $columnChecked = $column && $column->num_rows > 0;
+        if (!$columnChecked) {
+          $columnChecked = (bool)$c->query("ALTER TABLE `customer` ADD `due_limit` DECIMAL(12,2) NOT NULL DEFAULT 1500");
+        }
+      }
+    }
+  }
+
   $customerId = (int) $customerId;
   if ($customerId <= 0) {
     return 1500;
