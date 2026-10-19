@@ -192,12 +192,18 @@ if (isset($post->save_delivery_date)) {
 }
 
 if ($customerBalanceWarning) {
+  $customerBalanceWarningHtml = "<div style='color:#ff0000;text-align:left;'>"
+    . "<strong>Customer: " . htmlspecialchars((string)$obj->company, ENT_QUOTES, 'UTF-8') . "</strong><br>"
+    . "Contact: " . htmlspecialchars((string)$obj->contact, ENT_QUOTES, 'UTF-8') . "<br>"
+    . "Mobile: " . htmlspecialchars((string)$obj->mobile, ENT_QUOTES, 'UTF-8') . "<br><br>"
+    . htmlspecialchars($customerBalanceWarning, ENT_QUOTES, 'UTF-8')
+    . "</div>";
   print "<script>
     document.addEventListener('DOMContentLoaded', function () {
       Swal.fire({
         icon: 'warning',
         title: 'Customer due limit exceeded',
-        text: " . json_encode($customerBalanceWarning, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . "
+        html: " . json_encode($customerBalanceWarningHtml, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . "
       });
     }, { once: true });
   </script>";
