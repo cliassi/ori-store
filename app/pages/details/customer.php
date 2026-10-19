@@ -3,6 +3,11 @@
     color: #fff !important;
   }
 
+  .table-bordered td,
+  .table-bordered th {
+    border: solid 1px #000 !important;
+  }
+
   .d-icon {
     min-width: 70px;
     padding: 0px 8px;
