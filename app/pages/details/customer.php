@@ -429,7 +429,7 @@ while ($item = mysqli_fetch_object($trans)) {
     sum('credit', $item->amount);
   }
   print "<td class='text-right'>" . nf(sum('balance')) . "</td>";
-  print "<td nowrap class='text-right'>";
+  print "<td nowrap class='text-center'>";
   if ($item->src == 'invoice') {
     //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
     if (uid() == 1) {
