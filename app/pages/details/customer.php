@@ -347,23 +347,8 @@ while ($item = mysqli_fetch_object($trans)) {
       $deliveryTooltip .= ($deliveryTooltip !== '' ? ' @ ' : '') . df($oi->delivered_at);
     }
     $deliveryTooltip = htmlspecialchars($deliveryTooltip, ENT_QUOTES, 'UTF-8');
-    print "<td>";
-    print "<table class='table table-bordered table-items'>";
-    $k = 1;
-    $pv = R::load("product_variance", $oi->product_variance_id);
-    print "<tr>
-        <td><div class='order-item'>$oi->description <span class='item-price'>($oi->price X <span class='item-qty'> $oi->quantity</span> = " . nf($oi->quantity * $oi->price) . ")</span></div></td></tr>";
-    $k++;
-    print "</table>";
-
-
-    print "</td>";
-    print "<td class='text-center'>";
-    print "<table class='table table-bordered table-items'>";
-    $k = 1;
-    $pv = R::load("product_variance", $oi->product_variance_id);
-    print "<tr>
-        <td title='$deliveryTooltip' class='text-center'>";
+    print "<td><div class='order-item'>$oi->description <span class='item-price'>($oi->price X <span class='item-qty'> $oi->quantity</span> = " . nf($oi->quantity * $oi->price) . ")</span></div></td>";
+    print "<td class='text-center' title='$deliveryTooltip'>";
     print "<button title='$deliveryTooltip' class='btn btn-sm " . ($oi->delivered_by ? "btn-success" : "btn-warning") . " selected-delivery-man' type='button' aria-expanded='false'><i class='fas fa-shipping-fast'></i> <span></span></button>";
     // <div class='dropdown-menu'>";
     // $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
@@ -372,11 +357,6 @@ while ($item = mysqli_fetch_object($trans)) {
     // }
     // print "</div>";
     // print "<span class='d-icon btn btn-sm ".($oi->delivered_by ? "btn-success":"btn-warning")."' data-id='$oi->id'><i class='fas fa-shipping-fast'></i></span></td>";
-    print "</tr>";
-    $k++;
-    print "</table>";
-
-
     print "</td>";
     print "<td class='text-center'>" . ($users[$item->created_by]) . "</td>";
     // } elseif(strrpos($item->particulars, 'bank account') !== FALSE){
