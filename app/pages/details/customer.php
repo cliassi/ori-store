@@ -49,7 +49,7 @@ $orderAction = "<a class='btn btn-success' href='/store/product/sell?c=" . ID . 
 $customerBalanceWarning = isset($_SESSION['customer_balance_warning']) ? $_SESSION['customer_balance_warning'] : '';
 unset($_SESSION['customer_balance_warning']);
 if (!$customerBalanceWarning && $customerLedgerBalance > $customerDueLimit) {
-  $customerBalanceWarning = "Current customer due RM " . number_format($customerLedgerBalance, 2) . " exceeds the due limit of RM " . number_format($customerDueLimit, 2) . ".";
+  $customerBalanceWarning = "Current customer due RM " . number_format($customerLedgerBalance, 2) . "<br>Exceeds the due limit of RM " . number_format($customerDueLimit, 2) . ".";
 }
 
 if (isset($post->deliver)) {
