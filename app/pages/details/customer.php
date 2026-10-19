@@ -279,7 +279,7 @@ $opening = 0;
 if (METHOD == 'pending_delivery') {
   $trans = select("SELECT * FROM (SELECT * FROM (
     SELECT 'invoice' src, id, invoice_date date, created_at, created_by, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
-  ) a ORDER BY created_at $limit) b ORDER BY date, created_at");
+  ) a ORDER BY created_at $limit) b ORDER BY created_at, created_at");
 } else {
 
   // SELECT 'invoice' src, id, invoice_date date, created_at, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
@@ -287,7 +287,7 @@ if (METHOD == 'pending_delivery') {
     SELECT 'invoice' src, '' pm, '' ab, i.id, ii.id id2, IFNULL(ii.delivery_date,i.invoice_date) dd, i.created_at sort_date, i.invoice_date date, '' payment_date, i.created_at, i.delivered_by, i.created_by, (SELECT particulars FROM product_variance WHERE product_variance.id=ii.product_variance_id) particulars, ii.price * ii.quantity amount FROM `invoice` i, `invoice_item` ii WHERE i.id=ii.invoice_id AND i.customer_id=$obj->id
     UNION
     SELECT 'collection' src, payment_method pm, approved_by ab, id, 0 id2, '' dd, created_at sort_date, date, payment_date, created_at, approved_by delivered_by, created_by, description particulars, amount FROM `collection` WHERE customer_id=$obj->id
-  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY date, src DESC, created_at");
+  ) a ORDER BY date DESC, created_at DESC $limit) b ORDER BY created_at, src DESC, created_at");
 
   // $opq = select("SELECT SUMT() ");
 }
