@@ -17,6 +17,27 @@ if(isset($get->logout)){
   unset($_SESSION);
   redir(ROOT);
 }
+if (isset($get->cancel_totp)) {
+  unset(
+    $_SESSION[$pendingKey],
+    $_SESSION[$messageKey],
+    $_SESSION[ROOT . '_loggedin'],
+    $_SESSION[ROOT . '_username'],
+    $_SESSION['branch_id'],
+    $_SESSION['branch_name'],
+    $_SESSION[APP . '_id'],
+    $_SESSION[APP . '_role'],
+    $_SESSION[APP . '_rolecode'],
+    $_SESSION[APP . '_role_name'],
+    $_SESSION[APP . '_fullname'],
+    $_SESSION[APP . '_pin'],
+    $_SESSION[APP . '_totp_verified'],
+    $_SESSION[APP . '_totp_verified_user']
+  );
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    session_regenerate_id(true);
+  }
+}
 if (isset($_SESSION[$messageKey])) {
   $msg = (string) $_SESSION[$messageKey];
   unset($_SESSION[$messageKey]);
@@ -175,6 +196,9 @@ if(!loggedin() && !isset($post->recover)):
             <input type='hidden' name='totp_csrf' value='<?php echo htmlspecialchars($pending['csrf'], ENT_QUOTES, 'UTF-8'); ?>' />
             <div class='d-grid mt-4'>
               <button type='submit' name='totp_submit' class='btn btn-primary' value='1'>Verify</button>
+            </div>
+            <div class='d-grid mt-2'>
+              <a href='?q=auth/login&amp;cancel_totp=1' class='btn btn-outline-secondary'>Back to login / switch user</a>
             </div>
           </div>
         </div>
