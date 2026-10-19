@@ -8,6 +8,10 @@
     border: solid 1px #000 !important;
   }
 
+  td .table-bordered td{
+    border: none !important;
+  }
+
   .d-icon {
     min-width: 70px;
     padding: 0px 8px;
