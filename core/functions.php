@@ -179,7 +179,7 @@ function accountEntry($accountid, $particulars, $amount, $type, $data = [])
 
 function addLink($print = true)
 {
-    $link = '<div class="col-6 text-right right"><a href="' . mlink('add') . '" class="btn btn-primary" style="position">Add</a></div>';
+    $link = '<div class="col-6 text-right right">' . mbutton('Add', PAGE, 'add', false, 'primary') . '</div>';
     if ($print) {
         print $link;
     } else {
@@ -194,7 +194,11 @@ function editDeleteLink($id, $print = false)
 
 function editLink($id, $print = false)
 {
-    $link = "<a class='btn btn-primary btn-sm' href='" . mlink('edit/' . $id) . "'>Edit</a>";
+    $link = str_replace(
+        "class='btn btn-primary'",
+        "class='btn btn-primary btn-sm'",
+        mbutton('Edit', PAGE, 'edit', $id, 'primary')
+    );
     if ($print) {
         print $link;
     } else {

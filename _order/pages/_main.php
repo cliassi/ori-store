@@ -44,6 +44,9 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 <body class="bg-gray-50 min-h-screen">
 
 <?php
+$action = isset($action) ? $action : 'home';
+$actions = isset($actions) && is_array($actions) ? $actions : ['home'];
+
 if(in_array($action, $actions)){
     $file = sanitizeString($action);
     if(!file_exists('pages/'.$file.'.php')){
@@ -56,4 +59,3 @@ if(in_array($action, $actions)){
 
 </body>
 </html>
-
