@@ -260,7 +260,6 @@ print "<th width='20px'>No. </th>
         <th>Particulars</th>
         <th width='50px'></th>
         <th width='50px'>Invoice By</th>
-        <th width='50px'>Approve?</th>
         <th width='20px'></th>
         <th width='30px'>Debit </th>
         <th width='30px'>Credit  </th>
@@ -420,17 +419,17 @@ while ($item = mysqli_fetch_object($trans)) {
 
 
   // Add Approve column
-  print "<td class='text-center'>";
-  if ($item->src == 'collection' && $item->pm == 'Bank') {
-    if ($item->ab) {
-      print "<a class='btn btn-sm btn-success' title='Approved by user {$item->ab}'><i class='fas fa-check'></i> Approved</a>";
-    } elseif (uid() == 1) {
-      print "<a href='javascript:approveCollection($item->id)' class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
-    } else {
-      print "<a class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
-    }
-  }
-  print "</td>";
+  // print "<td class='text-center'>";
+  // if ($item->src == 'collection' && $item->pm == 'Bank') {
+  //   if ($item->ab) {
+  //     print "<a class='btn btn-sm btn-success' title='Approved by user {$item->ab}'><i class='fas fa-check'></i> Approved</a>";
+  //   } elseif (uid() == 1) {
+  //     print "<a href='javascript:approveCollection($item->id)' class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+  //   } else {
+  //     print "<a class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+  //   }
+  // }
+  // print "</td>";
 
 
 
@@ -450,22 +449,22 @@ while ($item = mysqli_fetch_object($trans)) {
     sum('credit', $item->amount);
   }
   print "<td class='text-right'>" . nf(sum('balance')) . "</td>";
-  print "<td nowrap class='text-right'>";
-  if ($item->src == 'invoice') {
-    //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
-    if (uid() == 1) {
-      print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
-    }
-  } else {
-    if (uid() == 1) {
-      if ($item->src == 'collection') {
-        print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
-      }
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
-    }
-  }
-  print "</td>";
+  // print "<td nowrap class='text-right'>";
+  // if ($item->src == 'invoice') {
+  //   //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
+  //   if (uid() == 1) {
+  //     print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
+  //     print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
+  //   }
+  // } else {
+  //   if (uid() == 1) {
+  //     if ($item->src == 'collection') {
+  //       print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
+  //     }
+  //     print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+  //   }
+  // }
+  // print "</td>";
 
   //deleteConfirmation
   //deleteConfirmation2
