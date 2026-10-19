@@ -449,22 +449,22 @@ while ($item = mysqli_fetch_object($trans)) {
     sum('credit', $item->amount);
   }
   print "<td class='text-right'>" . nf(sum('balance')) . "</td>";
-  // print "<td nowrap class='text-right'>";
-  // if ($item->src == 'invoice') {
-  //   //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
-  //   if (uid() == 1) {
-  //     print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
-  //     print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
-  //   }
-  // } else {
-  //   if (uid() == 1) {
-  //     if ($item->src == 'collection') {
-  //       print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
-  //     }
-  //     print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
-  //   }
-  // }
-  // print "</td>";
+  print "<td nowrap class='text-right'>";
+  if ($item->src == 'invoice') {
+    //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
+    if (uid() == 1) {
+      print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
+    }
+  } else {
+    if (uid() == 1) {
+      if ($item->src == 'collection') {
+        print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
+      }
+      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+    }
+  }
+  print "</td>";
 
   //deleteConfirmation
   //deleteConfirmation2
