@@ -343,6 +343,11 @@ while ($item = mysqli_fetch_object($trans)) {
     if (!nn($oi->description)) {
       $oi->description = $item->particulars;
     }
+    $deliveryTooltip = trim((string)$oi->delivery_staff);
+    if (nn($oi->delivered_at)) {
+      $deliveryTooltip .= ($deliveryTooltip !== '' ? ' @ ' : '') . df($oi->delivered_at);
+    }
+    $deliveryTooltip = htmlspecialchars($deliveryTooltip, ENT_QUOTES, 'UTF-8');
     print "<td>";
     print "<table class='table table-bordered table-items'>";
     $k = 1;
@@ -359,8 +364,8 @@ while ($item = mysqli_fetch_object($trans)) {
     $k = 1;
     $pv = R::load("product_variance", $oi->product_variance_id);
     print "<tr>
-        <td title='$oi->delivered_by'>";
-    print "<button title='$oi->delivered_by " . (nn($oi->delivered_at) ? ' @ ' . df($oi->delivered_at) : '') . "' class='btn btn-sm " . ($oi->delivered_by ? "btn-success" : "btn-warning") . " selected-delivery-man' type='button' aria-expanded='false'><i class='fas fa-shipping-fast'></i> " . ($oi->delivered_by ? "$oi->delivery_staff" : "") . "<span></span></button>";
+        <td title='$deliveryTooltip'>";
+    print "<button title='$deliveryTooltip' class='btn btn-sm " . ($oi->delivered_by ? "btn-success" : "btn-warning") . " selected-delivery-man' type='button' aria-expanded='false'><i class='fas fa-shipping-fast'></i> " . ($oi->delivered_by ? "$oi->delivery_staff" : "") . "<span></span></button>";
     // <div class='dropdown-menu'>";
     // $objs = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
     // while ($man = mysqli_fetch_object($objs)) {
