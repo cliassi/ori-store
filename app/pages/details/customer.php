@@ -481,7 +481,7 @@ if (isset($get->show) && $get->show == "all") {
   print "<a href='?show=all' class='btn btn-sm btn-shadow btn-light frht' style='color: #000 !important'>Show all</a>";
 }
 print "</td>
-<th class='text-right' colspan='5'><button name='deliver' class='btn btn-sm btn-success hidden'>Submit</button> TOTAL</th>
+<th class='text-right' colspan='4'><button name='deliver' class='btn btn-sm btn-success hidden'>Submit</button> TOTAL</th>
 <th class='text-right'>" . nf(sum('debit')) . "</th>
 <th class='text-right'>" . nf(sum('credit')) . "</th>
 <th class='text-right'>" . nf(sum('balance')) . "</th>
