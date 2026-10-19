@@ -1,5 +1,16 @@
 <?php
-define('CUSTOMER_BALANCE_LIMIT', 2000);
+function customerDueLimit($customerId)
+{
+  $customerId = (int) $customerId;
+  if ($customerId <= 0) {
+    return 1500;
+  }
+  $customer = R::load('customer', $customerId);
+  if (!$customer || !$customer->id || !isset($customer->due_limit)) {
+    return 1500;
+  }
+  return (float) $customer->due_limit;
+}
 
 function customerLedgerBalance($customerId)
 {
@@ -12,7 +23,7 @@ function customerLedgerBalance($customerId)
   return $debit - $credit;
 }
 
-function customerOrderWouldExceedBalance($customerId, $amount)
+function customerOrderExceedsDueLimit($customerId, $amount)
 {
-  return customerLedgerBalance($customerId) + (float) $amount > CUSTOMER_BALANCE_LIMIT;
+  return customerLedgerBalance($customerId) + (float) $amount > customerDueLimit($customerId);
 }

@@ -38,14 +38,16 @@
 </style>
 <?php
 $obj = R::dispense('customer');
+ensureMysqlColumn('customer', 'due_limit', 'DECIMAL(12,2) NOT NULL DEFAULT 1500');
+ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
 if (defined('ID')) {
   $obj = R::load('customer', ID);
 }
-ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
 $customerLedgerBalance = customerLedgerBalance($obj->id);
+$customerDueLimit = customerDueLimit($obj->id);
 $orderAction = "<a class='btn btn-success' href='/store/product/sell?c=" . ID . "'>Order</a>";
-if ($customerLedgerBalance >= CUSTOMER_BALANCE_LIMIT) {
-  $orderAction = "<a class='btn btn-secondary disabled' href='javascript:void(0)' aria-disabled='true' title='Customer has reached the balance limit'>Order</a><div class='small text-danger mt-1'>Due " . nf($customerLedgerBalance) . " / Limit " . nf(CUSTOMER_BALANCE_LIMIT) . "</div>";
+if ($customerLedgerBalance >= $customerDueLimit) {
+  $orderAction .= "<div class='small text-warning mt-1'>Due " . nf($customerLedgerBalance) . " / Limit " . nf($customerDueLimit) . "</div>";
 }
 
 if (isset($post->deliver)) {
@@ -185,6 +187,11 @@ if (isset($post->save_delivery_date)) {
   $invoice = R::load("invoice", $post->save_delivery_date);
   $invoice->invoice_date = $post->delivery_date;
   R::store($invoice);
+}
+
+if (isset($_SESSION['customer_balance_warning'])) {
+  print "<div class='alert alert-warning'>" . $_SESSION['customer_balance_warning'] . "</div>";
+  unset($_SESSION['customer_balance_warning']);
 }
 
 print "<form method='post'>

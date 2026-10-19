@@ -39,21 +39,9 @@ if (!empty($post->product) && is_array($post->product)) {
 
   $currentBalance = customerLedgerBalance($customerId);
   $projectedBalance = $currentBalance + $grand;
-  if (customerOrderWouldExceedBalance($customerId, $grand)) {
-    ?>
-    <div style="max-width:720px;margin:0 auto;padding:24px 12px;text-align:center;">
-      <div style="background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.08);">
-        <h2 style="font-size:18px;margin:0 0 12px;color:#dc2626;">Order Rejected</h2>
-        <p style="margin:0 0 8px;color:#334155;">This order would exceed the customer's balance limit.</p>
-        <p style="margin:0;color:#64748b;">Current Balance: RM <?php echo number_format($currentBalance, 2); ?></p>
-        <p style="margin:0;color:#64748b;">Order Total: RM <?php echo number_format($grand, 2); ?></p>
-        <p style="margin:0;color:#64748b;">Balance Limit: RM <?php echo number_format(CUSTOMER_BALANCE_LIMIT, 2); ?></p>
-        <p style="margin:0 0 16px;font-weight:700;color:#dc2626;">Projected Balance: RM <?php echo number_format($projectedBalance, 2); ?></p>
-        <a href="javascript:history.back()" style="display:inline-block;padding:10px 24px;border-radius:9999px;background:#f3f4f6;color:#111827;text-decoration:none;">Back</a>
-      </div>
-    </div>
-    <?php
-    return;
+  $orderBalanceWarning = '';
+  if (customerOrderExceedsDueLimit($customerId, $grand)) {
+    $orderBalanceWarning = "Warning: this order exceeds the customer's due limit. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($grand, 2) . ", due limit RM " . number_format(customerDueLimit($customerId), 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
   }
 
   foreach ($orderRows as $orderRow) {
@@ -141,6 +129,11 @@ if (!empty($post->product) && is_array($post->product)) {
   </style>
 
   <div class="po-container">
+    <?php if ($orderBalanceWarning): ?>
+      <div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:12px;padding:12px;margin-bottom:12px;font-size:13px;">
+        <?php echo $orderBalanceWarning; ?>
+      </div>
+    <?php endif; ?>
     <div class="po-title" style="
     color: #008048;
     font-size: 1rem;
@@ -210,15 +203,15 @@ if (isset($post->save)) {
       $saveOrderTotal += $price * $qty;
     }
   }
-  $orderBalanceError = '';
-  if (customerOrderWouldExceedBalance($saveCustomerId, $saveOrderTotal)) {
+  $orderBalanceWarning = '';
+  if (customerOrderExceedsDueLimit($saveCustomerId, $saveOrderTotal)) {
     $currentBalance = customerLedgerBalance($saveCustomerId);
     $projectedBalance = $currentBalance + $saveOrderTotal;
-    $orderBalanceError = "Order rejected. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($saveOrderTotal, 2) . ", limit RM " . number_format(CUSTOMER_BALANCE_LIMIT, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
+    $orderBalanceWarning = "Order warning. Current balance RM " . number_format($currentBalance, 2) . ", order total RM " . number_format($saveOrderTotal, 2) . ", due limit RM " . number_format(customerDueLimit($saveCustomerId), 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
   }
 
   // Create multiple customer_orders: one customer_order per product selected
-  if (!$orderBalanceError && !empty($post->product) && is_array($post->product)) {
+  if (!empty($post->product) && is_array($post->product)) {
     foreach ($post->product as $id => $qty) {
       $qty = (int)$qty;
       if ($qty <= 0) continue;
@@ -259,25 +252,26 @@ if (isset($post->save)) {
     }
   }
 
-  if (!$orderBalanceError) {
-    // Clear all cart_qty localStorage variables after successful save
-    echo "<script>
-      // Remove all cart_qty_* keys from localStorage
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('cart_qty_')) {
-          localStorage.removeItem(key);
-          i--; // Adjust index since we removed an item
-        }
+  if ($orderBalanceWarning) {
+    $_SESSION['customer_balance_warning'] = $orderBalanceWarning;
+  }
+  // Clear all cart_qty localStorage variables after successful save
+  echo "<script>
+    // Remove all cart_qty_* keys from localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('cart_qty_')) {
+        localStorage.removeItem(key);
+        i--; // Adjust index since we removed an item
       }
-    </script>";
-
-    // Redirect to customer details like the reference implementation
-    if (isset($post->customer_id)) {
-      redir("?page=customer_details&id={$post->customer_id}");
-    } else {
-      redir("?page=home");
     }
+  </script>";
+
+  // Redirect to customer details like the reference implementation
+  if (isset($post->customer_id)) {
+    redir("?page=customer_details&id={$post->customer_id}");
+  } else {
+    redir("?page=home");
   }
 }
 ?>
@@ -385,8 +379,8 @@ if (isset($post->save)) {
 </style>
 
 <form method="post" class="inv-compact">
-  <?php if (isset($orderBalanceError) && $orderBalanceError): ?>
-    <div class="alert alert-danger"><?php echo $orderBalanceError; ?></div>
+  <?php if (isset($orderBalanceWarning) && $orderBalanceWarning): ?>
+    <div class="alert alert-warning"><?php echo $orderBalanceWarning; ?></div>
   <?php endif; ?>
   <input type='hidden' name='UID' value='<?php print $post->UID; ?>' >
   <div class="row">

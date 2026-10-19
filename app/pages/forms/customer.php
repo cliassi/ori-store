@@ -1,5 +1,7 @@
 <?php
 $obj = R::dispense('customer');
+$obj->due_limit = 1500;
+ensureMysqlColumn('customer', 'due_limit', 'DECIMAL(12,2) NOT NULL DEFAULT 1500');
 if (defined('ID')) {
   $obj = R::load('customer', ID);
 }
@@ -21,6 +23,8 @@ if (isset($post->save)) {
     if (isset($post->location))
       $obj->location = $post->location;
     $obj->city = $post->city;
+    if (isset($post->due_limit))
+      $obj->due_limit = (float)$post->due_limit;
     if (isset($post->map))
       $obj->map = $post->map;
     if (isset($post->email))

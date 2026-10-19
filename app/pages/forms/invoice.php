@@ -89,7 +89,7 @@ if (METHOD == 'edit' && defined('ID')) {
   }
   //vd($cp);
   if (isset($post->save)) {
-    $invoiceBalanceError = '';
+    $invoiceBalanceWarning = '';
     $invoiceOrderTotal = 0;
     $invoicePrices = [];
     foreach ($post->product as $id => $qty) {
@@ -101,12 +101,12 @@ if (METHOD == 'edit' && defined('ID')) {
       $invoicePrices[$id] = $price;
       $invoiceOrderTotal += $price * $qty;
     }
-    if (customerOrderWouldExceedBalance($customer_id, $invoiceOrderTotal)) {
+    if (customerOrderExceedsDueLimit($customer_id, $invoiceOrderTotal)) {
       $currentBalance = customerLedgerBalance($customer_id);
       $projectedBalance = $currentBalance + $invoiceOrderTotal;
-      $invoiceBalanceError = "Invoice rejected. Current balance RM " . number_format($currentBalance, 2) . ", invoice total RM " . number_format($invoiceOrderTotal, 2) . ", limit RM " . number_format(CUSTOMER_BALANCE_LIMIT, 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
+      $invoiceBalanceWarning = "Invoice warning. Current balance RM " . number_format($currentBalance, 2) . ", invoice total RM " . number_format($invoiceOrderTotal, 2) . ", due limit RM " . number_format(customerDueLimit($customer_id), 2) . ", projected balance RM " . number_format($projectedBalance, 2) . ".";
     }
-    if (!$invoiceBalanceError) foreach ($post->product as $id => $qty) {
+    foreach ($post->product as $id => $qty) {
       $qty = (float)$qty;
       if ($qty <= 0 || !isset($invoicePrices[$id])) continue;
       $obj = R::dispense("invoice");
@@ -163,17 +163,18 @@ if (METHOD == 'edit' && defined('ID')) {
 
       R::store($ii);
     }
-    if (!$invoiceBalanceError) {
-      redir(ROOT . "/customer/details/$post->customer_id");
+    if ($invoiceBalanceWarning) {
+      $_SESSION['customer_balance_warning'] = $invoiceBalanceWarning;
     }
+    redir(ROOT . "/customer/details/$post->customer_id");
   }
 }
 ?>
 <!-- [ Main Content ] start -->
 <form method="post">
   <?php
-    if (isset($invoiceBalanceError) && $invoiceBalanceError) {
-      print "<div class='alert alert-danger'>$invoiceBalanceError</div>";
+    if (isset($invoiceBalanceWarning) && $invoiceBalanceWarning) {
+      print "<div class='alert alert-warning'>$invoiceBalanceWarning</div>";
     }
     if(isset($post->customer_order_id)){
       print "<input type='hidden' name='customer_order_id' value='$post->customer_order_id'>";

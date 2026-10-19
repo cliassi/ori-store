@@ -271,6 +271,7 @@ CREATE TABLE `customer` (
   `company` varchar(128) NOT NULL,
   `contact` varchar(128) NOT NULL,
   `mobile` varchar(32) NOT NULL,
+  `due_limit` decimal(12,2) NOT NULL DEFAULT 1500.00,
   `city` varchar(64) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `image` varchar(64) DEFAULT NULL,

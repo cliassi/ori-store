@@ -61,6 +61,8 @@ $obj = R::dispense('customer');
 if (isset($get->id)) {
     $obj = R::load('customer', $get->id);
 }
+$customerBalanceWarning = isset($_SESSION['customer_balance_warning']) ? $_SESSION['customer_balance_warning'] : '';
+unset($_SESSION['customer_balance_warning']);
 
 // Handle form submissions
 if(isset($post->deliver)){
@@ -166,8 +168,16 @@ $users = userList();
     </div>
 </div>
 
-<!-- Action Buttons -->
+<?php if ($customerBalanceWarning): ?>
 <div class="max-w-sm mx-auto -mt-4 mb-2">
+    <div class="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-3 text-sm">
+        <?php echo $customerBalanceWarning; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Action Buttons -->
+<div class="max-w-sm mx-auto <?php echo $customerBalanceWarning ? 'mt-2' : '-mt-4'; ?> mb-2">
     <div class="bg-white rounded-2xl shadow-sm p-4">
         <div class="grid grid-cols-3 gap-3">
             <a href="?page=home&customer=<?php echo $get->id; ?>" class="bg-green-500 hover:bg-green-600 text-white text-center p-1 rounded-lg font-medium transition-colors">
