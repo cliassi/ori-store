@@ -69,3 +69,4 @@ vendor
 uploads/*
 uploads-ori/*
 app/pages/view/exportables/docs/*
+.DS_Store
