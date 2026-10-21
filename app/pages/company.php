@@ -470,21 +470,6 @@
         return false;
     }
 
-    $copyRecursive = function ($source, $destination) use (&$copyRecursive) {
-        if (is_dir($source)) {
-            if (!mkdir($destination, 0777, true)) {
-                return false;
-            }
-            foreach (array_diff(scandir($source), ['.', '..']) as $child) {
-                if (!$copyRecursive($source . DIRECTORY_SEPARATOR . $child, $destination . DIRECTORY_SEPARATOR . $child)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return copy($source, $destination);
-    };
-
     /**
      * Calculate total directory size recursively
      */
@@ -589,17 +574,22 @@
             exit;
         }
 
-        // Action: Copy a file or folder in the current directory
-        if (isset($req_post['copy_item']) && !empty($req_post['source_name']) && !empty($req_post['copy_name'])) {
+        // Action: Cut (move) a file or folder into a sub-folder of the current directory
+        if (isset($req_post['move_item']) && !empty($req_post['source_name']) && !empty($req_post['target_name'])) {
             $source_name = basename($req_post['source_name']);
-            $copy_name = preg_replace('/[^a-zA-Z0-9_\- \.]/', '', $req_post['copy_name']);
+            $target_name = basename($req_post['target_name']);
             $source_path = $full_server_path . DIRECTORY_SEPARATOR . $source_name;
-            $copy_path = $full_server_path . DIRECTORY_SEPARATOR . $copy_name;
+            $target_dir = $full_server_path . DIRECTORY_SEPARATOR . $target_name;
+            $dest_path = $target_dir . DIRECTORY_SEPARATOR . $source_name;
+            $real_source = realpath($source_path);
+            $real_target = realpath($target_dir);
 
-            if ($copy_name !== '' && file_exists($source_path) && !file_exists($copy_path) && $copyRecursive($source_path, $copy_path)) {
-                $_SESSION['archive_msg'] = ['type' => 'success', 'text' => "Copied successfully."];
+            if (strpos($source_name, '.') !== 0 && strpos($target_name, '.') !== 0 && $real_source && $real_target && is_dir($real_target) && !file_exists($dest_path)
+                && $real_target !== $real_source && strpos($real_target . DIRECTORY_SEPARATOR, $real_source . DIRECTORY_SEPARATOR) !== 0
+                && rename($source_path, $dest_path)) {
+                $_SESSION['archive_msg'] = ['type' => 'success', 'text' => "Moved successfully."];
             } else {
-                $_SESSION['archive_msg'] = ['type' => 'error', 'text' => "Copy failed: destination exists or source not found."];
+                $_SESSION['archive_msg'] = ['type' => 'error', 'text' => "Move failed: destination exists or folder not found."];
             }
             echo "<script>window.location.href = '$redirect_url';</script>";
             exit;
@@ -842,10 +832,10 @@
         </div>
     </div>
 
-    <form method="POST" id="copyItemForm">
-        <input type="hidden" name="copy_item" value="1">
-        <input type="hidden" name="source_name" id="copySourceName">
-        <input type="hidden" name="copy_name" id="copyNewName">
+    <form method="POST" id="moveItemForm">
+        <input type="hidden" name="move_item" value="1">
+        <input type="hidden" name="source_name" id="moveSourceName">
+        <input type="hidden" name="target_name" id="moveTargetName">
     </form>
 
     <!-- Delete Modal -->
@@ -926,35 +916,45 @@
             document.getElementById('renameNewName').select();
         }
 
-        function copyItem(name, type) {
-            const extensionIndex = type === 'file' ? name.lastIndexOf('.') : -1;
-            const defaultName = extensionIndex > 0
-                ? name.substring(0, extensionIndex) + ' copy' + name.substring(extensionIndex)
-                : name + ' copy';
-            const copyName = prompt('Name for the copy:', defaultName);
-            if (!copyName || !copyName.trim()) return;
-            document.getElementById('copySourceName').value = name;
-            document.getElementById('copyNewName').value = copyName.trim();
-            document.getElementById('copyItemForm').submit();
+        let cutItem = null;
+
+        function cancelCut() {
+            if (cutItem) cutItem.el.css('opacity', '');
+            cutItem = null;
         }
+
+        document.addEventListener('click', function (e) {
+            if (!cutItem) return;
+            const folder = e.target.closest('#archive-file-grid .fm-folder');
+            if (!folder || e.target.closest('.fm-delete')) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const source = cutItem.name;
+            cancelCut();
+            document.getElementById('moveSourceName').value = source;
+            document.getElementById('moveTargetName').value = folder.getAttribute('data-item-name');
+            document.getElementById('moveItemForm').submit();
+        }, true);
 
         $('#archive-file-grid').contextMenu({
             selector: '.fm-item',
             callback: function (key) {
                 const name = $(this).attr('data-item-name');
-                const type = $(this).attr('data-item-type');
-                if (key === 'copy') {
-                    copyItem(name, type);
-                } else if (key === 'rename') {
+                if (key === 'rename') {
                     openRenameModal(name);
-                } else if (key === 'delete') {
-                    openDeleteModal(name);
+                } else if (key === 'cut') {
+                    cancelCut();
+                    cutItem = { name: name, el: $(this) };
+                    $(this).css('opacity', '.3');
+                } else if (key === 'quit') {
+                    cancelCut();
                 }
             },
             items: {
-                copy: { name: 'Copy', icon: 'copy' },
                 rename: { name: 'Rename', icon: 'edit' },
-                delete: { name: 'Delete', icon: 'delete' }
+                cut: { name: 'Cut', icon: 'cut' },
+                sep1: '---------',
+                quit: { name: 'Quit', icon: 'quit' }
             }
         });
     </script>
