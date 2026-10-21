@@ -526,7 +526,7 @@
 
     // 4. HANDLE ACTIONS
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $redirect_url = "/factory/" . (defined('PAGE') ? PAGE : 'company') . "?dir=" . urlencode($clean_dir);
+        $redirect_url = "/store/" . (defined('PAGE') ? PAGE : 'company') . "?dir=" . urlencode($clean_dir);
 
         // Action: Create Folder
         if (isset($req_post['create_folder'])) {
@@ -628,7 +628,7 @@
                 'name' => $item,
                 'type' => $type,
                 'rel_link' => ($clean_dir ? $clean_dir . '/' : '') . $item,
-                'web_path' => '/factory/app/pages/archive/' . ($clean_dir ? $clean_dir . '/' : '') . $item
+                'web_path' => '/store/app/pages/archive/' . ($clean_dir ? $clean_dir . '/' : '') . $item
             ];
 
             if ($is_dir) {
