@@ -645,7 +645,7 @@
     $total_used_bytes = getDirectorySize($base_path);
     $total_used_formatted = formatSizeUnits($total_used_bytes);
     ?>
-
+<div class="container">
     <div id="fm-wrapper" style="position:relative;z-index:1;">
         <!-- Main Content -->
         <div class="fm-content">
@@ -786,7 +786,7 @@
 
 
     </div>
-
+</div>
     <!-- Rename Modal -->
     <div id="renameModal" class="fm-modal-overlay">
         <div class="fm-modal">
