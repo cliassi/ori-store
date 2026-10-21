@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Manager</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.9.2/jquery.contextMenu.min.css">
     <style>
         /* RESET & BASE */
         * {
@@ -468,6 +470,21 @@
         return false;
     }
 
+    $copyRecursive = function ($source, $destination) use (&$copyRecursive) {
+        if (is_dir($source)) {
+            if (!mkdir($destination, 0777, true)) {
+                return false;
+            }
+            foreach (array_diff(scandir($source), ['.', '..']) as $child) {
+                if (!$copyRecursive($source . DIRECTORY_SEPARATOR . $child, $destination . DIRECTORY_SEPARATOR . $child)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return copy($source, $destination);
+    };
+
     /**
      * Calculate total directory size recursively
      */
@@ -567,6 +584,22 @@
                 }
             } else {
                 $_SESSION['archive_msg'] = ['type' => 'error', 'text' => "Rename failed: File exists or not found."];
+            }
+            echo "<script>window.location.href = '$redirect_url';</script>";
+            exit;
+        }
+
+        // Action: Copy a file or folder in the current directory
+        if (isset($req_post['copy_item']) && !empty($req_post['source_name']) && !empty($req_post['copy_name'])) {
+            $source_name = basename($req_post['source_name']);
+            $copy_name = preg_replace('/[^a-zA-Z0-9_\- \.]/', '', $req_post['copy_name']);
+            $source_path = $full_server_path . DIRECTORY_SEPARATOR . $source_name;
+            $copy_path = $full_server_path . DIRECTORY_SEPARATOR . $copy_name;
+
+            if ($copy_name !== '' && file_exists($source_path) && !file_exists($copy_path) && $copyRecursive($source_path, $copy_path)) {
+                $_SESSION['archive_msg'] = ['type' => 'success', 'text' => "Copied successfully."];
+            } else {
+                $_SESSION['archive_msg'] = ['type' => 'error', 'text' => "Copy failed: destination exists or source not found."];
             }
             echo "<script>window.location.href = '$redirect_url';</script>";
             exit;
@@ -701,7 +734,7 @@
                     <?php endif; ?>
 
                     <?php if (count($items) > 0): ?>
-                        <div class="fm-grid">
+                        <div class="fm-grid" id="archive-file-grid">
                             <?php
                             // Pre-sort items into two categories
                             $folders = array_filter($items, function ($i) {
@@ -715,6 +748,8 @@
                             <!-- 1. Render Folders First -->
                             <?php foreach ($folders as $item): ?>
                                 <div class="fm-item fm-folder" data-name="<?php echo strtolower($item['name']); ?>"
+                                    data-item-name="<?php echo htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-item-type="folder"
                                     onclick="navigateTo('<?php echo addslashes($item['rel_link']); ?>')">
                                     <div class="fm-item-name">
                                         <i class="fa fa-folder"></i><?php echo htmlspecialchars($item['name']); ?>
@@ -736,6 +771,8 @@
                             <!-- 3. Render Files Second -->
                             <?php foreach ($files as $item): ?>
                                 <div class="fm-item fm-file" data-name="<?php echo strtolower($item['name']); ?>"
+                                    data-item-name="<?php echo htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-item-type="file"
                                     onclick="viewFile('<?php echo addslashes($item['web_path']); ?>')">
                                     <div class="fm-item-name">
                                         <i class="fa fa-file"></i><?php echo htmlspecialchars($item['name']); ?>
@@ -805,6 +842,12 @@
         </div>
     </div>
 
+    <form method="POST" id="copyItemForm">
+        <input type="hidden" name="copy_item" value="1">
+        <input type="hidden" name="source_name" id="copySourceName">
+        <input type="hidden" name="copy_name" id="copyNewName">
+    </form>
+
     <!-- Delete Modal -->
     <div id="deleteModal" class="fm-modal-overlay">
         <div class="fm-modal">
@@ -824,6 +867,7 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.9.2/jquery.contextMenu.min.js"></script>
     <script>
         const BASE_ROUTE = window.location.origin + window.location.pathname;
 
@@ -868,11 +912,51 @@
         }
 
         function openDeleteModal(name, event) {
-            event.stopPropagation();
+            if (event) event.stopPropagation();
             document.getElementById('deleteItemNameDisplay').innerText = name;
             document.getElementById('deleteItemNameValue').value = name;
             toggleModal('deleteModal');
         }
+
+        function openRenameModal(name) {
+            document.getElementById('renameOldName').value = name;
+            document.getElementById('renameNewName').value = name;
+            toggleModal('renameModal');
+            document.getElementById('renameNewName').focus();
+            document.getElementById('renameNewName').select();
+        }
+
+        function copyItem(name, type) {
+            const extensionIndex = type === 'file' ? name.lastIndexOf('.') : -1;
+            const defaultName = extensionIndex > 0
+                ? name.substring(0, extensionIndex) + ' copy' + name.substring(extensionIndex)
+                : name + ' copy';
+            const copyName = prompt('Name for the copy:', defaultName);
+            if (!copyName || !copyName.trim()) return;
+            document.getElementById('copySourceName').value = name;
+            document.getElementById('copyNewName').value = copyName.trim();
+            document.getElementById('copyItemForm').submit();
+        }
+
+        $('#archive-file-grid').contextMenu({
+            selector: '.fm-item',
+            callback: function (key) {
+                const name = $(this).attr('data-item-name');
+                const type = $(this).attr('data-item-type');
+                if (key === 'copy') {
+                    copyItem(name, type);
+                } else if (key === 'rename') {
+                    openRenameModal(name);
+                } else if (key === 'delete') {
+                    openDeleteModal(name);
+                }
+            },
+            items: {
+                copy: { name: 'Copy', icon: 'copy' },
+                rename: { name: 'Rename', icon: 'edit' },
+                delete: { name: 'Delete', icon: 'delete' }
+            }
+        });
     </script>
 
 </body>
