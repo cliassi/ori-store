@@ -8,6 +8,27 @@
     border: solid 1px #000 !important;
   }
 
+  .ledger-table > thead > tr > th:nth-child(4),
+  .ledger-table > tbody > tr > td:nth-child(4),
+  .ledger-table > thead > tr > th:nth-child(8),
+  .ledger-table > tbody > tr > td:nth-child(8),
+  .ledger-table > thead > tr > th:nth-child(9),
+  .ledger-table > tbody > tr > td:nth-child(9),
+  .ledger-table > thead > tr > th:nth-child(10),
+  .ledger-table > tbody > tr > td:nth-child(10) {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+
+  .statement-action-icon {
+    color: #000 !important;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+
   td .table-bordered td{
     border: none !important;
   }
@@ -238,20 +259,14 @@ print "<form method='post'>
                     <thead>
                       <tr>
                         <th class='text-center'>$orderAction</th>
-                        <th class='text-center'><a class='btn btn-warning' href='../../collection/add?customer=" . ID . "'>Collection</a></th>
-                        <th class='text-center'>
-                        <a class='btn btn-danger'>Refund</a>";
-if (uid() == 1) {
-  print "<a class='btn btn-warning' onClick='redirectWithSelected2()'><i class='fas fa-trash'></i> Delete</a>";
-}
+                        <th class='text-center' colspan='2'><a class='btn btn-warning' href='../../collection/add?customer=" . ID . "'>Collection</a></th>";
 //  <a class='btn btn-info' onClick='redirectWithSelected()'><i class='fas fa-print'></i> Print</a>";
 // print "<th class='text-center'><a class='btn btn-success' href='/store/customer/edit/" . ID . "'>Profile</a></th>
-print "</th>
-                      </tr>
+print "</tr>
                     </thead>
                     <tbody>";
 
-print "<table class='table table-bordered nowrap'>";
+print "<table class='table table-bordered nowrap ledger-table'>";
 print "<thead>";
 print "<tr>";
 print "<th width='20px'>No. </th>
@@ -433,15 +448,15 @@ while ($item = mysqli_fetch_object($trans)) {
   if ($item->src == 'invoice') {
     //print "<a type='button' class='btn btn-sm btn-warning' href='".ROOT."/invoice/print/$item->id' ><i class='fas fa-print'></i></a>";
     if (uid() == 1) {
-      print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
+      print "<a type='button' class='statement-action-icon' title='Edit invoice' href='" . ROOT . "/invoice/edit/$item->id' ><i class='fas fa-edit'></i></a>";
+      print "<button type='button' class='statement-action-icon' title='Delete invoice' onclick='deleteConfirmation($item->id)'><i class='fas fa-trash'></i></button>";
     }
   } else {
     if (uid() == 1) {
       if ($item->src == 'collection') {
-        print "<a type='button' class='btn btn-sm btn-info pb-1' href='" . ROOT . "/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
+        print "<a type='button' class='statement-action-icon' title='Edit collection' href='" . ROOT . "/collection/edit/$item->id'><i class='fas fa-edit'></i></a> ";
       }
-      print "<button type='button' class='btn btn-sm btn-danger' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
+      print "<button type='button' class='statement-action-icon' title='Delete collection' onclick='deleteConfirmation2($item->id)'><i class='fas fa-trash'></i></button>";
     }
   }
   print "</td>";
