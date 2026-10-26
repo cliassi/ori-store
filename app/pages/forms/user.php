@@ -144,7 +144,7 @@ if ((int) uid() === 1) {
 	print "<tr><td>Require Google Authenticator</td><td><input type='checkbox' name='totp_enabled' $totpChecked value='1' /></td></tr>";
 }
 echo "<tr><td>PIN</td><td><input type='text' name='pin' value='$object->u_pin' class='form-control' /></td></tr>";
-echo "<tr><td>Password</td><td><input type='password' name='password' value='' class='form-control' /></td></tr>";
+echo "<tr><td>Password</td><td><input type='text' name='password' value='$object->pass' class='form-control' /></td></tr>";
 // echo "<tr ck><td>Confirm Password ".space(5)."</td><td><input type='password' name='conf_password' value='' class='form-control' /></td></tr>";
 if (METHOD != "edit") {
 	echo "
