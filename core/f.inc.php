@@ -680,16 +680,11 @@
 		} elseif(in_array($object.$function, $accessGranted)){
 			return true;
 		} else{
-			$option = R::findOne("sys_permission", "user=? AND link=? AND `option`=?", [uid(), $object, $function]);
+			$option = R::findOne("sys_permission", "user=? AND link=? AND `option`=? AND access=?", [uid(), $object, $function, 1]);
 			if($option){
-				$option = R::findOne("sys_permission", "user=? AND link=? AND `option`=? AND access=?", [uid(), $object, $function, 1]);
-				if($option->access == 1){
-					array_push($accessGranted, $object.$function);
-					return true;
-				} else{
-					return false;
-				}				
-			} else{				
+				array_push($accessGranted, $object.$function);
+				return true;
+			} else{
 				return false;
 			}
 		}
