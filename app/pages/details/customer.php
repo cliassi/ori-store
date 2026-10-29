@@ -39,10 +39,12 @@
     margin-bottom: 4px;
   }
 
+  /*
   .table-items th,
   .table-items td {
-    /* border-bottom: solid 1px #ccc !important; */
+    border-bottom: solid 1px #ccc !important;
   }
+  */
 
   .datatable-table td,
   .datatable-table th,
@@ -67,6 +69,9 @@
   }
 </style>
 <?php
+require_once __DIR__ . '/../../../core/customer_balance.php';
+global $get, $post;
+
 $obj = R::dispense('customer');
 ensureMysqlColumn('customer', 'due_limit', 'DECIMAL(12,2) NOT NULL DEFAULT 1500');
 ensureMysqlColumn('collection', 'payment_date', 'DATE NULL');
@@ -433,7 +438,7 @@ while ($item = mysqli_fetch_object($trans)) {
     if ($item->ab) {
       $approveHtml = "<a class='btn btn-sm btn-success' title='Approved by user {$item->ab}'><i class='fas fa-check'></i> Approved</a>";
     } elseif (uid() == 1) {
-      $approveHtml = "<a href='javascript:approveCollection($item->id)' class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+      $approveHtml = "<a href='?approved=$item->id' onclick=\"return confirm('Are you sure you want to approve this collection?')\" class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
     } else {
       $approveHtml = "<a class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
     }
