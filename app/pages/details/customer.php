@@ -275,6 +275,7 @@ print "<th width='20px'>No. </th>
         <th>Particulars</th>
         <th width='50px'></th>
         <th width='50px'>Invoice By</th>
+        <th width='50px'>Approve?</th>
         <th width='20px'></th>
         <th width='30px'>Debit </th>
         <th width='30px'>Credit  </th>
@@ -292,7 +293,7 @@ $limit = "";
 $opening = 0;
 if (METHOD == 'pending_delivery') {
   $trans = select("SELECT * FROM (SELECT * FROM (
-    SELECT 'invoice' src, id, invoice_date date, created_at, created_by, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
+    SELECT 'invoice' src, '' pm, '' ab, id, invoice_date date, created_at, created_by, delivered_by, '' particulars, (SELECT SUM(price * quantity) FROM `invoice_item` ii WHERE ii.invoice_id=invoice.id) amount FROM `invoice` WHERE customer_id=$obj->id
   ) a ORDER BY created_at $limit) b ORDER BY created_at, created_at");
 } else {
 
@@ -426,6 +427,20 @@ while ($item = mysqli_fetch_object($trans)) {
   // }
   // print "</td>";
 
+  print "<td class='text-center'>";
+  $approveHtml = '-';
+  if ($item->src == 'collection' && $item->pm == 'Bank') {
+    if ($item->ab) {
+      $approveHtml = "<a class='btn btn-sm btn-success' title='Approved by user {$item->ab}'><i class='fas fa-check'></i> Approved</a>";
+    } elseif (uid() == 1) {
+      $approveHtml = "<a href='javascript:approveCollection($item->id)' class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+    } else {
+      $approveHtml = "<a class='btn btn-sm btn-warning'><i class='fas fa-clock'></i> Pending</a>";
+    }
+  }
+  print $approveHtml;
+  print "</td>";
+
 
 
 
@@ -476,7 +491,7 @@ if (isset($get->show) && $get->show == "all") {
   print "<a href='?show=all' class='btn btn-sm btn-shadow btn-light frht' style='color: #000 !important'>Show all</a>";
 }
 print "</td>
-<th class='text-right' colspan='4'><button name='deliver' class='btn btn-sm btn-success hidden'>Submit</button> TOTAL</th>
+<th class='text-right' colspan='5'><button name='deliver' class='btn btn-sm btn-success hidden'>Submit</button> TOTAL</th>
 <th class='text-right'>" . nf(sum('debit')) . "</th>
 <th class='text-right'>" . nf(sum('credit')) . "</th>
 <th class='text-right'>" . nf(sum('balance')) . "</th>
