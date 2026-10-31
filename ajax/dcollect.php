@@ -9,7 +9,8 @@ require_once("../core/config.php");
 require_once("../core/f.inc.php");
 require_once("../core/functions.php");
 
-$restrictedUser = !canEditPriceAndQuantity();
+$canEditPrice = canEditPrice();
+$canEditQuantity = canEditQuantity();
 $canEditDate = canEditDateOnly();
 
 if (!function_exists('ensureMysqlColumn')) {
@@ -226,10 +227,6 @@ $customers = select($query);
     display: table-row;
   }
 
-  .order-qty-col {
-    /* font-size: .9rem; */
-  }
-
   .customer-item .price-col,
   .customer-item .order-qty-col {
     width: 62px !important;
@@ -390,18 +387,18 @@ print "<th class='price-col'>Price</th><th class='order-qty-col'>Ord Qty</th></t
 $collected = 0;
             $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
             print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a>" : "<span>$ci</span>") . "</div></td>
-                            <td>$i->particulars (" . ($restrictedUser ? "<span>" . ($i->price) . "</span>" : "<a data-id='$i->iid' class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . ($i->price) . "</a>") . ") </td>";
+                            <td>$i->particulars (" . ($canEditPrice ? "<a data-id='$i->iid' class='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . ($i->price) . "</a>" : "<span>$i->price</span>") . ") </td>";
 
             $collected = $i->quantity;
             print "<td class='price-col'>";
-            if ($restrictedUser) {
+            if (!$canEditPrice) {
               print nf($i->price * $i->quantity);
             } elseif ($i->old_price && false) {
               print nf($i->price * $i->quantity);
             } else {
               print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . nf($i->price * $i->quantity) . "</a>";
             }
-            print "</td><td class='text-center order-qty-col'>" . ($restrictedUser ? "<span>$collected</span>" : "<a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a>") . "</td>";
+            print "</td><td class='text-center order-qty-col'>" . ($canEditQuantity ? "<a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a>" : "<span>$collected</span>") . "</td>";
             print "</tr>";
             $ic++;
           }

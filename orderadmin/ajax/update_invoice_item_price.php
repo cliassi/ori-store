@@ -3,6 +3,12 @@ session_start();
 require_once("../env.php");
 require_once("../config.php");
 require_once("../f.inc.php");
+require_once("../core/functions.php");
+
+if (!canEditPrice()) {
+	http_response_code(403);
+	exit;
+}
 
 
 extract($_POST);

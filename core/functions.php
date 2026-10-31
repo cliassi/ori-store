@@ -437,8 +437,16 @@ function isUserIn($users = [])
     // return in_array('lemon', $users);
 }
 
-function canEditPriceAndQuantity() {
+function canEditPrice() {
     return hasAccess('dcollect', 'edit_price');
+}
+
+function canEditQuantity() {
+    return hasAccess('dcollect', 'edit_quantity');
+}
+
+function canEditPriceAndQuantity() {
+    return canEditPrice() || canEditQuantity();
 }
 
 function canEditDateOnly() {
@@ -446,7 +454,7 @@ function canEditDateOnly() {
 }
 
 function canEditAnything() {
-    return canEditDateOnly() || canEditPriceAndQuantity();
+    return canEditDateOnly() || canEditPrice() || canEditQuantity();
 }
 
 function ensureDcollectPrivileges() {

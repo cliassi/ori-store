@@ -9,7 +9,8 @@ require_once("../core/config.php");
 require_once("../core/f.inc.php");
 require_once("../core/functions.php");
 
-$restrictedUser = !canEditPriceAndQuantity();
+$canEditPrice = canEditPrice();
+$canEditQuantity = canEditQuantity();
 $canEditDate = canEditDateOnly();
 
 if (!function_exists('ensureMysqlColumn')) {
@@ -177,10 +178,6 @@ $customers = select($query);
     display: table-row;
   }
 
-  .order-qty-col {
-    /* font-size: .9rem; */
-  }
-
   .customer-item .price-col,
   .customer-item .order-qty-col {
     width: 62px !important;
@@ -317,7 +314,7 @@ $customers = select($query);
           }
           $partAttr = htmlspecialchars($i->particulars, ENT_QUOTES);
           print "<tr data-vid='$i->vid' data-qty='$i->quantity' data-collected='$collected' data-unit-price='$i->price' data-particulars='$partAttr' class='" . ($i->quantity - $collected == 0 ? 'all-collected' : '') . "'><td><div><input type='checkbox' class='iid-date' name='iid[$i->iid]' value='$i->iid'> " . ($canEditDate ? "<a href='#' id='invoice-item-date-$i->iid' data-dd='" . df($i->dd) . "' onClick='setDate(this, $i->iid)'>$ci</a>" : "<span>$ci</span>") . "</div></td>
-                            <td>$i->particulars X " . ($restrictedUser ? "<span>$i->quantity</span>" : "<a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$i->quantity</a>") . "</td>";
+                            <td>$i->particulars X " . ($canEditQuantity ? "<a data-id='$i->iid' id='invoice-item-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$i->quantity</a>" : "<span>$i->quantity</span>") . "</td>";
 
           if ($delivery) {
             $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
@@ -343,14 +340,14 @@ $customers = select($query);
             $collected = getSum("stock_collect_item", "quantity", "product_variance_id=$i->vid AND invoice_item_id=$i->iid AND DATE(created_at)=CURDATE()");
             $collected = $i->quantity;
             print "<td class='price-col'>";
-            if ($restrictedUser) {
+            if (!$canEditPrice) {
               print nf($i->price * $i->quantity);
             } elseif ($i->old_price && false) {
               print nf($i->price * $i->quantity);
             } else {
               print "<a data-id='$i->iid' id='invoice-item-price-$i->iid' href='#' data-bs-toggle='modal' onClick='setItemIdPrice($i->iid, $i->price)' data-price='$i->price' data-bs-target='#modal-modify-price'>" . nf($i->price * $i->quantity) . "</a>";
             }
-            print "</td><td class='text-center order-qty-col'>" . ($restrictedUser ? "<span>$collected</span>" : "<a href='#' id='invoice-item-$i->iid' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a>") . "</td>";
+            print "</td><td class='text-center order-qty-col'>" . ($canEditQuantity ? "<a href='#' id='invoice-item-$i->iid' data-bs-toggle='modal' onClick='setItemId($i->iid)' data-bs-target='#modal-modify-quantity'>$collected</a>" : "<span>$collected</span>") . "</td>";
           }
           print "</tr>";
           $ic++;

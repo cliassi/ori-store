@@ -5,7 +5,7 @@ require_once("../core/config.php");
 require_once("../core/f.inc.php");
 require_once("../core/functions.php");
 
-if (!canEditPriceAndQuantity()) {
+if (!canEditPrice()) {
     http_response_code(403);
     exit;
 }
