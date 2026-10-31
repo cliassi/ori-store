@@ -434,7 +434,7 @@ while ($item = mysqli_fetch_object($trans)) {
 
   print "<td class='text-center'>";
   $approveHtml = '-';
-  if ($item->src == 'collection' && $item->pm == 'Bank') {
+  if ($item->src == 'collection') {
     if ($item->ab) {
       $approveHtml = "<a class='btn btn-sm btn-success' title='Approved by user {$item->ab}'><i class='fas fa-check'></i> Approved</a>";
     } elseif (uid() == 1) {
