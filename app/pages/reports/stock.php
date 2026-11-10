@@ -8,6 +8,8 @@
 // ensureMysqlColumn('damaged_item', 'confirm_date', 'DATE NULL');
 // ensureMysqlColumn('stock_collect', 'confirm_date', 'DATE NULL');
 // --- ID Detection: Accept from $get->id only ---
+
+define('CUT_OFF_DATE', '2026-11-10');
 if (!defined('ID') && isset($get->id) && is_numeric($get->id)) {
     define('ID', (int) $get->id);
 }
@@ -475,6 +477,7 @@ if (isset($post->save)) {
                                             ) sc_latest ON sc_latest.invoice_item_id = oi.id
                                             WHERE v.id = " . (int) ID . "
                                                 AND o.invoice_date BETWEEN '$from_date' AND '$to_date'
+                                                AND (o.created_at < '" . CUT_OFF_DATE . "' OR oi.delivered_by IS NOT NULL)
 
                                             UNION ALL
 
@@ -557,6 +560,7 @@ if (isset($post->save)) {
                                                 JOIN `invoice` o ON oi.invoice_id = o.id
                                                 WHERE v.id = " . (int) ID . "
                                                     AND o.invoice_date < '$from_date'
+                                                    AND (o.created_at < '" . CUT_OFF_DATE . "' OR oi.delivered_by IS NOT NULL)
 
                                                 UNION ALL
 
@@ -715,6 +719,7 @@ if (isset($post->save)) {
                     $items = select("SELECT id, pid, pname, pimage, particulars, cost, price, vimage, size, unit, SUM(quantity) quantity , `date` FROM (
                                          SELECT oi.id iid, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, -oi.quantity quantity, invoice_date `date`
                                          FROM `product` p, `product_variance` v, `invoice_item` oi, `invoice` o WHERE p.id=v.product_id AND v.id=oi.product_variance_id AND o.id=oi.invoice_id
+                                         AND (o.created_at < '" . CUT_OFF_DATE . "' OR oi.delivered_by IS NOT NULL)
                                          UNION
                                          SELECT oi.id iid, v.id, p.id pid, p.name pname, p.image pimage, v.particulars, v.cost, v.price, v.image vimage, size, unit, oi.quantity, o.confirm_date `date`
                                          FROM `product` p, `product_variance` v, `order_item` oi, `order` o WHERE p.id=v.product_id AND v.id=oi.product_variance_id AND o.id=oi.order_id
