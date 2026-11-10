@@ -97,7 +97,7 @@ elseif (isset($post->deliver)) {
   }
 
   td span {
-    display: inline-block;
+    /* display: inline-block; */
     /*        border: solid 1px #ccc;*/
   }
 

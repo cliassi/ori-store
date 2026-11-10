@@ -250,7 +250,7 @@ if (isset($post->save)) {
   }
 
   td span {
-    display: inline-block;
+    /* display: inline-block; */
     /*        border: solid 1px #ccc;*/
   }
 
