@@ -24,6 +24,7 @@ if (METHOD == 'edit' && defined('ID')) {
     // $obj->delivery_date = $post->delivery_date;
     // $obj->note = $post->note;
 
+    dd($obj);
     R::store($obj);
     
     // Get existing invoice items for this invoice
