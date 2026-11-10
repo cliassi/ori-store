@@ -228,7 +228,8 @@ if (isset($post->save)) {
   }
 
   td span {
-    /* display: inline-block; */
+    display: inline-block;
+    white-space: nowrap;
     /*        border: solid 1px #ccc;*/
   }
 
