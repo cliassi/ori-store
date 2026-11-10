@@ -18,8 +18,7 @@ if (METHOD == 'edit' && defined('ID')) {
       $obj->incentive = $salesman->incentive;
     }
     // $obj->salesman_id = $post->salesman_id;
-    $obj->created_at = isset($post->date) ? $post->date : today();
-    // $obj->invoice_date = isset($post->date) ? $post->date : today();
+    $obj->invoice_date = isset($post->date) ? $post->date : today();
     // $obj->due_date = $post->due_date;
     // $obj->delivery_date = $post->delivery_date;
     // $obj->note = $post->note;
@@ -121,7 +120,7 @@ if (METHOD == 'edit' && defined('ID')) {
       $salesman = R::findOne('staff_salary', 'name=?', [$post->salesman]);
       //$obj->incentive = $salesman->incentive;
       // $obj->salesman_id = $post->salesman_id;
-      $obj->created_at = isset($post->date) ? $post->date : today();
+      $obj->invoice_date = isset($post->date) ? $post->date : today();
       // $obj->due_date = $post->due_date;
       // $obj->delivery_date = $post->delivery_date;
       // $obj->note = $post->note;
