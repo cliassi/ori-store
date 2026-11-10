@@ -9,7 +9,7 @@
 // ensureMysqlColumn('stock_collect', 'confirm_date', 'DATE NULL');
 // --- ID Detection: Accept from $get->id only ---
 
-define('CUT_OFF_DATE', '2026-11-10');
+define('CUT_OFF_DATE', '2026-11-09');
 if (!defined('ID') && isset($get->id) && is_numeric($get->id)) {
     define('ID', (int) $get->id);
 }
