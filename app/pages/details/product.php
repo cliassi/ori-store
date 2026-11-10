@@ -133,6 +133,7 @@ if (isset($post->save)) {
 }
 
 $branch_id = isset($_SESSION['branch_id']) ? (int)$_SESSION['branch_id'] : 1;
+$stockCutOffDate = defined('CUT_OFF_DATE') ? CUT_OFF_DATE : '2026-11-09';
 $objs = R::find('product', 'id > 0 and visible=1 ORDER BY sort_order');
 $contant = "";
 ?>
@@ -169,7 +170,19 @@ $contant = "";
                 print "<td style='text-align:center'><a type='button' class='btn btn-primary' onclick='setProduct($obj->id)' id='product-$obj->id' data-bs-toggle='modal' data-bs-target='#productFrommOdal'>Add Product</a> <a href='javascript:deleteProductWithPin($obj->id)'><i class='fa fa-trash'></i></a></td>";
                 print "</tr>";
 
-                $variances = select("*, stock2(id, $branch_id) stock", "product_variance", "product_id=$obj->id ORDER BY sort_order");
+                $variances = select(
+                  "*, stock2(id, $branch_id) + IFNULL((
+                    SELECT SUM(ii.quantity)
+                    FROM invoice_item ii
+                    JOIN invoice inv ON inv.id = ii.invoice_id
+                    WHERE ii.product_variance_id = product_variance.id
+                      AND ii.branch_id = $branch_id
+                      AND inv.created_at >= '$stockCutOffDate'
+                      AND ii.delivered_by IS NULL
+                  ), 0) stock",
+                  "product_variance",
+                  "product_id=$obj->id ORDER BY sort_order"
+                );
                 $vi = 1;
                 $totalVariants = 0;
                 // foreach ($variances as $key => $var) {
