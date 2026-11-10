@@ -71,9 +71,6 @@ if (defined('ID')) {
     $form_to_date = $to_date;
 }
 
-// Get branch_id from session for filtering
-$branch_id = isset($_SESSION['branch_id']) ? (int)$_SESSION['branch_id'] : 1;
-
 $canDeleteMovement = (
     uid() == 1
     || (function_exists('username') && username() == 'Adminn')
@@ -144,7 +141,6 @@ if (isset($get->token)) {
 if (isset($post->save)) {
     $obj = R::dispense("stock_collect");
     $obj->salesman_id = isset($post->salesman) ? $post->salesman : 0;
-    $obj->branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : 1;
     $obj->delivery_staff = $post->delivery_staff;
     $obj->date = today();
     $obj->created_by = uid();
@@ -170,7 +166,6 @@ if (isset($post->save)) {
         $ii->name = $product->name;
         $ii->description = "$variance->particulars $variance->size x $variance->unit";
         $ii->created_by = uid();
-        $ii->branch_id = $obj->branch_id;
 
         // FIX: Changed R->store to R::store (Static call fix)
         R::store($ii);
@@ -480,7 +475,6 @@ if (isset($post->save)) {
                                             ) sc_latest ON sc_latest.invoice_item_id = oi.id
                                             WHERE v.id = " . (int) ID . "
                                                 AND o.invoice_date BETWEEN '$from_date' AND '$to_date'
-                                                AND o.branch_id = $branch_id
 
                                             UNION ALL
 
@@ -495,7 +489,6 @@ if (isset($post->save)) {
                                             WHERE v.id = " . (int) ID . "
                                                 AND oi.returned_quantity > 0
                                                 AND o.date BETWEEN '$from_date' AND '$to_date'
-                                                AND o.branch_id = $branch_id
 
                                             UNION ALL
 
@@ -510,7 +503,6 @@ if (isset($post->save)) {
                                             WHERE v.id = " . (int) ID . "
                                                 AND oi.damaged_quantity > 0
                                                 AND o.date BETWEEN '$from_date' AND '$to_date'
-                                                AND o.branch_id = $branch_id
 
                                             UNION ALL
 
@@ -524,7 +516,6 @@ if (isset($post->save)) {
                                             JOIN `order` o ON oi.order_id = o.id
                                             WHERE v.id = " . (int) ID . "
                                                 AND COALESCE(o.confirm_date, o.order_date) BETWEEN '$from_date' AND '$to_date'
-                                                AND o.branch_id = $branch_id
 
                                             UNION ALL
 
@@ -537,7 +528,6 @@ if (isset($post->save)) {
                                             JOIN `damaged_item` oi ON v.id = oi.product_variance_id
                                             WHERE v.id = " . (int) ID . "
                                                 AND DATE(oi.created_at) BETWEEN '$from_date' AND '$to_date'
-                                                AND oi.branch_id = $branch_id
                                         ) a 
                                         ORDER BY `date`, created_at
                                     ";
@@ -567,7 +557,6 @@ if (isset($post->save)) {
                                                 JOIN `invoice` o ON oi.invoice_id = o.id
                                                 WHERE v.id = " . (int) ID . "
                                                     AND o.invoice_date < '$from_date'
-                                                    AND o.branch_id = $branch_id
 
                                                 UNION ALL
 
@@ -578,7 +567,6 @@ if (isset($post->save)) {
                                                 WHERE v.id = " . (int) ID . "
                                                     AND oi.returned_quantity > 0
                                                     AND o.date < '$from_date'
-                                                    AND o.branch_id = $branch_id
 
                                                 UNION ALL
 
@@ -589,7 +577,6 @@ if (isset($post->save)) {
                                                 WHERE v.id = " . (int) ID . "
                                                     AND oi.damaged_quantity > 0
                                                     AND o.date < '$from_date'
-                                                    AND o.branch_id = $branch_id
 
                                                 UNION ALL
 
@@ -599,7 +586,6 @@ if (isset($post->save)) {
                                                 JOIN `order` o ON oi.order_id = o.id
                                                 WHERE v.id = " . (int) ID . "
                                                     AND COALESCE(o.confirm_date, o.order_date) < '$from_date'
-                                                    AND o.branch_id = $branch_id
 
                                                 UNION ALL
 
@@ -608,7 +594,6 @@ if (isset($post->save)) {
                                                 JOIN `damaged_item` oi ON v.id = oi.product_variance_id
                                                 WHERE v.id = " . (int) ID . "
                                                     AND DATE(oi.created_at) < '$from_date'
-                                                    AND oi.branch_id = $branch_id
                                             ) a ON a.id = v.id
                                             WHERE v.id = " . (int) ID . "
                                             GROUP BY v.id, p.id, p.name, p.image, v.particulars, v.cost, v.price, v.image, size, unit
