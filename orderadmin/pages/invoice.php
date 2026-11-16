@@ -22,11 +22,12 @@ if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
 
 // Handle save
 if (isset($post->save)) {
-  foreach ((array) ($post->product ?? []) as $id => $qty) {
+  $postedProducts = isset($post->product) ? (array) $post->product : [];
+  foreach ($postedProducts as $id => $qty) {
     if ((float) $qty <= 0) continue;
     $variance = R::load('product_variance', $id);
     if (!$variance || !$variance->id) continue;
-    $postedPrice = isset($post->price[$id]) ? $post->price[$id] : ($variance->price ?? null);
+    $postedPrice = isset($post->price[$id]) ? $post->price[$id] : (isset($variance->price) ? $variance->price : null);
     if (!is_numeric($postedPrice) || (float) $postedPrice < 1) {
       $invoicePriceError = 'Each unit price must be at least RM 1.00.';
       break;

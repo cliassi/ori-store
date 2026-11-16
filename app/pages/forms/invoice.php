@@ -15,7 +15,7 @@ if (METHOD == 'edit' && defined('ID')) {
   if (isset($post->save)) {
     foreach ($products as $id => $qty) {
       $variance = R::load("product_variance", $id);
-      $postedPrice = isset($post->price[$id]) ? $post->price[$id] : ($variance->price ?? null);
+      $postedPrice = isset($post->price[$id]) ? $post->price[$id] : (isset($variance->price) ? $variance->price : null);
       if (!is_numeric($postedPrice) || (float) $postedPrice < 1) {
         $invoicePriceError = 'Each unit price must be at least RM 1.00.';
         break;
