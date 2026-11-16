@@ -18,6 +18,8 @@ if (METHOD == 'edit' && defined('ID')) {
   } else {
     $obj->customer_id = $post->customer_id;
   }
+  $existingItems = [];
+  $existingItemsMap = [];
   if (isset($post->save)) {
     $existingItems = R::find("invoice_item", "invoice_id=?", [ID]);
     $existingItemsMap = [];
@@ -113,10 +115,10 @@ if (METHOD == 'edit' && defined('ID')) {
 	$cp = toA("customer_product_variance", "product_variance_id", "price", "customer_id = '$customer_id'");
   }
   //vd($cp);
+  $invoiceBalanceWarning = '';
+  $invoiceOrderTotal = 0;
+  $invoicePrices = [];
   if (isset($post->save)) {
-    $invoiceBalanceWarning = '';
-    $invoiceOrderTotal = 0;
-    $invoicePrices = [];
     foreach ($post->product as $id => $qty) {
       $qty = (float)$qty;
       if ($qty <= 0) continue;
