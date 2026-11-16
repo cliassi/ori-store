@@ -8,6 +8,7 @@
 // Prepare base invoice object and state
 $obj = R::dispense('invoice');
 $obj->status = 'New';
+$invoicePriceError = '';
 
 // If editing (not used in mobile flow yet, but kept for compatibility)
 if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
@@ -21,6 +22,19 @@ if (defined('METHOD') && METHOD == 'edit' && defined('ID')) {
 
 // Handle save
 if (isset($post->save)) {
+  foreach ((array) ($post->product ?? []) as $id => $qty) {
+    if ((float) $qty <= 0) continue;
+    $variance = R::load('product_variance', $id);
+    if (!$variance || !$variance->id) continue;
+    $postedPrice = isset($post->price[$id]) ? $post->price[$id] : ($variance->price ?? null);
+    if (!is_numeric($postedPrice) || (float) $postedPrice < 1) {
+      $invoicePriceError = 'Each unit price must be at least RM 1.00.';
+      break;
+    }
+  }
+
+}
+if (isset($post->save) && $invoicePriceError === '') {
   // Check if this is from customer order approval
   if (isset($post->customer_order_id)) {
     // Handle customer order approval - delete original order and items
@@ -225,6 +239,9 @@ if (isset($post->save)) {
 </style>
 
 <form method="post" class="inv-compact">
+  <?php if ($invoicePriceError !== ''): ?>
+    <div class="alert alert-danger" role="alert"><?= htmlspecialchars($invoicePriceError, ENT_QUOTES, 'UTF-8') ?></div>
+  <?php endif; ?>
   <div class="row">
     <div class="col-sm-12">
       <div class="card">
@@ -286,7 +303,9 @@ if (isset($post->save)) {
                     foreach ($post->product as $id => $qty) {
                       $variance = R::load('product_variance', $id);
                       $product = R::load('product', $variance->product_id);
-                      $price = $variance->price;
+                      $price = isset($post->price[$id]) && is_numeric($post->price[$id])
+                        ? (float) $post->price[$id]
+                        : $variance->price;
                       $groupClass = ($i % 2 == 0) ? 'group-even' : 'group-odd';
                       // Row 1: index, image, name/desc, action
                       print "<tr class='{$groupClass}'>";
@@ -303,7 +322,7 @@ if (isset($post->save)) {
                       print "<tr class='{$groupClass}'>";
                       print "<td></td>"; // empty under index
                       print "<td><input type='number' class='form-control w100 qty' name='product[{$id}]' placeholder='Qty' value='{$qty}' ></td>"; // qty under Product col
-                      print "<td><input type='number' class='form-control price' name='price[{$id}]' step='.01' placeholder='Price' value='{$price}' ></td>"; // price under Item col
+                      print "<td><input type='number' class='form-control price' name='price[{$id}]' min='1' step='.01' placeholder='Price' value='{$price}' required></td>"; // price under Item col
                       print "<td class='total'>RM " . nf($price * $qty) . "</td>"; // total under Act col
                       print "</tr>";
                       $total += $price * $qty;

@@ -2,6 +2,7 @@
 $obj = R::dispense("invoice");
 $customer_id = isset($post->customer_id) ? (int) $post->customer_id : 0;
 $products = (isset($post->product) && is_array($post->product)) ? $post->product : [];
+$invoicePriceError = '';
 
 if (METHOD == 'edit' && defined('ID')) {
   $obj = R::dispense("invoice");
@@ -12,6 +13,17 @@ if (METHOD == 'edit' && defined('ID')) {
     $obj->customer_id = $post->customer_id;
   }
   if (isset($post->save)) {
+    foreach ($products as $id => $qty) {
+      $variance = R::load("product_variance", $id);
+      $postedPrice = isset($post->price[$id]) ? $post->price[$id] : ($variance->price ?? null);
+      if (!is_numeric($postedPrice) || (float) $postedPrice < 1) {
+        $invoicePriceError = 'Each unit price must be at least RM 1.00.';
+        break;
+      }
+    }
+
+  }
+  if (isset($post->save) && $invoicePriceError === '') {
     $obj->salesman = $post->salesman;
     $salesman = R::findOne('staff_salary', 'name=?', [$post->salesman]);
     if($salesman){
@@ -98,9 +110,15 @@ if (METHOD == 'edit' && defined('ID')) {
       $variance = R::load("product_variance", $id);
       if (!$variance || !$variance->id) continue;
       $price = isset($post->price[$id]) ? (float)$post->price[$id] : (isset($cp[$variance->id]) ? (float)$cp[$variance->id] : (float)$variance->price);
+      if (!is_numeric(isset($post->price[$id]) ? $post->price[$id] : $price) || $price < 1) {
+        $invoicePriceError = 'Each unit price must be at least RM 1.00.';
+        break;
+      }
       $invoicePrices[$id] = $price;
       $invoiceOrderTotal += $price * $qty;
     }
+  }
+  if (isset($post->save) && $invoicePriceError === '') {
     if (customerOrderExceedsDueLimit($customer_id, $invoiceOrderTotal)) {
       $currentBalance = customerLedgerBalance($customer_id);
       $projectedBalance = $currentBalance + $invoiceOrderTotal;
@@ -172,6 +190,9 @@ if (METHOD == 'edit' && defined('ID')) {
 ?>
 <!-- [ Main Content ] start -->
 <form method="post">
+  <?php if ($invoicePriceError !== ''): ?>
+    <div class="alert alert-danger" role="alert"><?= htmlspecialchars($invoicePriceError, ENT_QUOTES, 'UTF-8') ?></div>
+  <?php endif; ?>
   <?php
     if(isset($post->customer_order_id)){
       print "<input type='hidden' name='customer_order_id' value='$post->customer_order_id'>";
@@ -318,7 +339,9 @@ if (METHOD == 'edit' && defined('ID')) {
 					  }
 						
                       // Load price from invoice_item (database) instead of variance
-                      $price = $item->price;
+                      $price = isset($post->price[$id]) && is_numeric($post->price[$id])
+                        ? (float) $post->price[$id]
+                        : $item->price;
 
                       print "<tr>";
                       print "<td>$i</td>";
@@ -326,7 +349,7 @@ if (METHOD == 'edit' && defined('ID')) {
                       print "<td><input type='text' class='form-control' readonly value='$product->name' ></td>";
                       print "<td><input type='text' class='form-control' readonly value='$variance->particulars' ></td>";
                       print "<td><input type='number' class='form-control w100 qty' name='product[$id]' placeholder='Qty' value='$qty' ></td>";
-                      print "<td><input type='number' class='form-control price' name='price[$id]' step='.01' placeholder='Price' value='$price' ></td>";
+                      print "<td><input type='number' class='form-control price' name='price[$id]' min='1' step='.01' placeholder='Price' value='$price' required></td>";
                       print "<td class='total'>RM " . nf($price * $qty) . "</td>";
                       print "<td class='text-center'><i class='ti ti-trash f-20'></i></td>";
                       print "</tr>";
@@ -348,14 +371,16 @@ if (METHOD == 'edit' && defined('ID')) {
                       // } else {
                       // $price = $variance->price;
                       // }
-                      $price = $variance->price;
+                      $price = isset($post->price[$id]) && is_numeric($post->price[$id])
+                        ? (float) $post->price[$id]
+                        : $variance->price;
                       print "<tr>";
                       print "<td>$i</td>";
                       print "<td id='image-$variance->id' class='text-center'><img src='" . ROOT . "/{$variance->image}' height='80px'></a></td>";
                       print "<td><input type='text' class='form-control' readonly value='$product->name' ></td>";
                       print "<td><input type='text' class='form-control' readonly value='$variance->particulars' ></td>";
                       print "<td><input type='number' class='form-control w100 qty' name='product[$id]' placeholder='Qty' value='$qty' ></td>";
-                      print "<td><input type='number' class='form-control price' name='price[$id]' placeholder='Price' step='.01' value='$price' ></td>";
+                      print "<td><input type='number' class='form-control price' name='price[$id]' min='1' placeholder='Price' step='.01' value='$price' required></td>";
                       print "<td class='total'>RM " . nf($price * $qty) . "</td>";
                       print "<td class='text-center'><i class='ti ti-trash f-20'></i></td>";
                       print "</tr>";
