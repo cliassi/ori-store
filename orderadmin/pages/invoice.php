@@ -8,11 +8,7 @@
 // Prepare base invoice object and state
 $obj = R::dispense('invoice');
 $obj->status = 'New';
-$canEditInvoicePrice = (
-  uid() == 1
-  || (function_exists('username') && username() == 'Adminn')
-  || (function_exists('isUserIn') && isUserIn(['Adminn']))
-);
+$canEditInvoicePrice = isset($_SESSION['UID']) && (int) $_SESSION['UID'] === 1;
 $invoicePriceReadonly = $canEditInvoicePrice ? '' : 'readonly';
 $invoicePriceError = '';
 
