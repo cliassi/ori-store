@@ -2,6 +2,12 @@
 $obj = R::dispense("invoice");
 $customer_id = isset($post->customer_id) ? (int) $post->customer_id : 0;
 $products = (isset($post->product) && is_array($post->product)) ? $post->product : [];
+$canEditInvoicePrice = (
+  uid() == 1
+  || (function_exists('username') && username() == 'Adminn')
+  || (function_exists('isUserIn') && isUserIn(['Adminn']))
+);
+$invoicePriceReadonly = $canEditInvoicePrice ? '' : 'readonly';
 $invoicePriceError = '';
 
 if (METHOD == 'edit' && defined('ID')) {
@@ -13,9 +19,21 @@ if (METHOD == 'edit' && defined('ID')) {
     $obj->customer_id = $post->customer_id;
   }
   if (isset($post->save)) {
+    $existingItems = R::find("invoice_item", "invoice_id=?", [ID]);
+    $existingItemsMap = [];
+    foreach ($existingItems as $item) {
+      $existingItemsMap[$item->product_variance_id] = $item;
+    }
+
     foreach ($products as $id => $qty) {
       $variance = R::load("product_variance", $id);
-      $postedPrice = isset($post->price[$id]) ? $post->price[$id] : (isset($variance->price) ? $variance->price : null);
+      if ($canEditInvoicePrice && isset($post->price[$id])) {
+        $postedPrice = $post->price[$id];
+      } elseif (isset($existingItemsMap[$id])) {
+        $postedPrice = $existingItemsMap[$id]->price;
+      } else {
+        $postedPrice = isset($variance->price) ? $variance->price : null;
+      }
       if (!is_numeric($postedPrice) || (float) $postedPrice < 1) {
         $invoicePriceError = 'Each unit price must be at least RM 1.00.';
         break;
@@ -37,13 +55,6 @@ if (METHOD == 'edit' && defined('ID')) {
 
     R::store($obj);
     
-    // Get existing invoice items for this invoice
-    $existingItems = R::find("invoice_item", "invoice_id=?", [ID]);
-    $existingItemsMap = [];
-    foreach ($existingItems as $item) {
-      $existingItemsMap[$item->product_variance_id] = $item;
-    }
-    
     // Track which items are being updated
     $updatedVarianceIds = [];
     
@@ -52,8 +63,10 @@ if (METHOD == 'edit' && defined('ID')) {
       $product = R::load("product", $variance->product_id);
       $updatedVarianceIds[] = $id;
       
-      // Get posted price if available, otherwise use variance price
-      $postedPrice = isset($post->price[$id]) ? (float) $post->price[$id] : $variance->price;
+      // Only admins may change prices; otherwise preserve the stored value.
+      $postedPrice = $canEditInvoicePrice && isset($post->price[$id])
+        ? (float) $post->price[$id]
+        : (isset($existingItemsMap[$id]) ? $existingItemsMap[$id]->price : $variance->price);
       
       // Check if item already exists
       if (isset($existingItemsMap[$id])) {
@@ -109,11 +122,14 @@ if (METHOD == 'edit' && defined('ID')) {
       if ($qty <= 0) continue;
       $variance = R::load("product_variance", $id);
       if (!$variance || !$variance->id) continue;
-      $price = isset($post->price[$id]) ? (float)$post->price[$id] : (isset($cp[$variance->id]) ? (float)$cp[$variance->id] : (float)$variance->price);
-      if (!is_numeric(isset($post->price[$id]) ? $post->price[$id] : $price) || $price < 1) {
+      $price = $canEditInvoicePrice && isset($post->price[$id])
+        ? $post->price[$id]
+        : (isset($cp[$variance->id]) ? $cp[$variance->id] : $variance->price);
+      if (!is_numeric($price) || (float) $price < 1) {
         $invoicePriceError = 'Each unit price must be at least RM 1.00.';
         break;
       }
+      $price = (float) $price;
       $invoicePrices[$id] = $price;
       $invoiceOrderTotal += $price * $qty;
     }
@@ -339,7 +355,7 @@ if (METHOD == 'edit' && defined('ID')) {
 					  }
 						
                       // Load price from invoice_item (database) instead of variance
-                      $price = isset($post->price[$id]) && is_numeric($post->price[$id])
+                      $price = $canEditInvoicePrice && isset($post->price[$id]) && is_numeric($post->price[$id])
                         ? (float) $post->price[$id]
                         : $item->price;
 
@@ -349,7 +365,7 @@ if (METHOD == 'edit' && defined('ID')) {
                       print "<td><input type='text' class='form-control' readonly value='$product->name' ></td>";
                       print "<td><input type='text' class='form-control' readonly value='$variance->particulars' ></td>";
                       print "<td><input type='number' class='form-control w100 qty' name='product[$id]' placeholder='Qty' value='$qty' ></td>";
-                      print "<td><input type='number' class='form-control price' name='price[$id]' min='1' step='.01' placeholder='Price' value='$price' required></td>";
+                      print "<td><input type='number' class='form-control price' name='price[$id]' min='1' step='.01' placeholder='Price' value='$price' $invoicePriceReadonly required></td>";
                       print "<td class='total'>RM " . nf($price * $qty) . "</td>";
                       print "<td class='text-center'><i class='ti ti-trash f-20'></i></td>";
                       print "</tr>";
@@ -371,7 +387,7 @@ if (METHOD == 'edit' && defined('ID')) {
                       // } else {
                       // $price = $variance->price;
                       // }
-                      $price = isset($post->price[$id]) && is_numeric($post->price[$id])
+                      $price = $canEditInvoicePrice && isset($post->price[$id]) && is_numeric($post->price[$id])
                         ? (float) $post->price[$id]
                         : $variance->price;
                       print "<tr>";
@@ -380,7 +396,7 @@ if (METHOD == 'edit' && defined('ID')) {
                       print "<td><input type='text' class='form-control' readonly value='$product->name' ></td>";
                       print "<td><input type='text' class='form-control' readonly value='$variance->particulars' ></td>";
                       print "<td><input type='number' class='form-control w100 qty' name='product[$id]' placeholder='Qty' value='$qty' ></td>";
-                      print "<td><input type='number' class='form-control price' name='price[$id]' min='1' placeholder='Price' step='.01' value='$price' required></td>";
+                      print "<td><input type='number' class='form-control price' name='price[$id]' min='1' placeholder='Price' step='.01' value='$price' $invoicePriceReadonly required></td>";
                       print "<td class='total'>RM " . nf($price * $qty) . "</td>";
                       print "<td class='text-center'><i class='ti ti-trash f-20'></i></td>";
                       print "</tr>";

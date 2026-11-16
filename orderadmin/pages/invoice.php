@@ -8,6 +8,12 @@
 // Prepare base invoice object and state
 $obj = R::dispense('invoice');
 $obj->status = 'New';
+$canEditInvoicePrice = (
+  uid() == 1
+  || (function_exists('username') && username() == 'Adminn')
+  || (function_exists('isUserIn') && isUserIn(['Adminn']))
+);
+$invoicePriceReadonly = $canEditInvoicePrice ? '' : 'readonly';
 $invoicePriceError = '';
 
 // If editing (not used in mobile flow yet, but kept for compatibility)
@@ -27,7 +33,9 @@ if (isset($post->save)) {
     if ((float) $qty <= 0) continue;
     $variance = R::load('product_variance', $id);
     if (!$variance || !$variance->id) continue;
-    $postedPrice = isset($post->price[$id]) ? $post->price[$id] : (isset($variance->price) ? $variance->price : null);
+    $postedPrice = $canEditInvoicePrice && isset($post->price[$id])
+      ? $post->price[$id]
+      : (isset($variance->price) ? $variance->price : null);
     if (!is_numeric($postedPrice) || (float) $postedPrice < 1) {
       $invoicePriceError = 'Each unit price must be at least RM 1.00.';
       break;
@@ -107,7 +115,9 @@ if (isset($post->save) && $invoicePriceError === '') {
       $ii->product_id = $product->id;
       $ii->product_variance_id = $variance->id;
       $ii->quantity = $qty;
-      $ii->price = isset($post->price[$id]) ? $post->price[$id] : $variance->price;
+      $ii->price = $canEditInvoicePrice && isset($post->price[$id])
+        ? (float) $post->price[$id]
+        : $variance->price;
       $ii->cost = $variance->cost;
       $ii->name = $product->name;
       $ii->description = $variance->particulars;
@@ -304,7 +314,7 @@ if (isset($post->save) && $invoicePriceError === '') {
                     foreach ($post->product as $id => $qty) {
                       $variance = R::load('product_variance', $id);
                       $product = R::load('product', $variance->product_id);
-                      $price = isset($post->price[$id]) && is_numeric($post->price[$id])
+                      $price = $canEditInvoicePrice && isset($post->price[$id]) && is_numeric($post->price[$id])
                         ? (float) $post->price[$id]
                         : $variance->price;
                       $groupClass = ($i % 2 == 0) ? 'group-even' : 'group-odd';
@@ -323,7 +333,7 @@ if (isset($post->save) && $invoicePriceError === '') {
                       print "<tr class='{$groupClass}'>";
                       print "<td></td>"; // empty under index
                       print "<td><input type='number' class='form-control w100 qty' name='product[{$id}]' placeholder='Qty' value='{$qty}' ></td>"; // qty under Product col
-                      print "<td><input type='number' class='form-control price' name='price[{$id}]' min='1' step='.01' placeholder='Price' value='{$price}' required></td>"; // price under Item col
+                      print "<td><input type='number' class='form-control price' name='price[{$id}]' min='1' step='.01' placeholder='Price' value='{$price}' {$invoicePriceReadonly} required></td>"; // price under Item col
                       print "<td class='total'>RM " . nf($price * $qty) . "</td>"; // total under Act col
                       print "</tr>";
                       $total += $price * $qty;
