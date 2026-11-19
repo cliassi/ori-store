@@ -23,6 +23,8 @@
 <?php
 
 $hotel_start_date = '2023-01-18 23:59:59';
+$pettyCashLimit = 20000;
+$pettyCashLimitLabel = number_format($pettyCashLimit, 0);
 
 $d = isset($get->d) ? $get->d : today();
 $t = isset($get->t) ? $get->t : today();
@@ -58,8 +60,8 @@ if (isset($post->collect_cash)) {
     redir("?");
     return;
   }
-  if ($cashTotalAfterCollection >= 30000) {
-    alert("Cannot submit. Total after collection would be RM " . number_format($cashTotalAfterCollection, 2) . "; the limit is RM30,000.");
+  if ($cashTotalAfterCollection >= $pettyCashLimit) {
+    alert("Cannot submit. Total after collection would be RM " . number_format($cashTotalAfterCollection, 2) . "; the limit is RM" . $pettyCashLimitLabel . ".");
     redir("?");
     return;
   }
@@ -528,7 +530,7 @@ $userList = userList();
 <?php
 // if(isUserIn(['apple', 'superadmin', 'orange'])){
 $cashCollectionTotal = $pettyCashBalance + (float) $credit;
-$cashLimitReached = !$pettyCashSummary || $cashCollectionTotal >= 30000;
+$cashLimitReached = !$pettyCashSummary || $cashCollectionTotal >= $pettyCashLimit;
 print "<div class='center' style='font-weight:700'><form method='post' id='cash-collection-form' onsubmit='return validateCashCollection()'>Collection Amount Cash <input type='number' name='amount' id='cash-collection-amount' value='$credit' required step='.05' class='form-control form-control-fluid'>  Bank <input type='number' name='bank_amount' value='$credit_b' required step='.05' class='form-control form-control-fluid'>";
 if ($canPickPast || isUserIn(["superadmin", "ebrahim", "lemon"])) {
   print "<input type='date' class='form-control form-control-fluid' value='" . today() . "' name='date'>";
@@ -539,6 +541,8 @@ print "<hr><div id='petty-cash-hint' class='text-muted'>Petty Cash: RM " . nf($p
 <script>
   var pettyCashAvailable = <?php echo $pettyCashSummary ? 'true' : 'false'; ?>;
   var pettyCash = <?php echo json_encode((float) $pettyCashBalance); ?>;
+  var pettyCashLimit = <?php echo json_encode((float) $pettyCashLimit); ?>;
+  var pettyCashLimitLabel = <?php echo json_encode($pettyCashLimitLabel); ?>;
   var cashInput = document.getElementById('cash-collection-amount');
   var collectButton = document.getElementById('cash-collection-submit');
   var pettyCashHint = document.getElementById('petty-cash-hint');
@@ -550,17 +554,17 @@ print "<hr><div id='petty-cash-hint' class='text-muted'>Petty Cash: RM " . nf($p
     var formatRM = function (amount) {
       return amount.toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     };
-    collectButton.disabled = !pettyCashAvailable || totalAfterCollection >= 30000;
+    collectButton.disabled = !pettyCashAvailable || totalAfterCollection >= pettyCashLimit;
     pettyCashHint.textContent = pettyCashAvailable
       ? 'Petty Cash: RM ' + formatRM(pettyCash) + ' + Cash Collection: RM ' + formatRM(cashAmount) + ' = RM ' + formatRM(totalAfterCollection)
       : 'Petty Cash balance is unavailable.';
 
     if (!pettyCashAvailable) {
       limitMessage.textContent = 'Cannot verify Petty Cash; collection is disabled.';
-    } else if (totalAfterCollection >= 30000) {
+    } else if (totalAfterCollection >= pettyCashLimit) {
       limitMessage.textContent = 'Cannot submit: total would be RM ' +
         formatRM(totalAfterCollection) +
-        '; the limit is RM30,000.';
+        '; the limit is RM' + pettyCashLimitLabel + '.';
     } else {
       limitMessage.textContent = '';
     }
