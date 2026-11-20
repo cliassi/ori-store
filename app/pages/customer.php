@@ -54,18 +54,38 @@ if (METHOD == 'add') {
     exit;
   }
 
-  if (isset($post->save_customer_order_only)) {
+  if (isset($post->update_customer_order_only)) {
+    $isAjaxRequest = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     $orderCustomerId = filter_var(isset($post->customer_id) ? $post->customer_id : null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     $orderOnlyValue = isset($post->customer_order_only) ? (string) $post->customer_order_only : '';
-    if ($orderCustomerId !== false && ($orderOnlyValue === '0' || $orderOnlyValue === '1')) {
-      $orderCustomer = R::findOne('customer', 'id = ? AND (branch_id = ? OR branch_id IS NULL)', [$orderCustomerId, bid()]);
-      if ($orderCustomer) {
-        $orderCustomer->customer_order_only = (int) $orderOnlyValue;
-        R::store($orderCustomer);
+    $updated = false;
+    $responseCode = 400;
+
+    if (!$isAjaxRequest) {
+      $responseCode = 403;
+    } elseif ($orderCustomerId !== false && ($orderOnlyValue === '0' || $orderOnlyValue === '1')) {
+      try {
+        $orderCustomer = R::findOne('customer', 'id = ? AND (branch_id = ? OR branch_id IS NULL)', [$orderCustomerId, bid()]);
+        if ($orderCustomer) {
+          $orderCustomer->customer_order_only = (int) $orderOnlyValue;
+          $updated = (int) R::store($orderCustomer) > 0;
+          $responseCode = $updated ? 200 : 500;
+        } else {
+          $responseCode = 404;
+        }
+      } catch (\Throwable $error) {
+        error_log('Customer order-only update failed: ' . $error->getMessage());
+        $responseCode = 500;
       }
     }
-    redir("?");
-    return;
+
+    if (ob_get_level() > 0) {
+      ob_clean();
+    }
+    http_response_code($responseCode);
+    header('Content-Type: application/json; charset=UTF-8');
+    print json_encode(['success' => $updated]);
+    exit;
   }
 
   if ($isCustomerPinAdmin && isset($post->reveal_customer_pin)) {
@@ -218,13 +238,9 @@ if (METHOD == 'add') {
                           $printed = true;
                         } elseif ($value['type'] == "order_toggle") {
                           $orderOnly = (int) $obj->customer_order_only === 1;
-                          print "<td class='text-center'><form method='post' class='customer-order-switch-form'>";
-                          print "<input type='hidden' name='save_customer_order_only' value='1'>";
-                          print "<input type='hidden' name='customer_id' value='" . (int) $obj->id . "'>";
-                          print "<input type='hidden' name='customer_order_only' value='" . ($orderOnly ? '1' : '0') . "'>";
-                          print "<label class='customer-order-switch' title='Order only: " . ($orderOnly ? 'On' : 'Off') . "'>";
-                          print "<input type='checkbox' class='customer-order-toggle' aria-label='Order only for " . htmlspecialchars((string) $obj->company, ENT_QUOTES, 'UTF-8') . "'" . ($orderOnly ? " checked" : "") . ">";
-                          print "<span class='customer-order-slider'></span></label></form></td>";
+                          print "<td class='text-center'><label class='customer-order-switch' title='Order only: " . ($orderOnly ? 'On' : 'Off') . "'>";
+                          print "<input type='checkbox' role='switch' class='customer-order-toggle' data-customer-id='" . (int) $obj->id . "' aria-label='Order only for " . htmlspecialchars((string) $obj->company, ENT_QUOTES, 'UTF-8') . "'" . ($orderOnly ? " checked" : "") . ">";
+                          print "<span class='customer-order-slider'></span></label></td>";
                           $printed = true;
                         }
                       }
@@ -426,9 +442,33 @@ if (METHOD == 'add') {
     });
     document.querySelectorAll('.customer-order-toggle').forEach(function(toggle) {
       toggle.addEventListener('change', function() {
-        toggle.form.elements.customer_order_only.value = toggle.checked ? '1' : '0';
+        var previousValue = !toggle.checked;
         toggle.disabled = true;
-        toggle.form.submit();
+        var request = new FormData();
+        request.append('update_customer_order_only', '1');
+        request.append('customer_id', toggle.getAttribute('data-customer-id'));
+        request.append('customer_order_only', toggle.checked ? '1' : '0');
+
+        fetch(window.location.href, {
+          method: 'POST',
+          body: request,
+          credentials: 'same-origin',
+          headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function(response) {
+          return response.json().then(function(result) {
+            if (!response.ok || !result.success) {
+              throw new Error('Order setting update failed.');
+            }
+          });
+        }).then(function() {
+          toggle.parentElement.title = 'Order only: ' + (toggle.checked ? 'On' : 'Off');
+        }).catch(function() {
+          toggle.checked = previousValue;
+          toggle.parentElement.title = 'Order only: ' + (previousValue ? 'On' : 'Off');
+          alert('Could not update the order setting. Please try again.');
+        }).finally(function() {
+          toggle.disabled = false;
+        });
       });
     });
     <?php if ($showCustomerTotpModal) { ?>
