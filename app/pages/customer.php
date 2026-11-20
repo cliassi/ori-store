@@ -153,6 +153,31 @@ if (METHOD == 'add') {
   }
   // vd($fields);
   $objs = R::find('customer', "branch_id = $branch_id OR branch_id IS NULL");
+  $creatorIds = [];
+  foreach ($objs as $customer) {
+    $creatorId = (int) $customer->created_by;
+    if ($creatorId > 0) {
+      $creatorIds[$creatorId] = $creatorId;
+    }
+  }
+  $creators = [];
+  if ($creatorIds) {
+    $creatorRows = R::find('sys_user', 'id IN (' . implode(',', $creatorIds) . ')');
+    foreach ($creatorRows as $creator) {
+      $creatorName = (string) $creator->u_fullname;
+      $avatarFilename = (string) $creator->u_avatar;
+      if ($avatarFilename !== '' && file_exists("uploads/user/avatar/$avatarFilename")) {
+        $avatarSrc = htmlspecialchars(BASEURL . APP . "/uploads/user/avatar/$avatarFilename", ENT_QUOTES, 'UTF-8');
+        $creatorAvatar = "<img src='$avatarSrc' class='w30' loading='lazy' decoding='async' alt=''>";
+      } else {
+        $creatorAvatar = htmlspecialchars($creatorName, ENT_QUOTES, 'UTF-8');
+      }
+      $creators[(int) $creator->id] = [
+        'name' => $creatorName,
+        'avatar' => $creatorAvatar
+      ];
+    }
+  }
   $contant = "";
 ?>
   <div class="row">
@@ -196,19 +221,15 @@ if (METHOD == 'add') {
                       $printed = false;
                       if (isset($value['type'])) {
                         if ($value['type'] == "image") {
-                          print "<td height='60px'>" . ($obj->$key ? "<a data-lightbox='{$obj->$key}'><img src='{$obj->$key}' height='60px'></a>" : "") . "</td>";
+                          print "<td height='60px'>" . ($obj->$key ? "<a data-lightbox='{$obj->$key}'><img src='{$obj->$key}' height='60px' loading='lazy' decoding='async'></a>" : "") . "</td>";
                           $printed = true;
                         } elseif ($value['type'] == "avatar") {
-                          $avatar = "";
-                          if (nn($obj->created_by)) {
-                            $creator = R::load("sys_user", $obj->created_by);
-                            if (file_exists("uploads/user/avatar/$creator->u_avatar") && nn($creator->u_avatar)) {
-                              $avatar = "<img src='" . BASEURL . APP . "/uploads/user/avatar/$creator->u_avatar' class='w30'>";
-                            } else {
-                              $avatar = $creator->u_fullname;
-                            }
-                          }
-                          print "<td title='" . (nn($obj->created_by) ? $creator->u_fullname . " @ " . $obj->created_at : '') . "'>$avatar</td>";
+                          $creator = isset($creators[(int) $obj->created_by]) ? $creators[(int) $obj->created_by] : null;
+                          $avatar = $creator ? $creator['avatar'] : '';
+                          $creatorTitle = $creator
+                            ? htmlspecialchars($creator['name'] . ' @ ' . (string) $obj->created_at, ENT_QUOTES, 'UTF-8')
+                            : '';
+                          print "<td title='$creatorTitle'>$avatar</td>";
                           $printed = true;
                         } elseif ($value['type'] == "link") {
                           print "<td><a href='$page/edit/$obj->id'><i class='fa fa-edit'></i></a>";
@@ -233,7 +254,7 @@ if (METHOD == 'add') {
                             $pin = (string) $obj->password;
                             print "<td>" . ($pin !== '' ? htmlspecialchars($pin, ENT_QUOTES, 'UTF-8') : 'Not set') . "</td>";
                           } else {
-                            print "<td><button type='button' class='btn btn-link btn-sm p-1 customer-pin-reveal' data-customer-id='" . (int) $obj->id . "' aria-label='Verify and reveal PIN' title='Reveal PIN'><i class='fa fa-eye' aria-hidden='true'></i></button></td>";
+                            print "<td><button type='button' class='btn btn-link btn-sm p-1 customer-pin-reveal' data-customer-id='" . (int) $obj->id . "' aria-label='Verify and reveal PIN' title='Reveal PIN'><i class='fa fa-eye' style='font-size:12px;line-height:1;' aria-hidden='true'></i></button></td>";
                           }
                           $printed = true;
                         } elseif ($value['type'] == "order_toggle") {
