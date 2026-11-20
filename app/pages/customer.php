@@ -302,8 +302,8 @@ if (METHOD == 'add') {
     .customer-order-switch {
       display: inline-block;
       position: relative;
-      width: 76px;
-      height: 32px;
+      width: 58px;
+      height: 24px;
       margin: 0;
       cursor: pointer;
       vertical-align: middle;
@@ -329,8 +329,8 @@ if (METHOD == 'add') {
       position: absolute;
       top: 3px;
       left: 3px;
-      width: 26px;
-      height: 26px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: #fff;
       box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
@@ -341,9 +341,9 @@ if (METHOD == 'add') {
       content: "OFF";
       position: absolute;
       top: 50%;
-      right: 8px;
+      right: 4px;
       color: #666;
-      font-size: 11px;
+      font-size: 9px;
       font-weight: 700;
       transform: translateY(-50%);
     }
@@ -353,13 +353,13 @@ if (METHOD == 'add') {
     }
 
     .customer-order-switch input:checked + .customer-order-slider::before {
-      transform: translateX(44px);
+      transform: translateX(34px);
     }
 
     .customer-order-switch input:checked + .customer-order-slider::after {
       content: "ON";
       right: auto;
-      left: 10px;
+      left: 7px;
       color: #fff;
     }
 
