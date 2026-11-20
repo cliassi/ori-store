@@ -241,11 +241,11 @@ if (METHOD == 'add') {
                           $statusIcons = '';
                           if (isset($obj->login_time) && $obj->login_time !== '') {
                             $loginTime = htmlspecialchars((string) $obj->login_time, ENT_QUOTES, 'UTF-8');
-                            $statusIcons .= "<img class='customer-login-status-icon' src='/store/assets/power-green.png' alt='Logged in' title='Login time: $loginTime'>";
+                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon' src='/store/assets/power-green.png' alt='Logged in' title='Login time: $loginTime'>";
                           }
                           if (isset($obj->logout_time) && $obj->logout_time !== '') {
                             $logoutTime = htmlspecialchars((string) $obj->logout_time, ENT_QUOTES, 'UTF-8');
-                            $statusIcons .= "<img class='customer-login-status-icon' src='/store/assets/power-red.png' alt='Logged out' title='Logout time: $logoutTime'>";
+                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon' src='/store/assets/power-red.png' alt='Logged out' title='Logout time: $logoutTime'>";
                           }
                           print "<td class='text-center text-nowrap'>$statusIcons</td>";
                           $printed = true;
