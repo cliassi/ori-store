@@ -101,6 +101,7 @@ if (METHOD == 'add') {
   $fields = [
     "id" => '',
     "code" => ["label" => "Code", "display" => ''],
+    "login_status" => ["label" => "", "display" => '', 'type' => 'login_status'],
     "password" => ["label" => "PIN", "display" => '', 'type' => 'pin'],
     "company" => ["label" => "Shop Name", "display" => '', 'link' => 'details'],
     "contact" => ["label" => "Contact Person", "display" => ''],
@@ -180,6 +181,18 @@ if (METHOD == 'add') {
                             print space(5) . "<a href='?del&id=$obj->id' class='protected-link'><i class='fas fa-trash-alt'></i></a>";
                           }
                           $printed = true;
+                        } elseif ($value['type'] == "login_status") {
+                          $statusIcons = '';
+                          if (isset($obj->login_time) && $obj->login_time !== '') {
+                            $loginTime = htmlspecialchars((string) $obj->login_time, ENT_QUOTES, 'UTF-8');
+                            $statusIcons .= "<img class='customer-login-status-icon' src='../assets/power-green.png' alt='Logged in' title='Login time: $loginTime'>";
+                          }
+                          if (isset($obj->logout_time) && $obj->logout_time !== '') {
+                            $logoutTime = htmlspecialchars((string) $obj->logout_time, ENT_QUOTES, 'UTF-8');
+                            $statusIcons .= "<img class='customer-login-status-icon' src='../assets/power-red.png' alt='Logged out' title='Logout time: $logoutTime'>";
+                          }
+                          print "<td class='text-center text-nowrap'>$statusIcons</td>";
+                          $printed = true;
                         } elseif ($value['type'] == "pin") {
                           if ($revealedCustomerPinId === (int) $obj->id) {
                             $pin = (string) $obj->password;
@@ -253,6 +266,12 @@ if (METHOD == 'add') {
   <style>
     .w30 {
       width: 30px;
+    }
+
+    .customer-login-status-icon {
+      width: 28px;
+      height: 28px;
+      vertical-align: middle;
     }
 
     #customerPinTotpModal .modal-body > .container {
