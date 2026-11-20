@@ -54,6 +54,20 @@ if (METHOD == 'add') {
     exit;
   }
 
+  if (isset($post->save_customer_order_only)) {
+    $orderCustomerId = filter_var(isset($post->customer_id) ? $post->customer_id : null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $orderOnlyValue = isset($post->customer_order_only) ? (string) $post->customer_order_only : '';
+    if ($orderCustomerId !== false && ($orderOnlyValue === '0' || $orderOnlyValue === '1')) {
+      $orderCustomer = R::findOne('customer', 'id = ? AND (branch_id = ? OR branch_id IS NULL)', [$orderCustomerId, bid()]);
+      if ($orderCustomer) {
+        $orderCustomer->customer_order_only = (int) $orderOnlyValue;
+        R::store($orderCustomer);
+      }
+    }
+    redir("?");
+    return;
+  }
+
   if ($isCustomerPinAdmin && isset($post->reveal_customer_pin)) {
     $requestedCustomerId = filter_var($post->reveal_customer_pin, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($requestedCustomerId === false) {
@@ -103,6 +117,7 @@ if (METHOD == 'add') {
     "code" => ["label" => "Code", "display" => ''],
     "login_status" => ["label" => "", "display" => '', 'type' => 'login_status'],
     "password" => ["label" => "PIN", "display" => '', 'type' => 'pin'],
+    "customer_order_only" => ["label" => "Order", "display" => '', 'type' => 'order_toggle'],
     "company" => ["label" => "Shop Name", "display" => '', 'link' => 'details'],
     "contact" => ["label" => "Contact Person", "display" => ''],
     "mobile" => ["label" => "C.P. Mobile", "display" => ''],
@@ -201,6 +216,16 @@ if (METHOD == 'add') {
                             print "<td><button type='button' class='btn btn-link btn-sm p-1 customer-pin-reveal' data-customer-id='" . (int) $obj->id . "' aria-label='Verify and reveal PIN' title='Reveal PIN'><i class='fa fa-eye' aria-hidden='true'></i></button></td>";
                           }
                           $printed = true;
+                        } elseif ($value['type'] == "order_toggle") {
+                          $orderOnly = (int) $obj->customer_order_only === 1;
+                          print "<td class='text-center'><form method='post' class='customer-order-switch-form'>";
+                          print "<input type='hidden' name='save_customer_order_only' value='1'>";
+                          print "<input type='hidden' name='customer_id' value='" . (int) $obj->id . "'>";
+                          print "<input type='hidden' name='customer_order_only' value='" . ($orderOnly ? '1' : '0') . "'>";
+                          print "<label class='customer-order-switch' title='Order only: " . ($orderOnly ? 'On' : 'Off') . "'>";
+                          print "<input type='checkbox' class='customer-order-toggle' aria-label='Order only for " . htmlspecialchars((string) $obj->company, ENT_QUOTES, 'UTF-8') . "'" . ($orderOnly ? " checked" : "") . ">";
+                          print "<span class='customer-order-slider'></span></label></form></td>";
+                          $printed = true;
                         }
                       }
                       if (!$printed) {
@@ -274,6 +299,75 @@ if (METHOD == 'add') {
       vertical-align: middle;
     }
 
+    .customer-order-switch {
+      display: inline-block;
+      position: relative;
+      width: 76px;
+      height: 32px;
+      margin: 0;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+
+    .customer-order-switch input {
+      width: 0;
+      height: 0;
+      opacity: 0;
+      position: absolute;
+    }
+
+    .customer-order-slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: #d5d5d5;
+      transition: background-color .2s ease;
+    }
+
+    .customer-order-slider::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+      transition: transform .2s ease;
+    }
+
+    .customer-order-slider::after {
+      content: "OFF";
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      color: #666;
+      font-size: 11px;
+      font-weight: 700;
+      transform: translateY(-50%);
+    }
+
+    .customer-order-switch input:checked + .customer-order-slider {
+      background: #20c933;
+    }
+
+    .customer-order-switch input:checked + .customer-order-slider::before {
+      transform: translateX(44px);
+    }
+
+    .customer-order-switch input:checked + .customer-order-slider::after {
+      content: "ON";
+      right: auto;
+      left: 10px;
+      color: #fff;
+    }
+
+    .customer-order-switch input:focus-visible + .customer-order-slider {
+      outline: 2px solid #222;
+      outline-offset: 2px;
+    }
+
     #customerPinTotpModal .modal-body > .container {
       max-width: 100% !important;
       margin: 0 !important;
@@ -328,6 +422,13 @@ if (METHOD == 'add') {
         }).catch(function() {
           modalBody.innerHTML = '<p class="text-danger mb-0">Unable to start authenticator verification. Please try again.</p>';
         });
+      });
+    });
+    document.querySelectorAll('.customer-order-toggle').forEach(function(toggle) {
+      toggle.addEventListener('change', function() {
+        toggle.form.elements.customer_order_only.value = toggle.checked ? '1' : '0';
+        toggle.disabled = true;
+        toggle.form.submit();
       });
     });
     <?php if ($showCustomerTotpModal) { ?>
