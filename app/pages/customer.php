@@ -14,6 +14,8 @@ if (METHOD == 'add') {
   $isCustomerPinAdmin = (int) uid() === 1;
   $revealedCustomerPinId = 0;
   $customerPinMessage = '';
+  $customerTotpModalContent = '';
+  $showCustomerTotpModal = false;
 
   if ($isCustomerPinAdmin && isset($post->reveal_customer_pin)) {
     $requestedCustomerId = filter_var($post->reveal_customer_pin, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -31,11 +33,17 @@ if (METHOD == 'add') {
           !is_string($totpAccount->u_totp_secret) ||
           $totpAccount->u_totp_secret === ''
         ) {
-          $customerPinMessage = 'Authenticator verification must be enabled before a customer PIN can be revealed.';
-        } elseif (!totp_require_step_up('customer_pin_reveal', (int) $requestedCustomerId)) {
-          return;
+          $customerTotpModalContent = '<p class="text-danger mb-0">Authenticator verification must be enabled before a customer PIN can be revealed.</p>';
+          $showCustomerTotpModal = true;
         } else {
-          $revealedCustomerPinId = (int) $requestedCustomerId;
+          ob_start();
+          $totpVerified = totp_require_step_up('customer_pin_reveal', (int) $requestedCustomerId);
+          $customerTotpModalContent = ob_get_clean();
+          if ($totpVerified) {
+            $revealedCustomerPinId = (int) $requestedCustomerId;
+          } else {
+            $showCustomerTotpModal = true;
+          }
         }
       }
     }
@@ -140,7 +148,7 @@ if (METHOD == 'add') {
                             $pin = (string) $obj->password;
                             print "<td>" . ($pin !== '' ? htmlspecialchars($pin, ENT_QUOTES, 'UTF-8') : 'Not set') . "</td>";
                           } else {
-                            print "<td><form method='post' class='d-inline'><button type='submit' class='btn btn-sm btn-outline-secondary' name='reveal_customer_pin' value='" . (int) $obj->id . "'>Reveal PIN</button></form></td>";
+                            print "<td><form method='post' class='d-inline'><button type='submit' class='btn btn-sm btn-outline-secondary' name='reveal_customer_pin' value='" . (int) $obj->id . "'>Verify &amp; Reveal</button></form></td>";
                           }
                           $printed = true;
                         }
@@ -191,9 +199,36 @@ if (METHOD == 'add') {
     </div>
   </div>
 
+  <?php if ($showCustomerTotpModal) { ?>
+    <div class="modal fade" id="customerPinTotpModal" tabindex="-1" aria-labelledby="customerPinTotpModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="customerPinTotpModalLabel">Verify to reveal customer PIN</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <?php print $customerTotpModalContent; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+  <?php } ?>
+
   <style>
     .w30 {
       width: 30px;
+    }
+
+    #customerPinTotpModal .modal-body > .container {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    #customerPinTotpModal .modal-body > .container > .card {
+      border: 0;
+      box-shadow: none;
     }
   </style>
   <script>
@@ -215,5 +250,9 @@ if (METHOD == 'add') {
         $("#search").trigger('keyup');
       <?php } ?>
     });
+    <?php if ($showCustomerTotpModal) { ?>
+      var customerPinTotpModal = document.getElementById('customerPinTotpModal');
+      bootstrap.Modal.getOrCreateInstance(customerPinTotpModal).show();
+    <?php } ?>
   </script>
 <?php } ?>
