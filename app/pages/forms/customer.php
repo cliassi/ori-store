@@ -30,14 +30,15 @@ if (isset($post->save)) {
     if (isset($post->email))
       $obj->email = $post->email;
     $obj->branch_id = $branch_id;
-    if (isset($post->password))
-      $obj->password = $post->password;
+    if ((int) uid() === 1 && isset($post->password) && trim((string) $post->password) !== '') {
+      $obj->password = trim((string) $post->password);
+    }
     if (uid() == 1) {
       $obj->branch_id = isset($post->branch_id) ? $post->branch_id : $branch_id;
     } else {
       $obj->branch_id = $branch_id;
     }
-    if (!nn($post->password)) {
+    if (!defined('ID') && !nn($obj->password)) {
       $obj->password = $obj->code . date("y", time());
     }
     // $obj->address = $post->address;
@@ -130,6 +131,16 @@ $html .= "</table></td></tr>
               // 'email' => ['col' => 6, 'label' => 'Email', 'type' => 'email', 'value' => $obj->email],
               // 'password' => ['col' => 6, 'label' => 'Password', 'type' => 'password', 'value' => $obj->password],
             ];
+
+            if ((int) uid() === 1 && defined('ID')) {
+              $formItems['password'] = [
+                'col' => 4,
+                'label' => 'PIN (leave blank to keep current)',
+                'type' => 'password',
+                'value' => '',
+                'required' => false
+              ];
+            }
 
             if (uid() == 1) {
               //$formItems['branch_id'] = ['col' => 6, 'label' => 'Branch', 'type' => 'dropdown', 'value'=> $obj->branch_id ? $obj->branch_id : $branch_id, 'table'=>'branch', 'valueField'=>'id'];

@@ -11,6 +11,35 @@ if (METHOD == 'add') {
 } elseif (METHOD == 'statement' && defined('ID')) {
   require 'details/statement.php';
 } else {
+  $isCustomerPinAdmin = (int) uid() === 1;
+  $revealedCustomerPinId = 0;
+  $customerPinMessage = '';
+
+  if ($isCustomerPinAdmin && isset($post->reveal_customer_pin)) {
+    $requestedCustomerId = filter_var($post->reveal_customer_pin, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($requestedCustomerId === false) {
+      $customerPinMessage = 'Invalid customer selected.';
+    } else {
+      $customerToReveal = R::findOne('customer', 'id = ? AND (branch_id = ? OR branch_id IS NULL)', [$requestedCustomerId, bid()]);
+      if (!$customerToReveal) {
+        $customerPinMessage = 'Customer not found.';
+      } else {
+        $totpAccount = totp_step_up_account((int) uid());
+        if (
+          !$totpAccount ||
+          (int) $totpAccount->totp_enabled !== 1 ||
+          !is_string($totpAccount->u_totp_secret) ||
+          $totpAccount->u_totp_secret === ''
+        ) {
+          $customerPinMessage = 'Authenticator verification must be enabled before a customer PIN can be revealed.';
+        } elseif (!totp_require_step_up('customer_pin_reveal', (int) $requestedCustomerId)) {
+          return;
+        } else {
+          $revealedCustomerPinId = (int) $requestedCustomerId;
+        }
+      }
+    }
+  }
 
   if (isset($get->token)) {
     $token = R::findOne("sys_token", "user_id=? AND token=?", [uid(), $get->token]);
@@ -27,7 +56,7 @@ if (METHOD == 'add') {
   $fields = [
     "id" => '',
     "code" => ["label" => "Code", "display" => ''],
-    "password" => ["label" => "PIN", "display" => ''],
+    "password" => ["label" => "PIN", "display" => '', 'type' => 'pin'],
     "company" => ["label" => "Shop Name", "display" => '', 'link' => 'details'],
     "contact" => ["label" => "Contact Person", "display" => ''],
     "mobile" => ["label" => "C.P. Mobile", "display" => ''],
@@ -38,8 +67,7 @@ if (METHOD == 'add') {
     "avatar" => ["label" => "Entry", "style" => "width: 50px;", "display" => '', 'type' => 'avatar'],
     "" => ["display" => '', 'type' => 'link', 'action' => 'edit'],
   ];
-  if (isUserIn(['parvez'])) {
-  } else {
+  if (!$isCustomerPinAdmin) {
     unset($fields['password']);
   }
   // vd($fields);
@@ -61,6 +89,9 @@ if (METHOD == 'add') {
           </div>
 
         </div>
+        <?php if ($customerPinMessage !== '') { ?>
+          <div class="alert alert-danger m-3" role="alert"><?php print htmlspecialchars($customerPinMessage, ENT_QUOTES, 'UTF-8'); ?></div>
+        <?php } ?>
         <div class="card-body">
           <div class="dt-responsive table-responsive">
             <table id="customer-table" class="table table-striped table-bordered nowrap">
@@ -101,7 +132,15 @@ if (METHOD == 'add') {
                         } elseif ($value['type'] == "link") {
                           print "<td><a href='$page/edit/$obj->id'><i class='fa fa-edit'></i></a>";
                           if (uid() == 1) {
-                            print space(5) . "<a href='?del&id=$obj->id' class='protected-link'><i class='fas fa-trash-alt'></i></a><td></td>";
+                            print space(5) . "<a href='?del&id=$obj->id' class='protected-link'><i class='fas fa-trash-alt'></i></a>";
+                          }
+                          $printed = true;
+                        } elseif ($value['type'] == "pin") {
+                          if ($revealedCustomerPinId === (int) $obj->id) {
+                            $pin = (string) $obj->password;
+                            print "<td>" . ($pin !== '' ? htmlspecialchars($pin, ENT_QUOTES, 'UTF-8') : 'Not set') . "</td>";
+                          } else {
+                            print "<td><form method='post' class='d-inline'><button type='submit' class='btn btn-sm btn-outline-secondary' name='reveal_customer_pin' value='" . (int) $obj->id . "'>Reveal PIN</button></form></td>";
                           }
                           $printed = true;
                         }
