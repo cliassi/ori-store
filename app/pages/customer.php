@@ -168,7 +168,7 @@ if (METHOD == 'add') {
       $avatarFilename = (string) $creator->u_avatar;
       if ($avatarFilename !== '' && file_exists("uploads/user/avatar/$avatarFilename")) {
         $avatarSrc = htmlspecialchars(BASEURL . APP . "/uploads/user/avatar/$avatarFilename", ENT_QUOTES, 'UTF-8');
-        $creatorAvatar = "<img src='$avatarSrc' class='w30' loading='lazy' decoding='async' alt=''>";
+        $creatorAvatar = "<img src='$avatarSrc' width='30' height='30' class='w30' loading='lazy' decoding='async' alt=''>";
       } else {
         $creatorAvatar = htmlspecialchars($creatorName, ENT_QUOTES, 'UTF-8');
       }
