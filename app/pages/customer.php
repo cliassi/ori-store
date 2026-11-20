@@ -17,6 +17,43 @@ if (METHOD == 'add') {
   $customerTotpModalContent = '';
   $showCustomerTotpModal = false;
 
+  if (isset($post->totp_stepup_challenge)) {
+    $customerId = filter_var(isset($post->reveal_customer_pin) ? $post->reveal_customer_pin : null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if (!$isCustomerPinAdmin) {
+      http_response_code(403);
+      $challengeFragment = '<p class="text-danger mb-0">You are not authorized to reveal customer PINs.</p>';
+    } elseif ($customerId === false) {
+      $challengeFragment = '<p class="text-danger mb-0">Invalid customer selected.</p>';
+    } else {
+      $customerToReveal = R::findOne('customer', 'id = ? AND (branch_id = ? OR branch_id IS NULL)', [$customerId, bid()]);
+      $totpAccount = totp_step_up_account((int) uid());
+      if (!$customerToReveal) {
+        $challengeFragment = '<p class="text-danger mb-0">Customer not found.</p>';
+      } elseif (
+        !$totpAccount ||
+        (int) $totpAccount->totp_enabled !== 1 ||
+        !is_string($totpAccount->u_totp_secret) ||
+        $totpAccount->u_totp_secret === ''
+      ) {
+        $challengeFragment = '<p class="text-danger mb-0">Authenticator verification must be enabled before a customer PIN can be revealed.</p>';
+      } else {
+        ob_start();
+        $challengeStarted = totp_require_step_up('customer_pin_reveal', (int) $customerId);
+        $challengeFragment = ob_get_clean();
+        if ($challengeStarted) {
+          $challengeFragment = '<p class="text-danger mb-0">Authenticator verification is unavailable. Please try again.</p>';
+        }
+      }
+    }
+
+    if (ob_get_level() > 0) {
+      ob_clean();
+    }
+    header('Content-Type: text/html; charset=UTF-8');
+    print $challengeFragment;
+    exit;
+  }
+
   if ($isCustomerPinAdmin && isset($post->reveal_customer_pin)) {
     $requestedCustomerId = filter_var($post->reveal_customer_pin, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($requestedCustomerId === false) {
@@ -148,7 +185,7 @@ if (METHOD == 'add') {
                             $pin = (string) $obj->password;
                             print "<td>" . ($pin !== '' ? htmlspecialchars($pin, ENT_QUOTES, 'UTF-8') : 'Not set') . "</td>";
                           } else {
-                            print "<td><form method='post' class='d-inline'><button type='submit' class='btn btn-sm btn-outline-secondary' name='reveal_customer_pin' value='" . (int) $obj->id . "'>Verify &amp; Reveal</button></form></td>";
+                            print "<td><button type='button' class='btn btn-link btn-sm p-1 customer-pin-reveal' data-customer-id='" . (int) $obj->id . "' aria-label='Verify and reveal PIN' title='Reveal PIN'><i class='fa fa-eye' aria-hidden='true'></i></button></td>";
                           }
                           $printed = true;
                         }
@@ -199,21 +236,19 @@ if (METHOD == 'add') {
     </div>
   </div>
 
-  <?php if ($showCustomerTotpModal) { ?>
-    <div class="modal fade" id="customerPinTotpModal" tabindex="-1" aria-labelledby="customerPinTotpModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="customerPinTotpModalLabel">Verify to reveal customer PIN</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <?php print $customerTotpModalContent; ?>
-          </div>
+  <div class="modal fade" id="customerPinTotpModal" tabindex="-1" aria-labelledby="customerPinTotpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="customerPinTotpModalLabel">Verify to reveal customer PIN</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="customerPinTotpModalBody">
+          <?php print $customerTotpModalContent; ?>
         </div>
       </div>
     </div>
-  <?php } ?>
+  </div>
 
   <style>
     .w30 {
@@ -249,6 +284,32 @@ if (METHOD == 'add') {
       <?php if (isset($get->key)) { ?>
         $("#search").trigger('keyup');
       <?php } ?>
+    });
+    document.querySelectorAll('.customer-pin-reveal').forEach(function(button) {
+      button.addEventListener('click', function() {
+        var modalElement = document.getElementById('customerPinTotpModal');
+        var modalBody = document.getElementById('customerPinTotpModalBody');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        var request = new FormData();
+        request.append('totp_stepup_challenge', '1');
+        request.append('reveal_customer_pin', button.getAttribute('data-customer-id'));
+
+        modalBody.innerHTML = '<div class="text-center py-3">Preparing authenticator challenge...</div>';
+        modal.show();
+
+        fetch(window.location.href, {
+          method: 'POST',
+          body: request,
+          credentials: 'same-origin',
+          headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function(response) {
+          return response.text();
+        }).then(function(challengeHtml) {
+          modalBody.innerHTML = challengeHtml;
+        }).catch(function() {
+          modalBody.innerHTML = '<p class="text-danger mb-0">Unable to start authenticator verification. Please try again.</p>';
+        });
+      });
     });
     <?php if ($showCustomerTotpModal) { ?>
       var customerPinTotpModal = document.getElementById('customerPinTotpModal');
