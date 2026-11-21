@@ -53,6 +53,9 @@ function orderadminAuthLogin($connection, $input, $post)
                     AND LOWER(r.r_name) <> 'customer'
                   LIMIT 1";
     }
+
+    var_dump($query);
+    die();
     $pin = trim($pin);
     try {
         $lookup = $connection->prepare($query);
