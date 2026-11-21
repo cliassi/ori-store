@@ -68,10 +68,10 @@ unset($_POST);
 $post = (object) $post;
 $input = json_decode($rawRequestBody);
 
-$actions = ['home', 'products', 'product', 'products_variances', 'variance_detail', 'checkpin', 'login', 'logout'];
+$actions = ['home', 'products', 'product', 'products_variances', 'variance_detail', 'checkpin', 'login', 'customer-session', 'logout'];
 $action = isset($get->action) ? $get->action : 'home';
 $response = [];
-if ($action === 'login' || $action === 'logout') {
+if ($action === 'login' || $action === 'customer-session' || $action === 'logout') {
   header('Content-Type: application/json; charset=utf-8');
   header('Cache-Control: no-store');
 }
@@ -171,6 +171,12 @@ if (in_array($action, $actions)) {
 
     case 'login': {
       list($statusCode, $response) = orderadminAuthLogin($c, $input, $post);
+      http_response_code($statusCode);
+    }
+      break;
+
+    case 'customer-session': {
+      list($statusCode, $response) = orderadminAuthCheckCustomerSession($c);
       http_response_code($statusCode);
     }
       break;

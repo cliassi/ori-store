@@ -86,6 +86,25 @@ function orderadminAuthLogin($connection, $input, $post)
     }
 
     $userId = (int) $user['id'];
+    if ($isCustomer) {
+        try {
+            $loginStatus = $connection->prepare(
+                'UPDATE customer SET login_time = NOW(), logout_time = NULL WHERE id = ?'
+            );
+            if (!$loginStatus) {
+                return array(500, array('error' => 1, 'message' => 'Authentication unavailable'));
+            }
+            $loginStatus->bind_param('i', $userId);
+            $updated = $loginStatus->execute();
+            $loginStatus->close();
+            if (!$updated) {
+                return array(500, array('error' => 1, 'message' => 'Authentication unavailable'));
+            }
+        } catch (Throwable $error) {
+            return array(500, array('error' => 1, 'message' => 'Authentication unavailable'));
+        }
+    }
+
     try {
         $insert = $connection->prepare('INSERT INTO sys_token (user_id, token) VALUES (?, ?)');
         if (!$insert) {
@@ -109,12 +128,8 @@ function orderadminAuthLogin($connection, $input, $post)
     ));
 }
 
-function orderadminAuthLogout($connection)
+function orderadminAuthGetBearerToken()
 {
-    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
-        return array(405, array('error' => 1, 'message' => 'POST required'));
-    }
-
     $authorization = isset($_SERVER['HTTP_AUTHORIZATION'])
         ? $_SERVER['HTTP_AUTHORIZATION']
         : (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) ? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] : '');
@@ -126,10 +141,66 @@ function orderadminAuthLogout($connection)
             }
         }
     }
-    $token = is_string($authorization)
+
+    return is_string($authorization)
         && preg_match('/^Bearer\s+([a-f0-9]{64})$/i', trim($authorization), $matches)
         ? $matches[1]
         : null;
+}
+
+function orderadminAuthCheckCustomerSession($connection)
+{
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== 'GET') {
+        return array(405, array('error' => 1, 'active' => false, 'message' => 'GET required'));
+    }
+
+    $token = orderadminAuthGetBearerToken();
+    if ($token === null) {
+        return array(401, array('error' => 1, 'active' => false, 'message' => 'Invalid session'));
+    }
+
+    try {
+        $check = $connection->prepare(
+            'SELECT c.logout_time
+             FROM sys_token t
+             INNER JOIN customer c ON c.id = t.user_id
+             WHERE t.token = ?
+             LIMIT 1'
+        );
+        if (!$check) {
+            return array(500, array('error' => 1, 'message' => 'Session check unavailable'));
+        }
+        $check->bind_param('s', $token);
+        if (!$check->execute()) {
+            $check->close();
+            return array(500, array('error' => 1, 'message' => 'Session check unavailable'));
+        }
+        $result = $check->get_result();
+        $session = $result ? $result->fetch_assoc() : false;
+        $check->close();
+    } catch (Throwable $error) {
+        return array(500, array('error' => 1, 'message' => 'Session check unavailable'));
+    }
+
+    if (!$session) {
+        return array(401, array('error' => 1, 'active' => false, 'message' => 'Invalid session'));
+    }
+
+    $logoutTime = isset($session['logout_time']) ? trim((string) $session['logout_time']) : '';
+    if ($logoutTime !== '') {
+        return array(401, array('error' => 1, 'active' => false, 'message' => 'Session logged out'));
+    }
+
+    return array(200, array('error' => 0, 'active' => true));
+}
+
+function orderadminAuthLogout($connection)
+{
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return array(405, array('error' => 1, 'message' => 'POST required'));
+    }
+
+    $token = orderadminAuthGetBearerToken();
     if ($token === null) {
         return array(401, array('error' => 1, 'message' => 'Bearer token required'));
     }
