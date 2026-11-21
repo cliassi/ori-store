@@ -282,12 +282,12 @@ if (METHOD == 'add') {
                           $statusIcons = '';
                           if (isset($obj->login_time) && $obj->login_time !== '') {
                             $loginTime = htmlspecialchars((string) $obj->login_time, ENT_QUOTES, 'UTF-8');
-                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon customer-login-status-icon--login' src='/store/assets/power-green.png' alt='Logged in' title='Login time: $loginTime'>";
+                            $customerId = (int) $obj->id;
+                            $statusIcons .= "<button type='button' class='customer-logout-action' data-customer-id='$customerId' title='Login time: $loginTime' aria-label='Log out customer $customerId'><img width='20' height='20' class='customer-login-status-icon customer-login-status-icon--login' src='/store/assets/power-green.png' alt='Log out customer'></button>";
                           }
                           if (isset($obj->logout_time) && $obj->logout_time !== '') {
                             $logoutTime = htmlspecialchars((string) $obj->logout_time, ENT_QUOTES, 'UTF-8');
-                            $customerId = (int) $obj->id;
-                            $statusIcons .= "<button type='button' class='customer-logout-action' data-customer-id='$customerId' title='Logout time: $logoutTime' aria-label='Log out customer $customerId'><img width='20' height='20' class='customer-login-status-icon' src='/store/assets/power-red.png' alt=''></button>";
+                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon customer-login-status-icon--logout' src='/store/assets/power-red.png' alt='Logged out' title='Logout time: $logoutTime'>";
                           }
                           print "<td class='text-center text-nowrap'>$statusIcons</td>";
                           $printed = true;
@@ -543,11 +543,18 @@ if (METHOD == 'add') {
           });
         }).then(function(result) {
           var statusCell = button.closest('td');
-          var loginIcon = statusCell.querySelector('.customer-login-status-icon--login');
-          if (loginIcon) {
-            loginIcon.remove();
+          var logoutIcon = statusCell.querySelector('.customer-login-status-icon--logout');
+          if (!logoutIcon) {
+            logoutIcon = document.createElement('img');
+            logoutIcon.width = 20;
+            logoutIcon.height = 20;
+            logoutIcon.className = 'customer-login-status-icon customer-login-status-icon--logout';
+            logoutIcon.src = '/store/assets/power-red.png';
+            logoutIcon.alt = 'Logged out';
+            statusCell.appendChild(logoutIcon);
           }
-          button.title = 'Logout time: ' + result.logout_time;
+          logoutIcon.title = 'Logout time: ' + result.logout_time;
+          button.remove();
         }).catch(function() {
           alert('Could not update the customer logout time. Please try again.');
         }).finally(function() {
