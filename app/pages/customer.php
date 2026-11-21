@@ -137,7 +137,7 @@ if (METHOD == 'add') {
     "code" => ["label" => "Code", "display" => ''],
     "login_status" => ["label" => "", "display" => '', 'type' => 'login_status'],
     "password" => ["label" => "PIN", "display" => '', 'type' => 'pin'],
-    "customer_order_only" => ["label" => "Order", "display" => '', 'type' => 'order_toggle'],
+    "customer_order_only" => ["label" => "Apps Order", "display" => '', 'type' => 'order_toggle'],
     "company" => ["label" => "Shop Name", "display" => '', 'link' => 'details'],
     "contact" => ["label" => "Contact Person", "display" => ''],
     "mobile" => ["label" => "C.P. Mobile", "display" => ''],
