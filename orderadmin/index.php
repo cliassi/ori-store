@@ -17,6 +17,10 @@ session_start();
 
 $page = isset($_GET['page']) ? $_GET['page'] : '';
 if ($page === 'checkpin') {
+    require_once __DIR__ . '/api_logger.php';
+    $rawRequestBody = file_get_contents('php://input');
+    orderadminLogApiRequest($rawRequestBody, $_GET, $_POST);
+
     require_once('env.php');
     require_once('config.php');
 
@@ -38,7 +42,7 @@ if ($page === 'checkpin') {
     }
 
     header('Content-Type: application/json');
-    $input = json_decode(file_get_contents('php://input'));
+    $input = json_decode($rawRequestBody);
 
     $debug = array(
         'time' => date('Y-m-d H:i:s'),

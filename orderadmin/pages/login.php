@@ -36,18 +36,24 @@ function orderadminAuthLogin($connection, $input, $post)
         return array(400, array('error' => 1, 'message' => 'Invalid request'));
     }
 
-    $roleCondition = $isCustomer
-        ? "LOWER(r.r_name) = 'customer'"
-        : "LOWER(r.r_name) <> 'customer'";
-    $query = "SELECT u.id
-              FROM sys_user u
-              INNER JOIN sys_user_role ur ON ur.ur_user_id = u.id
-              INNER JOIN sys_role r ON r.id = ur.ur_role_id
-              WHERE u.u_pin = ?
-                AND u.u_status = 1
-                AND r.r_active = 1
-                AND $roleCondition
-              LIMIT 1";
+    if ($isCustomer) {
+        $query = "SELECT id
+                  FROM customer
+                  WHERE password = ?
+                    AND can_login = 1
+                    AND login_time IS NOT NULL
+                  LIMIT 1";
+    } else {
+        $query = "SELECT u.id
+                  FROM sys_user u
+                  INNER JOIN sys_user_role ur ON ur.ur_user_id = u.id
+                  INNER JOIN sys_role r ON r.id = ur.ur_role_id
+                  WHERE u.u_pin = ?
+                    AND u.u_status = 1
+                    AND r.r_active = 1
+                    AND LOWER(r.r_name) <> 'customer'
+                  LIMIT 1";
+    }
     $pin = trim($pin);
     try {
         $lookup = $connection->prepare($query);

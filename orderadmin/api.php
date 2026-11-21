@@ -13,6 +13,10 @@ file_put_contents($logFile, json_encode(array(
     'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 120) : 'N/A',
 )) . "\n", FILE_APPEND);
 
+require_once __DIR__ . '/api_logger.php';
+$rawRequestBody = file_get_contents('php://input');
+orderadminLogApiRequest($rawRequestBody, $_GET, $_POST);
+
 session_start();
 error_reporting(E_ERROR | E_PARSE);
 ini_set('display_errors', 1);
@@ -62,7 +66,7 @@ foreach ($_POST as $key => $value)
   $post[$key] = $value;
 unset($_POST);
 $post = (object) $post;
-$input = json_decode(file_get_contents('php://input'));
+$input = json_decode($rawRequestBody);
 
 $actions = ['home', 'products', 'product', 'products_variances', 'variance_detail', 'checkpin', 'login', 'logout'];
 $action = isset($get->action) ? $get->action : 'home';
