@@ -54,8 +54,8 @@ function orderadminAuthLogin($connection, $input, $post)
                   LIMIT 1";
     }
 
-    var_dump($query);
-    die();
+    // var_dump($query);
+    // die();
     $pin = trim($pin);
     try {
         $lookup = $connection->prepare($query);
