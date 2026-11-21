@@ -93,30 +93,10 @@ function orderadminLogApiRequest($rawBody, $query, $form)
         }
     }
 
-    $logDirectory = getenv('ORDERADMIN_API_LOG_DIR');
-    if (!is_string($logDirectory) || trim($logDirectory) === '') {
-        $logDirectory = sys_get_temp_dir();
-    }
-    $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath($_SERVER['DOCUMENT_ROOT']) : false;
-    $resolvedLogDirectory = realpath($logDirectory);
-    if ($documentRoot !== false
-        && $resolvedLogDirectory !== false
-        && ($resolvedLogDirectory === $documentRoot
-            || strpos($resolvedLogDirectory, rtrim($documentRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) === 0)) {
-        error_log('Orderadmin API request log directory must be outside the document root');
-        $logDirectory = sys_get_temp_dir();
-    }
-    $resolvedLogDirectory = realpath($logDirectory);
-    if ($documentRoot !== false
-        && $resolvedLogDirectory !== false
-        && ($resolvedLogDirectory === $documentRoot
-            || strpos($resolvedLogDirectory, rtrim($documentRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) === 0)) {
-        error_log('Orderadmin API request log has no private writable directory');
+    $logDirectory = __DIR__ . DIRECTORY_SEPARATOR . 'logs';
+    if (!is_dir($logDirectory) || !is_writable($logDirectory)) {
+        error_log('Orderadmin API log directory is missing or not writable');
         return;
-    }
-    $logDirectory = rtrim($logDirectory, DIRECTORY_SEPARATOR);
-    if ($logDirectory === '') {
-        $logDirectory = DIRECTORY_SEPARATOR;
     }
     $logFile = $logDirectory . DIRECTORY_SEPARATOR . 'orderadmin-api-' . gmdate('Y-m-d') . '.jsonl';
 
