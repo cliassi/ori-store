@@ -41,7 +41,6 @@ function orderadminAuthLogin($connection, $input, $post)
                   FROM customer
                   WHERE password = ?
                     AND can_login = 1
-                    AND login_time IS NOT NULL
                   LIMIT 1";
     } else {
         $query = "SELECT u.id
