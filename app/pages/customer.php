@@ -88,6 +88,47 @@ if (METHOD == 'add') {
     exit;
   }
 
+  if (isset($post->logout_customer)) {
+    $isAjaxRequest = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    $logoutCustomerId = filter_var(isset($post->customer_id) ? $post->customer_id : null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $updated = false;
+    $logoutTime = '';
+    $responseCode = 400;
+
+    if (!$isAjaxRequest) {
+      $responseCode = 403;
+    } elseif ($logoutCustomerId !== false) {
+      try {
+        $logoutCustomer = R::findOne('customer', 'id = ? AND (branch_id = ? OR branch_id IS NULL)', [$logoutCustomerId, bid()]);
+        if ($logoutCustomer) {
+          R::exec(
+            'UPDATE customer SET logout_time = NOW(), login_time = NULL WHERE id = ? AND (branch_id = ? OR branch_id IS NULL)',
+            [$logoutCustomerId, bid()]
+          );
+          $logoutTime = (string) R::getCell(
+            'SELECT logout_time FROM customer WHERE id = ? AND (branch_id = ? OR branch_id IS NULL)',
+            [$logoutCustomerId, bid()]
+          );
+          $updated = $logoutTime !== '';
+          $responseCode = $updated ? 200 : 500;
+        } else {
+          $responseCode = 404;
+        }
+      } catch (\Throwable $error) {
+        error_log('Customer logout update failed: ' . $error->getMessage());
+        $responseCode = 500;
+      }
+    }
+
+    if (ob_get_level() > 0) {
+      ob_clean();
+    }
+    http_response_code($responseCode);
+    header('Content-Type: application/json; charset=UTF-8');
+    print json_encode(['success' => $updated, 'logout_time' => $logoutTime]);
+    exit;
+  }
+
   if ($isCustomerPinAdmin && isset($post->reveal_customer_pin)) {
     $requestedCustomerId = filter_var($post->reveal_customer_pin, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($requestedCustomerId === false) {
@@ -241,11 +282,12 @@ if (METHOD == 'add') {
                           $statusIcons = '';
                           if (isset($obj->login_time) && $obj->login_time !== '') {
                             $loginTime = htmlspecialchars((string) $obj->login_time, ENT_QUOTES, 'UTF-8');
-                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon' src='/store/assets/power-green.png' alt='Logged in' title='Login time: $loginTime'>";
+                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon customer-login-status-icon--login' src='/store/assets/power-green.png' alt='Logged in' title='Login time: $loginTime'>";
                           }
                           if (isset($obj->logout_time) && $obj->logout_time !== '') {
                             $logoutTime = htmlspecialchars((string) $obj->logout_time, ENT_QUOTES, 'UTF-8');
-                            $statusIcons .= "<img width='20' height='20' class='customer-login-status-icon' src='/store/assets/power-red.png' alt='Logged out' title='Logout time: $logoutTime'>";
+                            $customerId = (int) $obj->id;
+                            $statusIcons .= "<button type='button' class='customer-logout-action' data-customer-id='$customerId' title='Logout time: $logoutTime' aria-label='Log out customer $customerId'><img width='20' height='20' class='customer-login-status-icon' src='/store/assets/power-red.png' alt=''></button>";
                           }
                           print "<td class='text-center text-nowrap'>$statusIcons</td>";
                           $printed = true;
@@ -334,6 +376,25 @@ if (METHOD == 'add') {
       width: 20px;
       height: 20px;
       vertical-align: middle;
+    }
+
+    .customer-logout-action {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      line-height: 0;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+
+    .customer-logout-action:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    .customer-logout-action:focus-visible {
+      outline: 2px solid #222;
+      outline-offset: 2px;
     }
 
     .customer-order-switch {
@@ -458,6 +519,39 @@ if (METHOD == 'add') {
           modalBody.innerHTML = challengeHtml;
         }).catch(function() {
           modalBody.innerHTML = '<p class="text-danger mb-0">Unable to start authenticator verification. Please try again.</p>';
+        });
+      });
+    });
+    document.querySelectorAll('.customer-logout-action').forEach(function(button) {
+      button.addEventListener('click', function() {
+        button.disabled = true;
+        var request = new FormData();
+        request.append('logout_customer', '1');
+        request.append('customer_id', button.getAttribute('data-customer-id'));
+
+        fetch(window.location.href, {
+          method: 'POST',
+          body: request,
+          credentials: 'same-origin',
+          headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function(response) {
+          return response.json().then(function(result) {
+            if (!response.ok || !result.success) {
+              throw new Error('Customer logout update failed.');
+            }
+            return result;
+          });
+        }).then(function(result) {
+          var statusCell = button.closest('td');
+          var loginIcon = statusCell.querySelector('.customer-login-status-icon--login');
+          if (loginIcon) {
+            loginIcon.remove();
+          }
+          button.title = 'Logout time: ' + result.logout_time;
+        }).catch(function() {
+          alert('Could not update the customer logout time. Please try again.');
+        }).finally(function() {
+          button.disabled = false;
         });
       });
     });
