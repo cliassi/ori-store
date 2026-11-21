@@ -7,8 +7,7 @@ file_put_contents($logFile, json_encode(array(
     'time' => date('Y-m-d H:i:s'),
     'file' => 'index.php',
     'method' => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'N/A',
-    'uri' => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'N/A',
-    'query' => isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : 'N/A',
+    'uri' => isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : 'N/A',
     'remote_addr' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'N/A',
     'origin' => isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : 'N/A',
     'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 120) : 'N/A',
@@ -45,11 +44,10 @@ if ($page === 'checkpin') {
         'time' => date('Y-m-d H:i:s'),
         'file' => 'index.php?page=checkpin',
         'method' => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'N/A',
-        'uri' => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'N/A',
+        'uri' => isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : 'N/A',
         'remote_addr' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'N/A',
         'origin' => $origin,
         'post_keys' => array_keys($_POST),
-        'input_raw' => file_get_contents('php://input'),
         'content_type' => isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'N/A',
     );
 

@@ -7,8 +7,7 @@ file_put_contents($logFile, json_encode(array(
     'time' => date('Y-m-d H:i:s'),
     'file' => 'api.php',
     'method' => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'N/A',
-    'uri' => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'N/A',
-    'query' => isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : 'N/A',
+    'uri' => isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : 'N/A',
     'remote_addr' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'N/A',
     'origin' => isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : 'N/A',
     'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 120) : 'N/A',
@@ -65,9 +64,14 @@ unset($_POST);
 $post = (object) $post;
 $input = json_decode(file_get_contents('php://input'));
 
-$actions = ['home', 'products', 'product', 'products_variances', 'variance_detail', 'checkpin'];
+$actions = ['home', 'products', 'product', 'products_variances', 'variance_detail', 'checkpin', 'login', 'logout'];
 $action = isset($get->action) ? $get->action : 'home';
 $response = [];
+if ($action === 'login' || $action === 'logout') {
+  header('Content-Type: application/json; charset=utf-8');
+  header('Cache-Control: no-store');
+}
+require_once __DIR__ . '/pages/login.php';
 if (in_array($action, $actions)) {
   $response['error'] = 0;
   $response['message'] = 'ok';
@@ -161,6 +165,18 @@ if (in_array($action, $actions)) {
     }
       break;
 
+    case 'login': {
+      list($statusCode, $response) = orderadminAuthLogin($c, $input, $post);
+      http_response_code($statusCode);
+    }
+      break;
+
+    case 'logout': {
+      list($statusCode, $response) = orderadminAuthLogout($c);
+      http_response_code($statusCode);
+    }
+      break;
+
     case 'checkpin': {
       $logFile = __DIR__ . '/login_issue.log';
       if (file_exists($logFile) && (time() - filemtime($logFile)) > 21600) {
@@ -171,11 +187,10 @@ if (in_array($action, $actions)) {
         'time' => date('Y-m-d H:i:s'),
         'file' => 'api.php?action=checkpin',
         'method' => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'N/A',
-        'uri' => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'N/A',
+        'uri' => isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : 'N/A',
         'remote_addr' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'N/A',
         'origin' => isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '',
         'post_keys' => array_keys((array) $post),
-        'input_raw' => file_get_contents('php://input'),
         'content_type' => isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'N/A',
       );
 
