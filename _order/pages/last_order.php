@@ -172,8 +172,9 @@ $invoices = $visibleInvoices;
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
   .receipt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;color:#111827;box-shadow:0 2px 8px rgba(15,23,42,.08);}
   .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
-  .receipt-title-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;text-align:left;margin-bottom:8px;}
-  .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0;}
+  .receipt-top-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;text-align:left;}
+  .receipt-city{font-size:11px;font-weight:600;color:#4b5563;}
+  .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
   .receipt-title-date{font-size:10px;font-weight:500;letter-spacing:normal;color:#6b7280;text-align:right;white-space:nowrap;}
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
   .receipt-progress{position:relative;margin:16px 0 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
@@ -228,13 +229,13 @@ $invoices = $visibleInvoices;
       <?php foreach ($invoices as $invoice): ?>
         <article class="receipt-card">
           <header class="receipt-header">
-            <div class="receipt-title-row">
-              <h2 class="receipt-title"><?php echo !empty($invoice->is_pending) ? 'ORDER STATUS' : 'ORDER STATUS'; ?></h2>
+            <div class="receipt-top-row">
+              <span class="receipt-city"><?php echo htmlspecialchars($invoice->customer_city !== '' ? $invoice->customer_city : '—', ENT_QUOTES, 'UTF-8'); ?></span>
               <span class="receipt-title-date"><?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
+            <h1 class="receipt-title">ORDER STATUS</h1>
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-            <!-- <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?> -->
             <?php if ($invoice->customer_mobile !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <div class="receipt-progress" role="group" aria-label="Order progress">
               <div class="receipt-progress-track" aria-hidden="true">
