@@ -153,6 +153,22 @@ foreach ($invoices as $invoice) {
     $invoice->progress_stage = 4;
   }
 }
+$activeInvoices = [];
+$latestDeliveredInvoice = null;
+foreach ($invoices as $invoiceKey => $invoice) {
+  if ($invoice->progress_stage < 4) {
+    $activeInvoices[$invoiceKey] = $invoice;
+  } elseif ($latestDeliveredInvoice === null) {
+    $latestDeliveredInvoice = $invoice;
+  }
+}
+if (!empty($activeInvoices)) {
+  $invoices = $activeInvoices;
+} elseif ($latestDeliveredInvoice !== null) {
+  $invoices = ['latest-delivered' => $latestDeliveredInvoice];
+} else {
+  $invoices = [];
+}
 ?>
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
