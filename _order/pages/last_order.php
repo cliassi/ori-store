@@ -171,7 +171,7 @@ $invoices = $visibleInvoices;
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
   .receipt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;color:#111827;box-shadow:0 2px 8px rgba(15,23,42,.08);}
-  .receipt-header{text-align:center;padding-bottom:12px;}
+  .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
   .receipt-divider{border-top:1px dashed #9ca3af;margin-top:12px;}
   .receipt-top-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;text-align:left;}
   .receipt-city{font-size:11px;font-weight:600;color:#4b5563;}
