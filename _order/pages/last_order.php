@@ -230,7 +230,7 @@ $invoices = $visibleInvoices;
           <header class="receipt-header">
             <div class="receipt-title-row">
               <h2 class="receipt-title"><?php echo !empty($invoice->is_pending) ? 'ORDER STATUS' : 'ORDER STATUS'; ?></h2>
-              <span class="receipt-title-date"><?php echo !empty($invoice->is_pending) ? 'Order Date: ' : 'Sales Date: '; ?><?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+              <span class="receipt-title-date"><?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
