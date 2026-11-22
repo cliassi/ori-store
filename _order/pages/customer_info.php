@@ -11,6 +11,72 @@ if (!$cust) {
   return;
 }
 
+$photoUploadError = '';
+$photoUploadSuccess = !empty($_SESSION['customer_photo_updated']);
+unset($_SESSION['customer_photo_updated']);
+if (empty($_SESSION['customer_photo_upload_token'])) {
+  $_SESSION['customer_photo_upload_token'] = bin2hex(random_bytes(32));
+}
+
+if (isset($_POST['upload_photo'])) {
+  $submittedToken = isset($_POST['photo_upload_token']) && is_string($_POST['photo_upload_token'])
+    ? $_POST['photo_upload_token']
+    : '';
+  if (!hash_equals($_SESSION['customer_photo_upload_token'], $submittedToken)) {
+    $photoUploadError = 'Your session expired. Please try again.';
+  } elseif (!isset($_FILES['profile_photo']) || !is_array($_FILES['profile_photo'])) {
+    $photoUploadError = 'Choose a photo to upload.';
+  } else {
+    $upload = $_FILES['profile_photo'];
+    $maxPhotoSize = 5 * 1024 * 1024;
+    if (
+      !isset($upload['error'], $upload['tmp_name'], $upload['size'])
+      || !is_int($upload['error'])
+      || !is_string($upload['tmp_name'])
+      || !is_int($upload['size'])
+      || $upload['error'] !== UPLOAD_ERR_OK
+    ) {
+      $photoUploadError = 'The photo could not be uploaded. Please try again.';
+    } elseif ((int)$upload['size'] <= 0 || (int)$upload['size'] > $maxPhotoSize || !is_uploaded_file($upload['tmp_name'])) {
+      $photoUploadError = 'Choose an image smaller than 5 MB.';
+    } else {
+      $allowedImageTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+      ];
+      $imageInfo = @getimagesize($upload['tmp_name']);
+      $fileInfo = class_exists('finfo') ? new finfo(FILEINFO_MIME_TYPE) : null;
+      $mimeType = $fileInfo ? $fileInfo->file($upload['tmp_name']) : false;
+      $validDimensions = $imageInfo
+        && $imageInfo[0] > 0
+        && $imageInfo[1] > 0
+        && ($imageInfo[0] * $imageInfo[1]) <= 25000000;
+      if (!$validDimensions || !isset($allowedImageTypes[$mimeType])) {
+        $photoUploadError = 'Choose a valid JPG, PNG, GIF, or WebP image.';
+      } else {
+        $uploadDirectory = dirname(__DIR__, 2) . '/uploads/customer-profiles';
+        if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true) && !is_dir($uploadDirectory)) {
+          $photoUploadError = 'Photo storage is unavailable. Please try again later.';
+        } else {
+          $fileName = bin2hex(random_bytes(16)) . '.' . $allowedImageTypes[$mimeType];
+          $destination = $uploadDirectory . '/' . $fileName;
+          if (!move_uploaded_file($upload['tmp_name'], $destination)) {
+            $photoUploadError = 'The photo could not be saved. Please try again.';
+          } else {
+            $cust->image = 'uploads/customer-profiles/' . $fileName;
+            R::store($cust);
+            $_SESSION['customer_photo_updated'] = true;
+            redir('?page=customer_info');
+            return;
+          }
+        }
+      }
+    }
+  }
+}
+
 $photo = !empty($cust->image) ? getImageOrPlaceholder($cust->image, $cust->contact) : '';
 ?>
 <style>
@@ -27,13 +93,26 @@ $photo = !empty($cust->image) ? getImageOrPlaceholder($cust->image, $cust->conta
       <div class="w-6"></div>
     </div>
     <div class="text-center">
-      <div class="w-20 h-20 bg-white rounded-full mx-auto mb-3 flex items-center justify-center overflow-hidden">
-        <?php if ($photo): ?>
-          <img src="<?php echo htmlspecialchars($photo, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="w-16 h-16 rounded-full object-cover">
-        <?php else: ?>
-          <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-full"></div>
-        <?php endif; ?>
-      </div>
+      <form id="customer-photo-form" method="post" enctype="multipart/form-data" class="m-0">
+        <input type="hidden" name="upload_photo" value="1">
+        <input type="hidden" name="photo_upload_token" value="<?php echo htmlspecialchars($_SESSION['customer_photo_upload_token'], ENT_QUOTES, 'UTF-8'); ?>">
+        <input id="customer-photo-input" class="sr-only" type="file" name="profile_photo" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="Upload profile photo" onchange="if (this.files.length) this.form.submit();">
+        <label for="customer-photo-input" class="relative mx-auto mb-3 flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white" title="Tap to change profile photo">
+          <?php if ($photo): ?>
+            <img src="<?php echo htmlspecialchars($photo, ENT_QUOTES, 'UTF-8'); ?>" alt="Customer profile photo" class="h-16 w-16 rounded-full object-cover">
+          <?php else: ?>
+            <span class="h-16 w-16 rounded-full bg-gradient-to-br from-green-400 to-blue-500"></span>
+          <?php endif; ?>
+          <span class="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white">
+            <span class="material-symbols-outlined text-base">photo_camera</span>
+          </span>
+        </label>
+      </form>
+      <?php if ($photoUploadError !== ''): ?>
+        <p role="alert" class="mx-auto mb-3 max-w-xs rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800"><?php echo htmlspecialchars($photoUploadError, ENT_QUOTES, 'UTF-8'); ?></p>
+      <?php elseif ($photoUploadSuccess): ?>
+        <p role="status" class="mx-auto mb-3 max-w-xs rounded-lg bg-green-100 px-3 py-2 text-sm text-green-800">Profile photo updated.</p>
+      <?php endif; ?>
       <h2 class="text-xl font-bold"><?php echo htmlspecialchars($cust->company, ENT_QUOTES, 'UTF-8'); ?></h2>
       <p class="text-white/80"><?php echo htmlspecialchars($cust->contact, ENT_QUOTES, 'UTF-8'); ?></p>
     </div>
