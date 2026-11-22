@@ -276,7 +276,7 @@ $invoices = $visibleInvoices;
             <?php $i = 1; foreach ($invoice->items as $it): ?>
               <div class="receipt-item">
                 <div class="receipt-item-head">
-                  <span class="receipt-item-invoice"><?php echo $i++; ?>. <?php echo htmlspecialchars($it->reference_prefix, ENT_QUOTES, 'UTF-8'); ?><?php echo zerofill($it->invoice_id, 5); ?></span>
+                  <span class="receipt-item-invoice"><?php echo $i++; ?>.</span>
                   <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 <div class="receipt-item-values">
