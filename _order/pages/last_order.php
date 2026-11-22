@@ -8,8 +8,10 @@ $uid = (int) UID;
 $invoices = [];
 $historyItems = select("SELECT i.id invoice_id, i.invoice_date,
     c.company customer_name, c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
-    ii.description, ii.quantity, ii.price, ii.assigned_to, ss.phone assigned_phone,
-    pv.particulars
+    ii.description, ii.quantity, ii.price, ii.delivered, ii.delivered_at,
+    ii.assigned_to, ii.assigned_at, ii.collected_at, ss.phone assigned_phone,
+    pv.particulars,
+    EXISTS (SELECT 1 FROM stock_collect_item sci WHERE sci.invoice_item_id = ii.id LIMIT 1) collected_in_stock
   FROM invoice i
   INNER JOIN invoice_item ii ON ii.invoice_id = i.id
   LEFT JOIN customer c ON c.id = i.customer_id
@@ -37,6 +39,11 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
       'assignees' => [],
       'items' => [],
       'total' => 0,
+      'item_count' => 0,
+      'assigned_count' => 0,
+      'collected_count' => 0,
+      'delivered_count' => 0,
+      'progress_stage' => 1,
     ];
   }
   $name = trim((string)$row->particulars);
@@ -48,17 +55,103 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $total = $qty * $price;
   $assignedTo = trim((string)$row->assigned_to);
   $assignedPhone = trim((string)$row->assigned_phone);
+  $isDelivered = $qty > 0 && (float)$row->delivered >= $qty;
+  $isCollected = !empty($row->collected_at) || !empty($row->collected_in_stock) || $isDelivered;
+  $isAssigned = $assignedTo !== '' || !empty($row->assigned_at) || $isCollected;
   if ($assignedTo !== '') {
     $invoices[$dateKey]->assignees[$assignedTo] = $assignedPhone;
   }
+  $invoices[$dateKey]->item_count++;
+  $invoices[$dateKey]->assigned_count += $isAssigned ? 1 : 0;
+  $invoices[$dateKey]->collected_count += $isCollected ? 1 : 0;
+  $invoices[$dateKey]->delivered_count += $isDelivered ? 1 : 0;
   $invoices[$dateKey]->items[] = (object) [
     'invoice_id' => $invoiceId,
+    'reference_prefix' => 'INV',
     'name' => $name,
     'qty' => $qty,
     'price' => $price,
     'total' => $total,
   ];
   $invoices[$dateKey]->total += $total;
+}
+$pendingOrders = select("SELECT co.id order_id, co.invoice_date, co.created_at,
+    c.company customer_name, c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
+    coi.description, coi.quantity, coi.price, pv.particulars
+  FROM customer_order co
+  INNER JOIN customer_order_item coi ON coi.customer_order_id = co.id
+  LEFT JOIN customer c ON c.id = co.customer_id
+  LEFT JOIN product_variance pv ON pv.id = coi.product_variance_id
+  WHERE co.customer_id = $uid
+    AND (co.invoice_id IS NULL OR co.invoice_id = 0)
+    AND LOWER(COALESCE(co.status, '')) NOT IN ('approved', 'ordered')
+    AND co.deleted_at IS NULL
+    AND coi.deleted_at IS NULL
+  ORDER BY co.invoice_date DESC, co.id DESC, coi.id DESC");
+while ($pendingOrders && ($row = mysqli_fetch_object($pendingOrders))) {
+  $orderId = (int)$row->order_id;
+  $orderKey = 'pending-' . $orderId;
+  $customerName = trim((string)$row->customer_name);
+  if ($customerName === '') {
+    $customerName = trim((string)$row->customer_contact);
+  }
+  if ($customerName === '') {
+    $customerName = 'Walk-in';
+  }
+  if (!isset($invoices[$orderKey])) {
+    $invoices[$orderKey] = (object) [
+      'date' => $row->invoice_date ?: $row->created_at,
+      'customer_name' => $customerName,
+      'customer_contact' => trim((string)$row->customer_contact),
+      'customer_mobile' => trim((string)$row->customer_mobile),
+      'customer_city' => trim((string)$row->customer_city),
+      'assignees' => [],
+      'items' => [],
+      'total' => 0,
+      'item_count' => 0,
+      'assigned_count' => 0,
+      'collected_count' => 0,
+      'delivered_count' => 0,
+      'progress_stage' => 1,
+      'is_pending' => true,
+    ];
+  }
+  $name = trim((string)$row->particulars);
+  if ($name === '') {
+    $name = trim((string)$row->description);
+  }
+  $qty = (float)$row->quantity;
+  $price = (float)$row->price;
+  $total = $qty * $price;
+  $invoices[$orderKey]->items[] = (object) [
+    'invoice_id' => $orderId,
+    'reference_prefix' => 'ORD',
+    'name' => $name,
+    'qty' => $qty,
+    'price' => $price,
+    'total' => $total,
+  ];
+  $invoices[$orderKey]->item_count++;
+  $invoices[$orderKey]->total += $total;
+}
+uasort($invoices, function ($left, $right) {
+  $leftDate = strtotime((string)$left->date) ?: 0;
+  $rightDate = strtotime((string)$right->date) ?: 0;
+  if ($leftDate === $rightDate) {
+    return 0;
+  }
+  return $leftDate < $rightDate ? 1 : -1;
+});
+foreach ($invoices as $invoice) {
+  if ($invoice->item_count > 0 && $invoice->assigned_count === $invoice->item_count) {
+    $invoice->progress_stage = 2;
+  }
+  if ($invoice->item_count > 0 && $invoice->collected_count === $invoice->item_count) {
+    $invoice->progress_stage = 3;
+  }
+  if ($invoice->item_count > 0 && $invoice->delivered_count === $invoice->item_count) {
+    $invoice->progress_stage = 4;
+  }
 }
 ?>
 <style>
@@ -67,6 +160,16 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
   .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
+  .receipt-progress{position:relative;margin:16px 0 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
+  .receipt-progress-track{position:absolute;top:15px;left:12.5%;right:12.5%;height:3px;background:#e5e7eb;border-radius:999px;}
+  .receipt-progress-fill{display:block;height:100%;background:#22b55e;border-radius:999px;transition:width .25s ease;}
+  .receipt-progress-step{position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:center;gap:5px;color:#6b7280;font-size:9px;line-height:1.15;text-align:center;}
+  .receipt-progress-marker{display:flex;width:32px;height:32px;align-items:center;justify-content:center;border:2px solid #d1d5db;border-radius:50%;background:#fff;color:#6b7280;font-size:12px;font-weight:700;}
+  .receipt-progress-step.is-complete,.receipt-progress-step.is-current{color:#16803c;font-weight:700;}
+  .receipt-progress-step.is-complete .receipt-progress-marker,.receipt-progress-step.is-current .receipt-progress-marker{border-color:#22b55e;background:#22b55e;color:#fff;}
+  .receipt-progress-step.is-pending{color:#c2410c;}
+  .receipt-progress-step.is-pending .receipt-progress-marker{border-color:#f97316;background:#fff;color:#c2410c;}
+  .receipt-progress-label{max-width:78px;}
   .receipt-meta{margin:12px 0;font-size:12px;}
   .receipt-meta strong,.receipt-assignee-row strong{color:#374151;}
   .receipt-assignees{margin:10px 0;font-size:12px;}
@@ -95,7 +198,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
       <h1 class="text-lg font-semibold m-0">Order History</h1>
       <div class="w-6"></div>
     </div>
-    <p class="text-center text-white/90 text-sm m-0">Invoices and items</p>
+    <p class="text-center text-white/90 text-sm m-0">Orders, invoices and items</p>
   </div>
 </div>
 
@@ -109,13 +212,34 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
       <?php foreach ($invoices as $invoice): ?>
         <article class="receipt-card">
           <header class="receipt-header">
-            <h2 class="receipt-title">INVOICE</h2>
+            <h2 class="receipt-title"><?php echo !empty($invoice->is_pending) ? 'ORDER' : 'INVOICE'; ?></h2>
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle">Contact: <?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($invoice->customer_mobile !== ''): ?><div class="receipt-subtitle">Phone: <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+            <div class="receipt-progress" role="group" aria-label="Order progress">
+              <div class="receipt-progress-track" aria-hidden="true">
+                <span class="receipt-progress-fill" style="width: <?php echo (($invoice->progress_stage - 1) / 3) * 100; ?>%"></span>
+              </div>
+              <?php
+              $progressLabels = [!empty($invoice->is_pending) ? 'Pending' : 'Confirmed', 'Assigned', 'Out for Delivery', 'Delivered'];
+              foreach ($progressLabels as $stepIndex => $progressLabel):
+                $stepNumber = $stepIndex + 1;
+                $stepClass = $stepNumber < $invoice->progress_stage
+                  ? 'is-complete'
+                  : ($stepNumber === $invoice->progress_stage ? 'is-current' : '');
+                if (!empty($invoice->is_pending) && $stepNumber === 1) {
+                  $stepClass .= ' is-pending';
+                }
+              ?>
+                <div class="receipt-progress-step <?php echo $stepClass; ?>"<?php echo $stepNumber === $invoice->progress_stage ? ' aria-current="step"' : ''; ?>>
+                  <span class="receipt-progress-marker"><?php echo $stepNumber < $invoice->progress_stage ? '&#10003;' : $stepNumber; ?></span>
+                  <span class="receipt-progress-label"><?php echo htmlspecialchars($progressLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                </div>
+              <?php endforeach; ?>
+            </div>
           </header>
-          <div class="receipt-meta"><strong>Sales Date:</strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+          <div class="receipt-meta"><strong><?php echo !empty($invoice->is_pending) ? 'Order Date:' : 'Sales Date:'; ?></strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
           <div class="receipt-assignees">
             <?php if (empty($invoice->assignees)): ?>
               <div class="receipt-assignee-row"><span><strong>Assigned To:</strong> —</span><span><strong>Phone:</strong> —</span></div>
@@ -133,7 +257,7 @@ while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
             <?php $i = 1; foreach ($invoice->items as $it): ?>
               <div class="receipt-item">
                 <div class="receipt-item-head">
-                  <span class="receipt-item-invoice"><?php echo $i++; ?>. INV<?php echo zerofill($it->invoice_id, 5); ?></span>
+                  <span class="receipt-item-invoice"><?php echo $i++; ?>. <?php echo htmlspecialchars($it->reference_prefix, ENT_QUOTES, 'UTF-8'); ?><?php echo zerofill($it->invoice_id, 5); ?></span>
                   <span class="receipt-item-name"><?php echo htmlspecialchars((string)$it->name, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 <div class="receipt-item-values">
