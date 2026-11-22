@@ -202,6 +202,7 @@ $invoices = $visibleInvoices;
   .receipt-item-values-header span:nth-child(2){text-align:right;}
   .receipt-item-values-header span:last-child{text-align:right;}
   .receipt-item-value{display:flex;flex-direction:column;gap:2px;}
+  .receipt-item-value strong{font-size:12px;}
   .receipt-item-value:nth-child(2){align-items:flex-end;}
   .receipt-item-value:last-child{text-align:right;}
   .receipt-totals{width:min(100%,240px);margin:12px 0 0 auto;font-size:12px;}
