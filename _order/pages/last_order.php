@@ -183,8 +183,8 @@ $invoices = $visibleInvoices;
   .receipt-progress-step{position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:center;gap:5px;color:#6b7280;font-size:9px;line-height:1.15;text-align:center;}
   .receipt-progress-marker{display:flex;width:32px;height:32px;align-items:center;justify-content:center;border:2px solid #d1d5db;border-radius:50%;background:#fff;color:#6b7280;font-size:12px;font-weight:700;}
   .receipt-progress-step.is-complete,.receipt-progress-step.is-current{color:#16803c;font-weight:700;}
-  .receipt-progress-step:last-child.is-complete,.receipt-progress-step:last-child.is-current{color:#facc15;}
   .receipt-progress-step.is-complete .receipt-progress-marker,.receipt-progress-step.is-current .receipt-progress-marker{border-color:#22b55e;background:#22b55e;color:#fff;}
+  .receipt-progress-step:last-child.is-complete .receipt-progress-marker,.receipt-progress-step:last-child.is-current .receipt-progress-marker{color:#facc15;}
   .receipt-progress-step.is-pending{color:#c2410c;}
   .receipt-progress-step.is-pending .receipt-progress-marker{border-color:#f97316;background:#fff;color:#c2410c;}
   .receipt-progress-label{max-width:78px;}
