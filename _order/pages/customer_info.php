@@ -18,7 +18,7 @@ if (empty($_SESSION['customer_photo_upload_token'])) {
   $_SESSION['customer_photo_upload_token'] = bin2hex(random_bytes(32));
 }
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset($_POST['upload_photo'])) {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['upload_photo'])) {
   $photoUploadError = 'No photo data reached the server. The image may exceed PHP upload limits; choose a smaller photo.';
 }
 
