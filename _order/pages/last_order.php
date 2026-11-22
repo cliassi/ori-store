@@ -5,6 +5,7 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 }
 
 $uid = (int) UID;
+$historyStartDate = '2026-11-01';
 $invoices = [];
 $historyItems = select("SELECT i.id invoice_id, i.invoice_date,
     c.company customer_name, c.contact customer_contact, c.mobile customer_mobile, c.city customer_city,
@@ -18,6 +19,7 @@ $historyItems = select("SELECT i.id invoice_id, i.invoice_date,
   LEFT JOIN staff_salary ss ON ss.name = ii.assigned_to AND ss.category = 'Delivery Staff'
   LEFT JOIN product_variance pv ON pv.id = ii.product_variance_id
   WHERE i.customer_id = $uid
+    AND i.invoice_date >= '$historyStartDate'
   ORDER BY i.invoice_date DESC, i.id DESC, ii.id DESC");
 while ($historyItems && ($row = mysqli_fetch_object($historyItems))) {
   $invoiceId = (int)$row->invoice_id;
@@ -83,6 +85,7 @@ $pendingOrders = select("SELECT co.id order_id, co.invoice_date, co.created_at,
   LEFT JOIN customer c ON c.id = co.customer_id
   LEFT JOIN product_variance pv ON pv.id = coi.product_variance_id
   WHERE co.customer_id = $uid
+    AND COALESCE(co.invoice_date, DATE(co.created_at)) >= '$historyStartDate'
     AND (co.invoice_id IS NULL OR co.invoice_id = 0)
     AND LOWER(COALESCE(co.status, '')) NOT IN ('approved', 'ordered')
     AND co.deleted_at IS NULL
@@ -153,22 +156,17 @@ foreach ($invoices as $invoice) {
     $invoice->progress_stage = 4;
   }
 }
-$activeInvoices = [];
-$latestDeliveredInvoice = null;
+$visibleInvoices = [];
+$deliveredCount = 0;
 foreach ($invoices as $invoiceKey => $invoice) {
   if ($invoice->progress_stage < 4) {
-    $activeInvoices[$invoiceKey] = $invoice;
-  } elseif ($latestDeliveredInvoice === null) {
-    $latestDeliveredInvoice = $invoice;
+    $visibleInvoices[$invoiceKey] = $invoice;
+  } elseif ($deliveredCount < 3) {
+    $visibleInvoices[$invoiceKey] = $invoice;
+    $deliveredCount++;
   }
 }
-if (!empty($activeInvoices)) {
-  $invoices = $activeInvoices;
-} elseif ($latestDeliveredInvoice !== null) {
-  $invoices = ['latest-delivered' => $latestDeliveredInvoice];
-} else {
-  $invoices = [];
-}
+$invoices = $visibleInvoices;
 ?>
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
