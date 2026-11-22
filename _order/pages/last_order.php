@@ -171,13 +171,14 @@ $invoices = $visibleInvoices;
 <style>
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
   .receipt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;color:#111827;box-shadow:0 2px 8px rgba(15,23,42,.08);}
-  .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
+  .receipt-header{text-align:center;padding-bottom:12px;}
+  .receipt-divider{border-top:1px dashed #9ca3af;margin-top:12px;}
   .receipt-top-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;text-align:left;}
   .receipt-city{font-size:11px;font-weight:600;color:#4b5563;}
   .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
   .receipt-title-date{font-size:10px;font-weight:500;letter-spacing:normal;color:#6b7280;text-align:right;white-space:nowrap;}
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
-  .receipt-progress{position:relative;margin:16px 0 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
+  .receipt-progress{position:relative;margin:8px 0 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
   .receipt-progress-track{position:absolute;top:15px;left:12.5%;right:12.5%;height:3px;background:#e5e7eb;border-radius:999px;}
   .receipt-progress-fill{display:block;height:100%;background:#22b55e;border-radius:999px;transition:width .25s ease;}
   .receipt-progress-step{position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:center;gap:5px;color:#6b7280;font-size:9px;line-height:1.15;text-align:center;}
@@ -237,6 +238,7 @@ $invoices = $visibleInvoices;
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($invoice->customer_mobile !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+            <div class="receipt-divider" aria-hidden="true"></div>
             <div class="receipt-progress" role="group" aria-label="Order progress">
               <div class="receipt-progress-track" aria-hidden="true">
                 <span class="receipt-progress-fill" style="width: <?php echo (($invoice->progress_stage - 1) / 3) * 100; ?>%"></span>
