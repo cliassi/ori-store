@@ -96,17 +96,15 @@ $photo = !empty($cust->image) ? getImageOrPlaceholder($cust->image, $cust->conta
       <form id="customer-photo-form" method="post" enctype="multipart/form-data" class="m-0">
         <input type="hidden" name="upload_photo" value="1">
         <input type="hidden" name="photo_upload_token" value="<?php echo htmlspecialchars($_SESSION['customer_photo_upload_token'], ENT_QUOTES, 'UTF-8'); ?>">
-        <input id="customer-photo-input" class="sr-only" type="file" name="profile_photo" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="Upload profile photo" onchange="if (this.files.length) this.form.submit();">
-        <button type="button" onclick="pickCustomerPhoto()" aria-label="Change profile photo" class="relative mx-auto mb-3 flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border-0 bg-white p-0" title="Tap to change profile photo">
+        <input id="customer-photo-input" class="sr-only" type="file" name="profile_photo" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="Upload profile photo" onchange="if (this.files.length) submitCustomerPhoto(this.form);">
+        <div class="relative mx-auto mb-1 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white">
           <?php if ($photo): ?>
             <img src="<?php echo htmlspecialchars($photo, ENT_QUOTES, 'UTF-8'); ?>" alt="Customer profile photo" class="h-16 w-16 rounded-full object-cover">
           <?php else: ?>
             <span class="h-16 w-16 rounded-full bg-gradient-to-br from-green-400 to-blue-500"></span>
           <?php endif; ?>
-          <span class="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white">
-            <span class="material-symbols-outlined text-base">photo_camera</span>
-          </span>
-        </button>
+        </div>
+        <a href="#" onclick="pickCustomerPhoto(event)" class="mb-3 inline-block text-sm font-medium text-white underline">Edit Photo</a>
       </form>
       <?php if ($photoUploadError !== ''): ?>
         <p role="alert" class="mx-auto mb-3 max-w-xs rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800"><?php echo htmlspecialchars($photoUploadError, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -120,7 +118,8 @@ $photo = !empty($cust->image) ? getImageOrPlaceholder($cust->image, $cust->conta
 </div>
 
 <script>
-function pickCustomerPhoto() {
+function pickCustomerPhoto(event) {
+  event.preventDefault();
   if (typeof window.FlutterInvokeMethod === 'function') {
     window.FlutterInvokeMethod('pickImage');
     return;
@@ -128,17 +127,26 @@ function pickCustomerPhoto() {
   document.getElementById('customer-photo-input').click();
 }
 
+function submitCustomerPhoto(form) {
+  if (form && typeof form.requestSubmit === 'function') {
+    form.requestSubmit();
+  } else if (form) {
+    form.submit();
+  }
+}
+
 window.handleImagePicker = function (imageData) {
   if (!imageData || !imageData.data) return;
 
   const input = document.getElementById('customer-photo-input');
+  if (!input || !input.form) return;
   const transfer = new DataTransfer();
   const file = new File([imageData.data], imageData.name || 'profile-photo.jpg', {
     type: imageData.type || 'image/jpeg'
   });
   transfer.items.add(file);
   input.files = transfer.files;
-  input.dispatchEvent(new Event('change', { bubbles: true }));
+  submitCustomerPhoto(input.form);
 };
 </script>
 
