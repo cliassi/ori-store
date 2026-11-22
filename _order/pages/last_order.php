@@ -197,7 +197,7 @@ $invoices = $visibleInvoices;
   .receipt-item-head{display:flex;align-items:flex-start;gap:8px;}
   .receipt-item-invoice{font-size:10px;color:#4b5563;white-space:nowrap;}
   .receipt-item-name{display:block;flex:1;font-size:10px;font-weight:600;min-width:0;}
-  .receipt-item-values{display:grid;grid-template-columns:1fr .55fr 1fr;gap:8px;margin-top:6px;padding-left:54px;box-sizing:border-box;font-size:11px;}
+  .receipt-item-values{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px;margin-top:6px;padding-left:54px;box-sizing:border-box;font-size:11px;}
   .receipt-item-values-header{font-size:10px;color:#6b7280;margin-top:10px;}
   .receipt-item-values-header span:nth-child(2){text-align:right;}
   .receipt-item-values-header span:last-child{text-align:right;}
