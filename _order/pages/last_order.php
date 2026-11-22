@@ -177,12 +177,13 @@ $invoices = $visibleInvoices;
   .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
   .receipt-title-date{font-size:10px;font-weight:500;letter-spacing:normal;color:#6b7280;text-align:right;white-space:nowrap;}
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
-  .receipt-progress{position:relative;margin:8px 0 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
+  .receipt-progress{position:relative;margin:8px -16px 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
   .receipt-progress-track{position:absolute;top:15px;left:12.5%;right:12.5%;height:3px;background:#e5e7eb;border-radius:999px;}
   .receipt-progress-fill{display:block;height:100%;background:#22b55e;border-radius:999px;transition:width .25s ease;}
   .receipt-progress-step{position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:center;gap:5px;color:#6b7280;font-size:9px;line-height:1.15;text-align:center;}
   .receipt-progress-marker{display:flex;width:32px;height:32px;align-items:center;justify-content:center;border:2px solid #d1d5db;border-radius:50%;background:#fff;color:#6b7280;font-size:12px;font-weight:700;}
   .receipt-progress-step.is-complete,.receipt-progress-step.is-current{color:#16803c;font-weight:700;}
+  .receipt-progress-step:last-child.is-complete,.receipt-progress-step:last-child.is-current{color:#facc15;}
   .receipt-progress-step.is-complete .receipt-progress-marker,.receipt-progress-step.is-current .receipt-progress-marker{border-color:#22b55e;background:#22b55e;color:#fff;}
   .receipt-progress-step.is-pending{color:#c2410c;}
   .receipt-progress-step.is-pending .receipt-progress-marker{border-color:#f97316;background:#fff;color:#c2410c;}
