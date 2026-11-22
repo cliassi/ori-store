@@ -172,7 +172,9 @@ $invoices = $visibleInvoices;
   .blob-shape{border-bottom-left-radius:24px;border-bottom-right-radius:24px;position:relative;overflow:hidden}
   .receipt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;color:#111827;box-shadow:0 2px 8px rgba(15,23,42,.08);}
   .receipt-header{text-align:center;border-bottom:1px dashed #9ca3af;padding-bottom:12px;}
-  .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0 0 8px;}
+  .receipt-title-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;text-align:left;margin-bottom:8px;}
+  .receipt-title{font-size:16px;font-weight:800;letter-spacing:.08em;margin:0;}
+  .receipt-title-date{font-size:10px;font-weight:500;letter-spacing:normal;color:#6b7280;text-align:right;white-space:nowrap;}
   .receipt-subtitle{font-size:12px;color:#4b5563;margin:2px 0;}
   .receipt-progress{position:relative;margin:16px 0 2px;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
   .receipt-progress-track{position:absolute;top:15px;left:12.5%;right:12.5%;height:3px;background:#e5e7eb;border-radius:999px;}
@@ -226,11 +228,14 @@ $invoices = $visibleInvoices;
       <?php foreach ($invoices as $invoice): ?>
         <article class="receipt-card">
           <header class="receipt-header">
-            <h2 class="receipt-title"><?php echo !empty($invoice->is_pending) ? 'ORDER' : 'INVOICE'; ?></h2>
+            <div class="receipt-title-row">
+              <h2 class="receipt-title"><?php echo !empty($invoice->is_pending) ? 'ORDER STATUS' : 'ORDER STATUS'; ?></h2>
+              <span class="receipt-title-date"><?php echo !empty($invoice->is_pending) ? 'Order Date: ' : 'Sales Date: '; ?><?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+            </div>
             <div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_name, ENT_QUOTES, 'UTF-8'); ?></div>
-            <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle">Contact: <?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-            <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-            <?php if ($invoice->customer_mobile !== ''): ?><div class="receipt-subtitle">Phone: <?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+            <?php if ($invoice->customer_contact !== '' && $invoice->customer_contact !== $invoice->customer_name): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_contact, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+            <!-- <?php if ($invoice->customer_city !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_city, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?> -->
+            <?php if ($invoice->customer_mobile !== ''): ?><div class="receipt-subtitle"><?php echo htmlspecialchars($invoice->customer_mobile, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <div class="receipt-progress" role="group" aria-label="Order progress">
               <div class="receipt-progress-track" aria-hidden="true">
                 <span class="receipt-progress-fill" style="width: <?php echo (($invoice->progress_stage - 1) / 3) * 100; ?>%"></span>
@@ -253,7 +258,6 @@ $invoices = $visibleInvoices;
               <?php endforeach; ?>
             </div>
           </header>
-          <div class="receipt-meta"><strong><?php echo !empty($invoice->is_pending) ? 'Order Date:' : 'Sales Date:'; ?></strong> <?php echo htmlspecialchars($invoice->date ? (string)df($invoice->date) : '—', ENT_QUOTES, 'UTF-8'); ?></div>
           <div class="receipt-assignees">
             <?php if (empty($invoice->assignees)): ?>
               <div class="receipt-assignee-row"><span><strong>Assigned To:</strong> —</span><span><strong>Phone:</strong> —</span></div>
