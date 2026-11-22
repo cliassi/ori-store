@@ -18,6 +18,10 @@ if (empty($_SESSION['customer_photo_upload_token'])) {
   $_SESSION['customer_photo_upload_token'] = bin2hex(random_bytes(32));
 }
 
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset($_POST['upload_photo'])) {
+  $photoUploadError = 'No photo data reached the server. The image may exceed PHP upload limits; choose a smaller photo.';
+}
+
 if (isset($_POST['upload_photo'])) {
   $submittedToken = isset($_POST['photo_upload_token']) && is_string($_POST['photo_upload_token'])
     ? $_POST['photo_upload_token']
@@ -34,9 +38,23 @@ if (isset($_POST['upload_photo'])) {
       || !is_int($upload['error'])
       || !is_string($upload['tmp_name'])
       || !is_int($upload['size'])
-      || $upload['error'] !== UPLOAD_ERR_OK
     ) {
       $photoUploadError = 'The photo could not be uploaded. Please try again.';
+    } elseif ($upload['error'] !== UPLOAD_ERR_OK) {
+      switch ($upload['error']) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+          $photoUploadError = 'The photo exceeds the server upload limit. Choose a smaller image.';
+          break;
+        case UPLOAD_ERR_NO_FILE:
+          $photoUploadError = 'Choose a photo to upload.';
+          break;
+        case UPLOAD_ERR_PARTIAL:
+          $photoUploadError = 'The photo upload was interrupted. Please try again.';
+          break;
+        default:
+          $photoUploadError = 'The photo could not be uploaded. Please try again.';
+      }
     } elseif ((int)$upload['size'] <= 0 || (int)$upload['size'] > $maxPhotoSize || !is_uploaded_file($upload['tmp_name'])) {
       $photoUploadError = 'Choose an image smaller than 5 MB.';
     } else {
@@ -105,6 +123,7 @@ $photo = !empty($cust->image) ? getImageOrPlaceholder($cust->image, $cust->conta
           <?php endif; ?>
         </div>
         <a href="#" onclick="pickCustomerPhoto(event)" class="mb-3 inline-block text-sm font-medium text-white underline">Edit Photo</a>
+        <p id="customer-photo-client-status" class="mx-auto mt-2 mb-2 max-w-xs rounded-lg px-3 py-2 text-sm" role="status" aria-live="polite" hidden></p>
       </form>
       <?php if ($photoUploadError !== ''): ?>
         <p role="alert" class="mx-auto mb-3 max-w-xs rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800"><?php echo htmlspecialchars($photoUploadError, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -120,6 +139,7 @@ $photo = !empty($cust->image) ? getImageOrPlaceholder($cust->image, $cust->conta
 <script>
 function pickCustomerPhoto(event) {
   event.preventDefault();
+  setCustomerPhotoStatus('Choose a photo to upload.');
   if (typeof window.FlutterInvokeMethod === 'function') {
     window.FlutterInvokeMethod('pickImage');
     return;
@@ -128,6 +148,11 @@ function pickCustomerPhoto(event) {
 }
 
 function submitCustomerPhoto(form) {
+  if (!form) {
+    setCustomerPhotoStatus('The photo form is unavailable. Refresh and try again.', true);
+  } else {
+    setCustomerPhotoStatus('Uploading photo…');
+  }
   if (form && typeof form.requestSubmit === 'function') {
     form.requestSubmit();
   } else if (form) {
@@ -135,18 +160,37 @@ function submitCustomerPhoto(form) {
   }
 }
 
+function setCustomerPhotoStatus(message, isError) {
+  const status = document.getElementById('customer-photo-client-status');
+  if (!status) return;
+  status.textContent = message;
+  status.className = 'mx-auto mt-2 mb-2 max-w-xs rounded-lg px-3 py-2 text-sm ' +
+    (isError ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800');
+  status.hidden = !message;
+}
+
 window.handleImagePicker = function (imageData) {
-  if (!imageData || !imageData.data) return;
+  if (!imageData || !imageData.data) {
+    setCustomerPhotoStatus('The picker returned no image. Please try again.', true);
+    return;
+  }
 
   const input = document.getElementById('customer-photo-input');
-  if (!input || !input.form) return;
-  const transfer = new DataTransfer();
-  const file = new File([imageData.data], imageData.name || 'profile-photo.jpg', {
-    type: imageData.type || 'image/jpeg'
-  });
-  transfer.items.add(file);
-  input.files = transfer.files;
-  submitCustomerPhoto(input.form);
+  if (!input || !input.form) {
+    setCustomerPhotoStatus('The photo upload form was not found. Refresh and try again.', true);
+    return;
+  }
+  try {
+    const transfer = new DataTransfer();
+    const file = new File([imageData.data], imageData.name || 'profile-photo.jpg', {
+      type: imageData.type || 'image/jpeg'
+    });
+    transfer.items.add(file);
+    input.files = transfer.files;
+    submitCustomerPhoto(input.form);
+  } catch (error) {
+    setCustomerPhotoStatus('Could not prepare the selected photo for upload. Try another image.', true);
+  }
 };
 </script>
 
