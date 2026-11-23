@@ -158,6 +158,7 @@ foreach ($categories as $category) {
 
 <!-- Product Categories Row (circular badges with blue ring) -->
 <?php
+/*
 // Build badge text using the first variant name per category (e.g., 500ml X 12)
 $categoryBadges = [];
 foreach ($products as $pg) {
@@ -166,7 +167,9 @@ foreach ($products as $pg) {
     $categoryBadges[$cid] = strtoupper($pg['variants'][0]['particulars']);
   }
 }
+*/
 ?>
+<!--
 <div class="bg-white px-1 py-1">
   <div class="flex items-center justify-between px-2 py-2">
     <h3 class="font-bold text-brandBlue text-base">Categories</h3>
@@ -175,7 +178,6 @@ foreach ($products as $pg) {
       <button class="category-next rounded-full w-8 h-8 border border-gray-300 text-gray-600 flex items-center justify-center hover:bg-gray-50" aria-label="Next">›</button>
     </div>
   </div>
-  <!-- Category Slider Viewport -->
   <div class="category-viewport overflow-hidden px-1 relative">
     <div class="category-track flex gap-4 will-change-transform">
       <?php foreach ($categories as $category): ?>
@@ -189,6 +191,7 @@ foreach ($products as $pg) {
     </div>
   </div>
 </div>
+-->
 
 <!-- Product Variants Rows (horizontal sliders) -->
 <div class="space-y-2">
@@ -401,7 +404,8 @@ foreach ($products as $pg) {
     cursor: grabbing;
   }
 
-  /* Category slider sizing: show ~4.5 items on small screens, 5 on >=480px */
+  /*
+  Category slider sizing: show ~4.5 items on small screens, 5 on >=480px
   .category-card {
     flex: 0 0 var(--item-width, calc(100%/4.5));
   }
@@ -420,6 +424,7 @@ foreach ($products as $pg) {
     touch-action: pan-y;
     cursor: grab;
   }
+  */
 
   /* Sticky search bar */
   #stickySearchBarHome {
@@ -492,7 +497,8 @@ foreach ($products as $pg) {
     return 0;
   }
 
-  // Category slider logic: infinite loop, prev/next, 4.5–5 items visible
+  /*
+  Category slider logic: infinite loop, prev/next, 4.5–5 items visible
   function initCategorySlider() {
     const viewport = document.querySelector('.category-viewport');
     const track = document.querySelector('.category-track');
@@ -617,6 +623,7 @@ foreach ($products as $pg) {
     requestAnimationFrame(() => scrollToIndex(false));
     window.addEventListener('resize', () => scrollToIndex(false));
   }
+  */
 
   // Slider logic: infinite loop, prev/next, 3.5–4 items visible
   function initSliders() {
@@ -819,7 +826,8 @@ foreach ($products as $pg) {
     });
   });
 
-  // Scroll to category function
+  /*
+  Scroll to category function
   function scrollToCategory(categoryId) {
     const element = document.getElementById(categoryId);
     if (element) {
@@ -835,16 +843,17 @@ foreach ($products as $pg) {
       }, 2000);
     }
   }
+  */
   // Initialize sliders when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      initCategorySlider();
+      // initCategorySlider();
       initSliders();
       initInvoiceFlow();
       initStickySearchBar();
     });
   } else {
-    initCategorySlider();
+    // initCategorySlider();
     initSliders();
     initInvoiceFlow();
     initStickySearchBar();
