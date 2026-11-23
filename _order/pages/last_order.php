@@ -157,10 +157,16 @@ foreach ($invoices as $invoice) {
   }
 }
 $visibleInvoices = [];
+$lastDeliveredInvoice = null;
 foreach ($invoices as $invoiceKey => $invoice) {
   if ($invoice->progress_stage < 4) {
     $visibleInvoices[$invoiceKey] = $invoice;
+  } elseif ($lastDeliveredInvoice === null) {
+    $lastDeliveredInvoice = [$invoiceKey => $invoice];
   }
+}
+if (!$visibleInvoices && $lastDeliveredInvoice !== null) {
+  $visibleInvoices = $lastDeliveredInvoice;
 }
 $invoices = $visibleInvoices;
 ?>
