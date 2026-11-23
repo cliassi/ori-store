@@ -89,16 +89,22 @@ function orderadminAuthLogin($connection, $input, $post)
     if ($isCustomer) {
         try {
             $loginStatus = $connection->prepare(
-                'UPDATE customer SET login_time = NOW(), logout_time = NULL WHERE id = ?'
+                'UPDATE customer
+                 SET login_time = NOW(), logout_time = NULL
+                 WHERE id = ? AND login_time IS NULL'
             );
             if (!$loginStatus) {
                 return array(500, array('error' => 1, 'message' => 'Authentication unavailable'));
             }
             $loginStatus->bind_param('i', $userId);
             $updated = $loginStatus->execute();
+            $affectedRows = $loginStatus->affected_rows;
             $loginStatus->close();
             if (!$updated) {
                 return array(500, array('error' => 1, 'message' => 'Authentication unavailable'));
+            }
+            if ($affectedRows < 1) {
+                return array(409, array('error' => 1, 'message' => 'Customer is already logged in'));
             }
         } catch (Throwable $error) {
             return array(500, array('error' => 1, 'message' => 'Authentication unavailable'));
