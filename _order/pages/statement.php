@@ -5,6 +5,7 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 }
 
 $uid = (int) UID;
+$statementPreviewLimit = 2;
 $cust = R::findOne('customer', ' id = ? ', [$uid]);
 if (!$cust) {
   redir('?page=home');
@@ -88,7 +89,7 @@ $showAll = isset($get->show) && $get->show === 'all';
                 $balance -= $item->amount;
                 $ref = 'OR' . zerofill($item->id, 7);
               }
-              $hide = (!$showAll && $counter > 10) ? ' hidden' : '';
+              $hide = (!$showAll && $counter > $statementPreviewLimit) ? ' hidden' : '';
               $counter--;
               echo "<tr class='border-b border-gray-100$hide'>";
               echo "<td class='px-2 py-2'>" . htmlspecialchars((string)df($sort_date), ENT_QUOTES, 'UTF-8') . "</td>";
@@ -121,10 +122,10 @@ $showAll = isset($get->show) && $get->show === 'all';
         </tbody>
       </table>
     </div>
-    <?php if ($rowCount > 10): ?>
+    <?php if ($rowCount > $statementPreviewLimit): ?>
       <div class="px-4 py-3 text-center border-t border-gray-100">
         <?php if ($showAll): ?>
-          <a href="?page=statement" class="text-sm text-blue-600 no-underline">Show last 10</a>
+          <a href="?page=statement" class="text-sm text-blue-600 no-underline">Show last <?php echo $statementPreviewLimit; ?></a>
         <?php else: ?>
           <a href="?page=statement&show=all" class="text-sm text-blue-600 no-underline">Show all</a>
         <?php endif; ?>
