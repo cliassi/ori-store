@@ -784,7 +784,8 @@ foreach ($products as $pg) {
   });
 
   // Search functionality
-  document.getElementById('searchInput').addEventListener('input', function(e) {
+  const searchInput = document.getElementById('searchInput');
+  searchInput && searchInput.addEventListener('input', function(e) {
     const searchTerm = e.target.value.toLowerCase().trim();
     const productSections = document.querySelectorAll('.product-section');
     const productItems = document.querySelectorAll('.product-item');
@@ -850,13 +851,11 @@ foreach ($products as $pg) {
       // initCategorySlider();
       initSliders();
       initInvoiceFlow();
-      initStickySearchBar();
     });
   } else {
     // initCategorySlider();
     initSliders();
     initInvoiceFlow();
-    initStickySearchBar();
   }
 
   // Order collection and submission
