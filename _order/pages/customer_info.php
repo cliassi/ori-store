@@ -19,7 +19,10 @@ if (empty($_SESSION['customer_photo_upload_token'])) {
 }
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['upload_photo'])) {
-  $photoUploadError = 'No photo data reached the server. The image may exceed PHP upload limits; choose a smaller photo.';
+  $requestLength = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+  $postLimit = ini_get('post_max_size');
+  $postLimit = $postLimit !== false ? $postLimit : 'unknown';
+  $photoUploadError = 'No form data reached the server (request: ' . $requestLength . ' bytes; PHP post_max_size: ' . $postLimit . '). Choose a smaller photo or ask the site administrator to raise the limit.';
 }
 
 if (isset($_POST['upload_photo'])) {
@@ -74,7 +77,7 @@ if (isset($_POST['upload_photo'])) {
       if (!$validDimensions || !isset($allowedImageTypes[$mimeType])) {
         $photoUploadError = 'Choose a valid JPG, PNG, GIF, or WebP image.';
       } else {
-        $uploadDirectory = dirname(__DIR__, 2) . '/uploads/customer-profiles';
+        $uploadDirectory = dirname(dirname(__DIR__)) . '/uploads/customer-profiles';
         if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true) && !is_dir($uploadDirectory)) {
           $photoUploadError = 'Photo storage is unavailable. Please try again later.';
         } else {
