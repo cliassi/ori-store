@@ -1,4 +1,32 @@
 <?php
+$notifyCustomerOrderApproval = function ($customerId, $orderId) {
+  $customerId = (int)$customerId;
+  $orderId = (int)$orderId;
+  if ($customerId < 1 || $orderId < 1 || !function_exists('sendPush')) {
+    return;
+  }
+
+  try {
+    $pushClient = R::findOne('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+    if (!$pushClient || empty($pushClient->uuid)) {
+      error_log("No OneSignal subscription found for customer {$customerId}; order {$orderId} approval was not sent.");
+      return;
+    }
+
+    $result = sendPush(
+      $pushClient->uuid,
+      "Your order #{$orderId} has been approved.",
+      'Order Approved'
+    );
+    $httpStatus = is_array($result) && isset($result['status']) ? (int)$result['status'] : 0;
+    if ($httpStatus < 200 || $httpStatus >= 300) {
+      error_log("Customer order approval push failed for order {$orderId} (HTTP {$httpStatus}).");
+    }
+  } catch (Throwable $error) {
+    error_log("Customer order approval push failed for order {$orderId}: " . $error->getMessage());
+  }
+};
+
  if (isset($post->delete_id)) {
    $delete_id = (int)$post->delete_id;
    $orderBean = R::load('customer_order', $delete_id);
@@ -56,6 +84,7 @@ if(isset($post->approve_id)){
     $orderBean->status = 'ordered';
     $orderBean->invoice_id = $invoice_id;
     R::store($orderBean);
+    $notifyCustomerOrderApproval($orderBean->customer_id, $approve_id);
   }
 
 }
@@ -102,6 +131,7 @@ if (isset($get) && isset($get->approve_form)) {
     $order->status = 'ordered';
     $order->invoice_id = $invoice_id;
     R::store($order);
+    $notifyCustomerOrderApproval($order->customer_id, $id);
   }
 
   // redir('?page=customer_order');
