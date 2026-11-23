@@ -127,7 +127,7 @@ foreach ($categories as $category) {
       </svg>
     </div>
   </div> -->
-
+<br>
   <!-- Welcome Section -->
   <?php 
   
