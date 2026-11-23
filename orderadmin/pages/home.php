@@ -251,7 +251,7 @@ foreach ($products as $pg) {
               <!-- <div class="text-center bg-brandBlue text-black text-xxl font-semibold"><?php echo $productGroup['category_name']; ?></div> -->
               <!-- Bottom Row: price only (select moved to top) -->
               <div class="flex items-center justify-center px-2">
-                <div class="font-lexend font-bold" style="color:#ef4444; font-size:18px"><span style="font-size:10px">Tk</span> <?php echo number_format($product['price'], 2); ?></div>
+                <div class="font-lexend font-bold" style="color:#ef4444; font-size:18px"><span style="font-size:10px">RM</span> <?php echo number_format($product['price'], 2); ?></div>
               </div>
             </div>
           <?php endforeach; ?>

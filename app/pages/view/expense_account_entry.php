@@ -50,7 +50,7 @@ $nor = num_rows("a.*", "expense_account_entry a", "$filter");
 $nop = ceil($nor / $offset);
 
 $start = ($page - 1) * $offset;
-$expense_account_entrys = selectp("a.*", "expense_account_entry a", "$filter", "LIMIT $start, $offset");
+$expense_account_entrys = select("a.*", "expense_account_entry a", "$filter", "LIMIT $start, $offset");
 $accountidList = toA("expense_account");
 
 print "<hr>";
