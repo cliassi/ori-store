@@ -119,14 +119,14 @@ foreach ($categories as $category) {
 <!-- Header Section -->
 <div class="bg-gradient-to-br from-primary to-secondary text-white">
   <!-- Search Bar -->
-  <div id="stickySearchBarHome" class="px-4 pt-3 pb-3">
+  <!-- <div id="stickySearchBarHome" class="px-4 pt-3 pb-3">
     <div class="relative mx-auto" style="max-width: 260px;">
       <input type="text" id="searchInput" placeholder="Search products..." class="w-full px-4 py-3 rounded-full text-gray-800 pl-12 focus:outline-none focus:ring-2 focus:ring-white">
       <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
       </svg>
     </div>
-  </div>
+  </div> -->
 
   <!-- Welcome Section -->
   <?php 
