@@ -5,7 +5,7 @@ if ((defined('GUEST') && GUEST) || !defined('UID')) {
 }
 
 $uid = (int) UID;
-$statementPreviewLimit = 2;
+$statementPreviewLimit = 3;
 $cust = R::findOne('customer', ' id = ? ', [$uid]);
 if (!$cust) {
   redir('?page=home');
