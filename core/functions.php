@@ -111,6 +111,121 @@ function sendPush($tag, $message, $title = "ORI : Customer Order")
     ];
 }
 
+function sendCustomerPush($customerId, $message, $title = "ORI : Order Update")
+{
+    $customerId = (int) $customerId;
+    if ($customerId <= 0) {
+        return false;
+    }
+
+    try {
+        $subscription = R::findOne('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+        if (!$subscription || empty($subscription->uuid)) {
+            error_log("No OneSignal subscription found for customer {$customerId}.");
+            return false;
+        }
+
+        $result = sendPush($subscription->uuid, $message, $title);
+        $status = is_array($result) && isset($result['status']) ? (int) $result['status'] : 0;
+        if ($status < 200 || $status >= 300) {
+            error_log("Customer push failed for customer {$customerId} (HTTP {$status}).");
+        }
+        return $result;
+    } catch (Throwable $error) {
+        error_log("Customer push failed for customer {$customerId}: " . $error->getMessage());
+        return false;
+    }
+}
+
+function sendPushToUser($userId, $message, $title = "ORI : Order Update")
+{
+    $userId = (int) $userId;
+    if ($userId <= 0) {
+        return false;
+    }
+
+    try {
+        $subscription = R::findOne('push_client', '`type` = ? AND id = ?', ['a', $userId]);
+        if (!$subscription || empty($subscription->uuid)) {
+            error_log("No OneSignal subscription found for user {$userId}.");
+            return false;
+        }
+
+        $result = sendPush($subscription->uuid, $message, $title);
+        $status = is_array($result) && isset($result['status']) ? (int) $result['status'] : 0;
+        if ($status < 200 || $status >= 300) {
+            error_log("User push failed for user {$userId} (HTTP {$status}).");
+        }
+        return $result;
+    } catch (Throwable $error) {
+        error_log("User push failed for user {$userId}: " . $error->getMessage());
+        return false;
+    }
+}
+
+function sendPushToDeliveryStaff($staffName, $message, $title = "ORI : Delivery Assignment")
+{
+    $staffName = trim((string) $staffName);
+    if ($staffName === '') {
+        return false;
+    }
+
+    try {
+        $userId = (int) R::getCell(
+            "SELECT user_id
+             FROM staff_salary
+             WHERE category = 'Delivery Staff' AND name = ? AND user_id IS NOT NULL
+             ORDER BY id DESC
+             LIMIT 1",
+            [$staffName]
+        );
+        if ($userId <= 0) {
+            error_log("No app user is linked to delivery staff '{$staffName}'.");
+            return false;
+        }
+
+        return sendPushToUser($userId, $message, $title);
+    } catch (Throwable $error) {
+        error_log("Could not notify delivery staff '{$staffName}': " . $error->getMessage());
+        return false;
+    }
+}
+
+function sendCustomerPushForInvoiceItems($invoiceItemIds, $message, $title = "ORI : Order Update")
+{
+    $invoiceItemIds = array_values(array_unique(array_filter(
+        array_map('intval', (array) $invoiceItemIds),
+        function ($id) {
+            return $id > 0;
+        }
+    )));
+    if (!$invoiceItemIds) {
+        return 0;
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($invoiceItemIds), '?'));
+        $customers = R::getAll(
+            "SELECT DISTINCT i.customer_id
+             FROM invoice_item ii
+             INNER JOIN invoice i ON i.id = ii.invoice_id
+             WHERE ii.id IN ($placeholders)",
+            $invoiceItemIds
+        );
+
+        $sent = 0;
+        foreach ($customers as $customer) {
+            if (sendCustomerPush($customer['customer_id'], $message, $title) !== false) {
+                $sent++;
+            }
+        }
+        return $sent;
+    } catch (Throwable $error) {
+        error_log("Could not notify invoice customers: " . $error->getMessage());
+        return false;
+    }
+}
+
 
 function convertPdfToImages(string $pdfFilename, string $outputName)
 {

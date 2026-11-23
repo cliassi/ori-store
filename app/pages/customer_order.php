@@ -15,8 +15,8 @@ $notifyCustomerOrderApproval = function ($customerId, $orderId) {
 
     $result = sendPush(
       $pushClient->uuid,
-      "Your order #{$orderId} has been approved.",
-      'Order Approved'
+      "Your order #{$orderId} has been confirmed.",
+      'Order Confirmed'
     );
     $httpStatus = is_array($result) && isset($result['status']) ? (int)$result['status'] : 0;
     if ($httpStatus < 200 || $httpStatus >= 300) {

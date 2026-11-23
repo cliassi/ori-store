@@ -48,6 +48,7 @@ elseif (isset($post->deliver)) {
 
   $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaff);
   $selectedItems = (isset($post->iid) && is_array($post->iid)) ? array_keys($post->iid) : [];
+  $deliveredIids = [];
 
   foreach ($selectedItems as $iid) {
     $iid = (int)$iid;
@@ -69,6 +70,15 @@ elseif (isset($post->deliver)) {
       'invoice_item_delviery',
       '`invoice_item_id`, `quantity`, `delivered_by`, `delivered_at`, delivery_staff',
       "$iid, $remainingQty, " . uid() . ", NOW(), '$deliveryStaffSql'"
+    );
+    $deliveredIids[] = $iid;
+  }
+
+  if ($deliveredIids) {
+    sendCustomerPushForInvoiceItems(
+      $deliveredIids,
+      'Your items have been delivered.',
+      'Items Delivered'
     );
   }
 
