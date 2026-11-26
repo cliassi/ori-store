@@ -95,7 +95,10 @@ if ($approveId) {
 
         if ($pushSender) {
             try {
-                call_user_func($pushSender, $order->customer_id, $approvalMessage, 'Order Approved');
+                $pushResult = call_user_func($pushSender, $order->customer_id, $approvalMessage, 'Order Approved');
+                if ($pushResult === false) {
+                    error_log("Order approval push was not delivered for customer {$order->customer_id}, order {$id}.");
+                }
             } catch (Throwable $error) {
                 error_log('Order approval push failed: ' . $error->getMessage());
             }
