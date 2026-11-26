@@ -53,76 +53,16 @@ function orderadminSendPush(
     $recipientId = null
 )
 {
-    if (!function_exists('curl_init')) {
-        error_log('Order-admin push failed: cURL is unavailable.');
-        logPushDeliveryAttempt(
-            $recipientType,
-            $recipientId,
-            $subscriptionId,
-            $title,
-            $message,
-            'transport_error',
-            null,
-            null,
-            'cURL extension is unavailable.'
-        );
+    $queueId = queuePushDelivery($recipientType, $recipientId, $subscriptionId, $title, $message);
+    if ($queueId === false) {
         return false;
     }
 
-    $payload = [
-        'tag' => (string) $subscriptionId,
-        'message' => (string) $message,
-        'title' => (string) $title,
-    ];
-    $url = 'http://localhost:88';
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-
-    $response = curl_exec($ch);
-    if ($response === false) {
-        $error = curl_error($ch);
-        error_log('Order-admin push relay request failed: ' . $error);
-        curl_close($ch);
-        logPushDeliveryAttempt(
-            $recipientType,
-            $recipientId,
-            $subscriptionId,
-            $title,
-            $message,
-            'transport_error',
-            null,
-            null,
-            $error
-        );
-        return false;
-    }
-
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    $outcome = $status >= 200 && $status < 300 ? 'relay_accepted' : 'relay_rejected';
-    logPushDeliveryAttempt(
-        $recipientType,
-        $recipientId,
-        $subscriptionId,
-        $title,
-        $message,
-        $outcome,
-        $status,
-        $response,
-        $status >= 200 && $status < 300 ? null : "Push relay returned HTTP {$status}."
-    );
-    if ($status < 200 || $status >= 300) {
-        error_log("Order-admin push relay returned HTTP {$status}.");
-    }
-
+    $runnerTriggered = triggerPushQueueRunner();
     return [
-        'status' => $status,
-        'response' => $response,
+        'queued' => true,
+        'queue_id' => $queueId,
+        'runner_triggered' => $runnerTriggered,
     ];
 }
 

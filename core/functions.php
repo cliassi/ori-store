@@ -68,93 +68,23 @@ function notifyUsers($message, $title = "ORI : Customer Order")
         }
 
         foreach ($subscriptions as $subscription) {
-            sendPush($subscription->uuid, $message, $title, 'a', (int) $user->id);
+            sendPush($subscription['uuid'], $message, $title, 'a', (int) $user->id);
         }
     }
 }
 
 function sendPush($tag, $message, $title = "ORI : Customer Order", $recipientType = null, $recipientId = null)
 {
-    $payload = [
-        'tag' => (string) $tag,
-        'message' => (string) $message,
-        'title' => (string) $title,
-    ];
-
-    if (!function_exists('curl_init')) {
-        logPushDeliveryAttempt(
-            $recipientType,
-            $recipientId,
-            $tag,
-            $title,
-            $message,
-            'transport_error',
-            null,
-            null,
-            'cURL extension is unavailable.'
-        );
+    $queueId = queuePushDelivery($recipientType, $recipientId, $tag, $title, $message);
+    if ($queueId === false) {
         return false;
     }
 
-    $url = 'http://localhost:88';
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-
-    $logFile = __DIR__ . DIRECTORY_SEPARATOR . 'push.log';
-    $logPrefix = '[' . date('Y-m-d H:i:s') . '] ';
-
-    $response = curl_exec($ch);
-    if ($response === false) {
-        $err = curl_error($ch);
-        logPushDeliveryAttempt(
-            $recipientType,
-            $recipientId,
-            $tag,
-            $title,
-            $message,
-            'transport_error',
-            null,
-            null,
-            $err
-        );
-        $logLine = $logPrefix
-            . "URL=$url | payload=" . json_encode($payload)
-            . " | curl_error=" . $err
-            . PHP_EOL;
-        @file_put_contents($logFile, $logLine, FILE_APPEND);
-        curl_close($ch);
-        return false;
-    }
-
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    $outcome = $status >= 200 && $status < 300 ? 'relay_accepted' : 'relay_rejected';
-    logPushDeliveryAttempt(
-        $recipientType,
-        $recipientId,
-        $tag,
-        $title,
-        $message,
-        $outcome,
-        $status,
-        $response,
-        $status >= 200 && $status < 300 ? null : "Push relay returned HTTP {$status}."
-    );
-
-    $logLine = $logPrefix
-        . "URL=$url | payload=" . json_encode($payload)
-        . " | status=$status | response=" . $response
-        . PHP_EOL;
-    @file_put_contents($logFile, $logLine, FILE_APPEND);
-
+    $runnerTriggered = triggerPushQueueRunner();
     return [
-        'status' => $status,
-        'response' => $response,
+        'queued' => true,
+        'queue_id' => $queueId,
+        'runner_triggered' => $runnerTriggered,
     ];
 }
 

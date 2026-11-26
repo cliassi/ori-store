@@ -27,6 +27,14 @@ if (!function_exists('logPushDeliveryAttempt')) {
         $title = substr((string) $title, 0, 255);
         $message = (string) $message;
         $outcome = substr((string) $outcome, 0, 32);
+        $status = 'logged';
+        if ($outcome === 'no_subscription') {
+            $status = 'skipped';
+        } elseif ($outcome === 'relay_accepted') {
+            $status = 'sent';
+        } elseif (in_array($outcome, ['lookup_error', 'transport_error', 'relay_rejected'], true)) {
+            $status = 'failed';
+        }
         $httpStatus = $httpStatus === null ? null : (int) $httpStatus;
         $relayResponse = $relayResponse === null
             ? null
@@ -38,8 +46,8 @@ if (!function_exists('logPushDeliveryAttempt')) {
         try {
             $statement = $c->prepare(
                 'INSERT INTO push_delivery_log '
-                . '(recipient_type, recipient_id, subscription_uuid, title, message, outcome, '
-                . 'http_status, relay_response, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                . '(recipient_type, recipient_id, subscription_uuid, title, message, outcome, status, '
+                . 'http_status, relay_response, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             if (!$statement) {
                 error_log('Push delivery log prepare failed: ' . $c->error);
@@ -47,13 +55,14 @@ if (!function_exists('logPushDeliveryAttempt')) {
             }
 
             $statement->bind_param(
-                'sissssiss',
+                'sisssssiss',
                 $recipientType,
                 $recipientId,
                 $subscriptionUuid,
                 $title,
                 $message,
                 $outcome,
+                $status,
                 $httpStatus,
                 $relayResponse,
                 $errorMessage
@@ -69,5 +78,103 @@ if (!function_exists('logPushDeliveryAttempt')) {
             error_log('Push delivery log insert failed: ' . $error->getMessage());
             return false;
         }
+    }
+}
+
+if (!function_exists('queuePushDelivery')) {
+    function queuePushDelivery($recipientType, $recipientId, $subscriptionUuid, $title, $message)
+    {
+        global $c;
+
+        if (!isset($c) || !is_object($c) || !method_exists($c, 'prepare')) {
+            error_log('Push queue unavailable: database connection is missing.');
+            return false;
+        }
+
+        $recipientType = in_array($recipientType, ['a', 'c'], true) ? $recipientType : null;
+        $recipientId = $recipientId === null ? null : (int) $recipientId;
+        $subscriptionUuid = trim((string) $subscriptionUuid);
+        if ($subscriptionUuid === '') {
+            error_log('Push queue rejected a notification without a subscription UUID.');
+            return false;
+        }
+        $subscriptionUuid = substr($subscriptionUuid, 0, 64);
+        $title = substr((string) $title, 0, 255);
+        $message = (string) $message;
+        $payload = json_encode([
+            'tag' => $subscriptionUuid,
+            'message' => $message,
+            'title' => $title,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($payload === false) {
+            error_log('Push queue could not encode the notification payload.');
+            return false;
+        }
+
+        try {
+            $statement = $c->prepare(
+                'INSERT INTO push_delivery_log '
+                . '(recipient_type, recipient_id, subscription_uuid, title, message, payload, status, outcome) '
+                . "VALUES (?, ?, ?, ?, ?, ?, 'pending', 'queued')"
+            );
+            if (!$statement) {
+                error_log('Push queue prepare failed: ' . $c->error);
+                return false;
+            }
+
+            $statement->bind_param(
+                'sissss',
+                $recipientType,
+                $recipientId,
+                $subscriptionUuid,
+                $title,
+                $message,
+                $payload
+            );
+            $saved = $statement->execute();
+            if (!$saved) {
+                error_log('Push queue insert failed: ' . $statement->error);
+            }
+            $statement->close();
+
+            return $saved ? (int) $c->insert_id : false;
+        } catch (Throwable $error) {
+            error_log('Push queue insert failed: ' . $error->getMessage());
+            return false;
+        }
+    }
+}
+
+if (!function_exists('triggerPushQueueRunner')) {
+    function triggerPushQueueRunner()
+    {
+        if (!function_exists('curl_init')) {
+            error_log('Push queue runner was not triggered: cURL extension is unavailable.');
+            return false;
+        }
+
+        $ch = curl_init('http://localhost:88/run.php');
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Cache-Control: no-cache']);
+
+        $response = curl_exec($ch);
+        if ($response === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            error_log('Push queue runner request failed; queued rows remain pending: ' . $error);
+            return false;
+        }
+
+        $httpStatus = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpStatus < 200 || $httpStatus >= 300) {
+            error_log("Push queue runner returned HTTP {$httpStatus}; queued rows remain pending.");
+            return false;
+        }
+
+        return true;
     }
 }
