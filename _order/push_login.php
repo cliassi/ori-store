@@ -37,45 +37,16 @@ unset($_POST);
 $post = (object) $post;
 
 
-header('Content-Type: application/json; charset=utf-8');
-
-$type = isset($post->type) && is_string($post->type) ? $post->type : '';
-$idValue = isset($post->id) && is_scalar($post->id) ? (string) $post->id : '';
-$uuid = isset($post->uuid) && is_scalar($post->uuid) ? trim((string) $post->uuid) : '';
-$id = filter_var($idValue, FILTER_VALIDATE_INT);
-
-if (
-    !in_array($type, ['a', 'c'], true)
-    || $id === false
-    || $id <= 0
-    || !preg_match('/^[0-9a-f-]{36}$/i', $uuid)
-) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid push subscription data.']);
-    exit;
-}
-
-$statement = null;
-try {
-    $statement = $c->prepare(
-        'INSERT INTO push_client (type, id, uuid) VALUES (?, ?, ?) '
-        . 'ON DUPLICATE KEY UPDATE type = VALUES(type), id = VALUES(id), uuid = VALUES(uuid)'
-    );
-    if (!$statement) {
-        throw new RuntimeException($c->error);
-    }
-
-    if (!$statement->bind_param('sis', $type, $id, $uuid) || !$statement->execute()) {
-        throw new RuntimeException($statement->error);
-    }
-
-    $statement->close();
-    echo json_encode(['success' => true]);
-} catch (Throwable $error) {
-    if (is_object($statement) && method_exists($statement, 'close')) {
+if (isset($post->type) && isset($post->id) && isset($post->uuid)) {
+    $type = (string) $post->type;
+    $id = (int) $post->id;
+    $uuid = (string) $post->uuid;
+    $statement = $c->prepare('REPLACE INTO push_client (type, id, uuid) VALUES (?, ?, ?)');
+    if ($statement) {
+        $statement->bind_param('sis', $type, $id, $uuid);
+        $statement->execute();
         $statement->close();
+    } else {
+        error_log('Push subscription registration failed: ' . $c->error);
     }
-    error_log('Push subscription registration failed: ' . $error->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Registration failed.']);
 }

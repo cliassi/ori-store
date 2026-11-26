@@ -1,7 +1,6 @@
 <?php
 require_once "f.inc.php";
 require_once  '../store/core/customer_balance.php';
-require_once __DIR__ . '/core/push_delivery_log.php';
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
     $dir = $dir == '' ? 'uploads_files' : $dir;
@@ -34,11 +33,7 @@ function upload($files, $name = '', $dir = '', $_name = 'file')
 
 function addLink($print = true)
 {
-    global $get;
-    $page = isset($get->page) ? (string) $get->page : '';
-    $link = '<div class="col-6 text-right right">'
-        . mlink("<span class='btn btn-primary'>Add</span>", $page, 'add')
-        . '</div>';
+    $link = '<div class="col-6 text-right right"><a href="' . mlink('add') . '" class="btn btn-primary" style="position">Add</a></div>';
     if ($print) {
         print $link;
     } else {
@@ -49,22 +44,14 @@ function addLink($print = true)
 function notifyUsers($message, $title = "ORI : Customer Order"){
     $users = R::find('sys_user', 'order_notification=1');
     foreach($users as $user){
-        $subscriptions = R::getAll(
-            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
-            ['a', (int) $user->id]
-        );
-        if(!$subscriptions){
-            logPushDeliveryAttempt('a', (int) $user->id, null, $title, $message, 'no_subscription');
-            continue;
-        }
-
-        foreach($subscriptions as $subscription){
-            sendPush($subscription['uuid'], $message, $title, 'a', (int) $user->id);
+        $sub = R::findOne("push_client", "`type`='a' AND id=$user->id");
+        if($sub){
+            sendPush($sub->uuid, $message, $title);
         }
     }
 }
 
-function sendPush($tag, $message, $title = "ORI : Customer Order", $recipientType = null, $recipientId = null)
+function sendPush($tag, $message, $title = "ORI : Customer Order")
 {
     $payload = [
         'tag' => (string)$tag,
@@ -72,28 +59,13 @@ function sendPush($tag, $message, $title = "ORI : Customer Order", $recipientTyp
         'title' => (string)$title,
     ];
 
-    if (!function_exists('curl_init')) {
-        logPushDeliveryAttempt(
-            $recipientType,
-            $recipientId,
-            $tag,
-            $title,
-            $message,
-            'transport_error',
-            null,
-            null,
-            'cURL extension is unavailable.'
-        );
-        return false;
-    }
-
     $url = 'http://localhost:88';
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
 
     $logFile = __DIR__ . DIRECTORY_SEPARATOR . 'push.log';
@@ -102,17 +74,6 @@ function sendPush($tag, $message, $title = "ORI : Customer Order", $recipientTyp
     $response = curl_exec($ch);
     if ($response === false) {
         $err = curl_error($ch);
-        logPushDeliveryAttempt(
-            $recipientType,
-            $recipientId,
-            $tag,
-            $title,
-            $message,
-            'transport_error',
-            null,
-            null,
-            $err
-        );
         $logLine = $logPrefix
             . "URL=$url | payload=" . json_encode($payload)
             . " | curl_error=" . $err
@@ -124,18 +85,6 @@ function sendPush($tag, $message, $title = "ORI : Customer Order", $recipientTyp
 
     $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    $outcome = $status >= 200 && $status < 300 ? 'relay_accepted' : 'relay_rejected';
-    logPushDeliveryAttempt(
-        $recipientType,
-        $recipientId,
-        $tag,
-        $title,
-        $message,
-        $outcome,
-        $status,
-        $response,
-        $status >= 200 && $status < 300 ? null : "Push relay returned HTTP {$status}."
-    );
 
     $logLine = $logPrefix
         . "URL=$url | payload=" . json_encode($payload)
@@ -156,9 +105,7 @@ function editDeleteLink($id, $print = false)
 
 function editLink($id, $print = false)
 {
-    global $get;
-    $page = isset($get->page) ? (string) $get->page : '';
-    $link = mlink("<span class='btn btn-primary btn-sm'>Edit</span>", $page, 'edit', (int) $id);
+    $link = "<a class='btn btn-primary btn-sm' href='" . mlink('edit/' . $id) . "'>Edit</a>";
     if ($print) {
         print $link;
     } else {
