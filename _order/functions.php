@@ -1,6 +1,6 @@
 <?php
 require_once "f.inc.php";
-require_once  '../store/core/customer_balance.php';
+require_once __DIR__ . '/core/customer_balance.php';
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
     $dir = $dir == '' ? 'uploads_files' : $dir;
@@ -44,9 +44,12 @@ function addLink($print = true)
 function notifyUsers($message, $title = "ORI : Customer Order"){
     $users = R::find('sys_user', 'order_notification=1');
     foreach($users as $user){
-        $sub = R::findOne("push_client", "`type`='a' AND id=$user->id");
-        if($sub){
-            sendPush($sub->uuid, $message, $title);
+        $subscriptions = R::getAll(
+            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
+            ['a', (int) $user->id]
+        );
+        foreach($subscriptions as $subscription){
+            sendPush($subscription['uuid'], $message, $title);
         }
     }
 }
@@ -59,17 +62,22 @@ function sendPush($tag, $message, $title = "ORI : Customer Order")
         'title' => (string)$title,
     ];
 
+    $logFile = __DIR__ . DIRECTORY_SEPARATOR . 'push.log';
+    $logPrefix = '[' . date('Y-m-d H:i:s') . '] ';
+    if (!function_exists('curl_init')) {
+        $logLine = $logPrefix . "URL=http://localhost:88 | curl_error=cURL extension is unavailable." . PHP_EOL;
+        @file_put_contents($logFile, $logLine, FILE_APPEND);
+        return false;
+    }
+
     $url = 'http://localhost:88';
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-
-    $logFile = __DIR__ . DIRECTORY_SEPARATOR . 'push.log';
-    $logPrefix = '[' . date('Y-m-d H:i:s') . '] ';
 
     $response = curl_exec($ch);
     if ($response === false) {
