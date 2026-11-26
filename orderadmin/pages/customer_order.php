@@ -88,17 +88,9 @@ if ($approveId) {
 
     if (!empty($approvedItemIds)) {
         $approvalMessage = "Items from your order #{$id} have been approved.";
-        $pushSender = null;
         if (function_exists('orderadminNotifyCustomer')) {
-            $pushSender = 'orderadminNotifyCustomer';
-        }
-
-        if ($pushSender) {
             try {
-                $pushResult = call_user_func($pushSender, $order->customer_id, $approvalMessage, 'Order Approved');
-                if ($pushResult === false) {
-                    error_log("Order approval push was not delivered for customer {$order->customer_id}, order {$id}.");
-                }
+                orderadminNotifyCustomer($order->customer_id, $approvalMessage, 'Order Approved');
             } catch (Throwable $error) {
                 error_log('Order approval push failed: ' . $error->getMessage());
             }
