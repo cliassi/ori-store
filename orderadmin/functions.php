@@ -32,11 +32,76 @@ function upload($files, $name = '', $dir = '', $_name = 'file')
 
 function addLink($print = true)
 {
-    $link = '<div class="col-6 text-right right"><a href="' . mlink('add') . '" class="btn btn-primary" style="position">Add</a></div>';
+    global $get;
+    $page = isset($get->page) ? (string) $get->page : '';
+    $link = '<div class="col-6 text-right right">'
+        . mlink("<span class='btn btn-primary'>Add</span>", $page, 'add')
+        . '</div>';
     if ($print) {
         print $link;
     } else {
         return $link;
+    }
+}
+
+function orderadminSendPush($subscriptionId, $message, $title = 'ORI : Customer Order')
+{
+    if (!function_exists('curl_init')) {
+        error_log('Order-admin push failed: cURL is unavailable.');
+        return false;
+    }
+
+    $payload = [
+        'tag' => (string) $subscriptionId,
+        'message' => (string) $message,
+        'title' => (string) $title,
+    ];
+    $url = 'http://localhost:88';
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+
+    $response = curl_exec($ch);
+    if ($response === false) {
+        error_log('Order-admin push relay request failed: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($status < 200 || $status >= 300) {
+        error_log("Order-admin push relay returned HTTP {$status}.");
+    }
+
+    return [
+        'status' => $status,
+        'response' => $response,
+    ];
+}
+
+function orderadminNotifyCustomer($customerId, $message, $title = 'ORI : Customer Order')
+{
+    $customerId = (int) $customerId;
+    if ($customerId <= 0) {
+        return false;
+    }
+
+    try {
+        $subscription = R::findOne('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+        if (!$subscription || empty($subscription->uuid)) {
+            error_log("No OneSignal subscription found for customer {$customerId}.");
+            return false;
+        }
+
+        return orderadminSendPush($subscription->uuid, $message, $title);
+    } catch (Throwable $error) {
+        error_log("Order-admin customer push failed for customer {$customerId}: " . $error->getMessage());
+        return false;
     }
 }
 
@@ -47,7 +112,9 @@ function editDeleteLink($id, $print = false)
 
 function editLink($id, $print = false)
 {
-    $link = "<a class='btn btn-primary btn-sm' href='" . mlink('edit/' . $id) . "'>Edit</a>";
+    global $get;
+    $page = isset($get->page) ? (string) $get->page : '';
+    $link = mlink("<span class='btn btn-primary btn-sm'>Edit</span>", $page, 'edit', (int) $id);
     if ($print) {
         print $link;
     } else {

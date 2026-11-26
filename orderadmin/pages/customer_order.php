@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../functions.php';
+
 global $c;
 
 // Handle approve action - redirect to invoice form with selected order items
@@ -82,6 +84,14 @@ if ($approveId) {
     $remain = $remainRes ? (int)mysqli_fetch_object($remainRes)->c : 0;
     if ($remain <= 0) {
         mysqli_query($c, "DELETE FROM customer_order WHERE id = $id");
+    }
+
+    if (!empty($approvedItemIds)) {
+        orderadminNotifyCustomer(
+            $order->customer_id,
+            "Items from your order #{$id} have been approved.",
+            'Order Approved'
+        );
     }
 
     if (isset($order->customer_id)) {
