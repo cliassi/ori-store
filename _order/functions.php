@@ -34,7 +34,11 @@ function upload($files, $name = '', $dir = '', $_name = 'file')
 
 function addLink($print = true)
 {
-    $link = '<div class="col-6 text-right right"><a href="' . mlink('add') . '" class="btn btn-primary" style="position">Add</a></div>';
+    global $get;
+    $page = isset($get->page) ? (string) $get->page : '';
+    $link = '<div class="col-6 text-right right">'
+        . mlink("<span class='btn btn-primary'>Add</span>", $page, 'add')
+        . '</div>';
     if ($print) {
         print $link;
     } else {
@@ -152,7 +156,9 @@ function editDeleteLink($id, $print = false)
 
 function editLink($id, $print = false)
 {
-    $link = "<a class='btn btn-primary btn-sm' href='" . mlink('edit/' . $id) . "'>Edit</a>";
+    global $get;
+    $page = isset($get->page) ? (string) $get->page : '';
+    $link = mlink("<span class='btn btn-primary btn-sm'>Edit</span>", $page, 'edit', (int) $id);
     if ($print) {
         print $link;
     } else {

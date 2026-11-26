@@ -1,6 +1,6 @@
 <?php
 require_once "f.inc.php";
-require_once __DIR__ . '/../core/push_delivery_log.php';
+require_once __DIR__ . '/push_delivery_log.php';
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
     $dir = $dir == '' ? 'uploads_files' : $dir;

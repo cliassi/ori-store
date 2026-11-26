@@ -87,11 +87,21 @@ if ($approveId) {
     }
 
     if (!empty($approvedItemIds)) {
-        orderadminNotifyCustomer(
-            $order->customer_id,
-            "Items from your order #{$id} have been approved.",
-            'Order Approved'
-        );
+        $approvalMessage = "Items from your order #{$id} have been approved.";
+        $pushSender = null;
+        if (function_exists('orderadminNotifyCustomer')) {
+            $pushSender = 'orderadminNotifyCustomer';
+        }
+
+        if ($pushSender) {
+            try {
+                call_user_func($pushSender, $order->customer_id, $approvalMessage, 'Order Approved');
+            } catch (Throwable $error) {
+                error_log('Order approval push failed: ' . $error->getMessage());
+            }
+        } else {
+            error_log('Order approved, but no customer push sender is loaded.');
+        }
     }
 
     if (isset($order->customer_id)) {
@@ -407,7 +417,7 @@ $res = mysqli_query($c, $sql);
         echo '<tr>';
         echo '<th colspan="4" class="order-actions">';
         if (strtolower((string)$row['status']) !== 'approved') {
-          echo '<button type="submit" name="approve_form" value="' . $orderId . '" class="btn btn-success btn-sm approve-button" onclick="return confirm(\'Approve this order?\')">Approve</button>';
+          echo '<button type="button" value="' . $orderId . '" class="btn btn-success btn-sm approve-button">Approve</button>';
           echo '<button type="button" class="btn btn-sm delete-button" onclick="deleteOrder(' . $orderId . ')" aria-label="Delete order" title="Delete order">&times;</button>';
         } else {
           echo '<span class="badge bg-success">Approved</span>';
@@ -433,6 +443,7 @@ $res = mysqli_query($c, $sql);
   <input type="hidden" name="to" value="<?php echo htmlspecialchars($toDate, ENT_QUOTES); ?>">
 </form>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   function filterOrders() {
     var from = document.querySelector('input[name="from"]').value;
@@ -444,6 +455,42 @@ $res = mysqli_query($c, $sql);
   }
 
   (function () {
+    document.addEventListener('click', function (e) {
+      var approveButton = e.target.closest('.approve-button');
+      if (!approveButton) return;
+
+      e.preventDefault();
+      var form = approveButton.closest('form');
+      if (!form) return;
+
+      var submitApproval = function () {
+        var approvalField = document.createElement('input');
+        approvalField.type = 'hidden';
+        approvalField.name = 'approve_form';
+        approvalField.value = approveButton.value;
+        form.appendChild(approvalField);
+        form.submit();
+      };
+
+      if (typeof Swal === 'undefined') {
+        console.error('SweetAlert2 did not load; order approval was not submitted.');
+        return;
+      }
+
+      Swal.fire({
+        title: 'Approve this order?',
+        text: 'The selected items will be approved and invoiced.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Approve',
+        cancelButtonText: 'Cancel'
+      }).then(function (result) {
+        if (result.isConfirmed) submitApproval();
+      });
+    });
+
     window.deleteOrder = function (id) {
       if (!confirm('Delete this order? This cannot be undone.')) return;
       var input = document.getElementById('coDeleteId');
