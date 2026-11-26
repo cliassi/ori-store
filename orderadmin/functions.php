@@ -1,5 +1,6 @@
 <?php
 require_once "f.inc.php";
+require_once __DIR__ . '/../core/push_delivery_log.php';
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
     $dir = $dir == '' ? 'uploads_files' : $dir;
@@ -44,10 +45,27 @@ function addLink($print = true)
     }
 }
 
-function orderadminSendPush($subscriptionId, $message, $title = 'ORI : Customer Order')
+function orderadminSendPush(
+    $subscriptionId,
+    $message,
+    $title = 'ORI : Customer Order',
+    $recipientType = null,
+    $recipientId = null
+)
 {
     if (!function_exists('curl_init')) {
         error_log('Order-admin push failed: cURL is unavailable.');
+        logPushDeliveryAttempt(
+            $recipientType,
+            $recipientId,
+            $subscriptionId,
+            $title,
+            $message,
+            'transport_error',
+            null,
+            null,
+            'cURL extension is unavailable.'
+        );
         return false;
     }
 
@@ -67,13 +85,37 @@ function orderadminSendPush($subscriptionId, $message, $title = 'ORI : Customer 
 
     $response = curl_exec($ch);
     if ($response === false) {
-        error_log('Order-admin push relay request failed: ' . curl_error($ch));
+        $error = curl_error($ch);
+        error_log('Order-admin push relay request failed: ' . $error);
         curl_close($ch);
+        logPushDeliveryAttempt(
+            $recipientType,
+            $recipientId,
+            $subscriptionId,
+            $title,
+            $message,
+            'transport_error',
+            null,
+            null,
+            $error
+        );
         return false;
     }
 
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+    $outcome = $status >= 200 && $status < 300 ? 'relay_accepted' : 'relay_rejected';
+    logPushDeliveryAttempt(
+        $recipientType,
+        $recipientId,
+        $subscriptionId,
+        $title,
+        $message,
+        $outcome,
+        $status,
+        $response,
+        $status >= 200 && $status < 300 ? null : "Push relay returned HTTP {$status}."
+    );
     if ($status < 200 || $status >= 300) {
         error_log("Order-admin push relay returned HTTP {$status}.");
     }
@@ -92,15 +134,62 @@ function orderadminNotifyCustomer($customerId, $message, $title = 'ORI : Custome
     }
 
     try {
-        $subscription = R::findOne('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
-        if (!$subscription || empty($subscription->uuid)) {
+        $subscriptions = R::find('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+        if (!$subscriptions) {
             error_log("No OneSignal subscription found for customer {$customerId}.");
+            logPushDeliveryAttempt('c', $customerId, null, $title, $message, 'no_subscription');
             return false;
         }
 
-        return orderadminSendPush($subscription->uuid, $message, $title);
+        $results = [];
+        foreach ($subscriptions as $subscription) {
+            $results[] = orderadminSendPush(
+                $subscription->uuid,
+                $message,
+                $title,
+                'c',
+                $customerId
+            );
+        }
+        return $results;
     } catch (Throwable $error) {
         error_log("Order-admin customer push failed for customer {$customerId}: " . $error->getMessage());
+        logPushDeliveryAttempt('c', $customerId, null, $title, $message, 'lookup_error', null, null, $error->getMessage());
+        return false;
+    }
+}
+
+function orderadminNotifyInvoiceItemCustomers($invoiceItemIds, $message, $title = 'ORI : Order Update')
+{
+    $invoiceItemIds = array_values(array_unique(array_filter(
+        array_map('intval', (array) $invoiceItemIds),
+        function ($id) {
+            return $id > 0;
+        }
+    )));
+    if (!$invoiceItemIds) {
+        return 0;
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($invoiceItemIds), '?'));
+        $customers = R::getAll(
+            "SELECT DISTINCT i.customer_id
+             FROM invoice_item ii
+             INNER JOIN invoice i ON i.id = ii.invoice_id
+             WHERE ii.id IN ($placeholders)",
+            $invoiceItemIds
+        );
+
+        $sent = 0;
+        foreach ($customers as $customer) {
+            if (orderadminNotifyCustomer($customer['customer_id'], $message, $title) !== false) {
+                $sent++;
+            }
+        }
+        return $sent;
+    } catch (Throwable $error) {
+        error_log('Order-admin invoice-customer push failed: ' . $error->getMessage());
         return false;
     }
 }

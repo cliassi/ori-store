@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../functions.php';
+
 $button = "<a href='' class='has-checkbox hidden'><span><input type='checkbox' id='all-order' checked data-type='all'> Order</span></a>";
 
 if(isset($post->delivery_staff) && isset($post->assign)){
@@ -44,6 +46,13 @@ if(isset($post->delivery_staff) && isset($post->assign)){
   }
   
   if ($selectedIids) {
+    if (!$isUnassign) {
+      orderadminNotifyInvoiceItemCustomers(
+        $selectedIids,
+        "Your order has been assigned to {$deliveryStaff} for delivery.",
+        'Delivery Assigned'
+      );
+    }
     // redir("?assigned=1");
   } else {
     // redir("?");
@@ -194,6 +203,13 @@ if (isset($post->collect)) {
       // exit;
     }
 
+    if ($selectedIids) {
+      orderadminNotifyInvoiceItemCustomers(
+        $selectedIids,
+        'Your items have been collected and are out for delivery.',
+        'Out for Delivery'
+      );
+    }
     // redir(ROOT . "/dcollect_collect");
     // redir(ROOT . "/dcollect_delivery");
     // exit;
@@ -368,6 +384,7 @@ if (isset($post->collect)) {
     $loggedStaffName = $isDeliveryStaff ? getFieldValue('staff_salary', 'name', "user_id=" . $uid) : '';
 
     if (isset($post->deliver)) {
+      $deliveredIids = [];
       // dd($post);
       foreach ($post->iid as $key => $val) {
         $iid = (int)$key;
@@ -385,6 +402,15 @@ if (isset($post->collect)) {
         $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaffValue);
         update("invoice_item", "delivered=quantity, delivered_by=" . uid() . ", delivered_at=NOW(),delivery_staff='$deliveryStaffSql'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
         insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$iid, $remainingQty, " . uid() . ",'$deliveryStaffSql'");
+        $deliveredIids[] = $iid;
+      }
+
+      if ($deliveredIids) {
+        orderadminNotifyInvoiceItemCustomers(
+          $deliveredIids,
+          'Your items have been delivered.',
+          'Items Delivered'
+        );
       }
     }
 

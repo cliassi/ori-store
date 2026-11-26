@@ -37,6 +37,43 @@ unset($_POST);
 $post = (object) $post;
 
 
-if(isset($post->type) && isset($post->id) && isset($post->uuid)){
-    replace("push_client", "type,id,uuid", "'$post->type', $post->id, '$post->uuid'");
+header('Content-Type: application/json; charset=utf-8');
+
+$type = isset($post->type) && is_string($post->type) ? $post->type : '';
+$idValue = isset($post->id) && is_scalar($post->id) ? (string) $post->id : '';
+$uuid = isset($post->uuid) && is_scalar($post->uuid) ? trim((string) $post->uuid) : '';
+$id = filter_var($idValue, FILTER_VALIDATE_INT);
+
+if (
+    !in_array($type, ['a', 'c'], true)
+    || $id === false
+    || $id <= 0
+    || !preg_match('/^[0-9a-f-]{36}$/i', $uuid)
+) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid push subscription data.']);
+    exit;
 }
+
+$statement = $c->prepare(
+    'INSERT INTO push_client (type, id, uuid) VALUES (?, ?, ?) '
+    . 'ON DUPLICATE KEY UPDATE type = VALUES(type), id = VALUES(id), uuid = VALUES(uuid)'
+);
+if (!$statement) {
+    error_log('Push subscription registration prepare failed: ' . $c->error);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Registration failed.']);
+    exit;
+}
+
+$statement->bind_param('sis', $type, $id, $uuid);
+if (!$statement->execute()) {
+    error_log('Push subscription registration failed: ' . $statement->error);
+    $statement->close();
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Registration failed.']);
+    exit;
+}
+
+$statement->close();
+echo json_encode(['success' => true]);

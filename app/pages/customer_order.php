@@ -2,25 +2,18 @@
 $notifyCustomerOrderApproval = function ($customerId, $orderId) {
   $customerId = (int)$customerId;
   $orderId = (int)$orderId;
-  if ($customerId < 1 || $orderId < 1 || !function_exists('sendPush')) {
+  if ($customerId < 1 || $orderId < 1 || !function_exists('sendCustomerPush')) {
     return;
   }
 
   try {
-    $pushClient = R::findOne('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
-    if (!$pushClient || empty($pushClient->uuid)) {
-      error_log("No OneSignal subscription found for customer {$customerId}; order {$orderId} approval was not sent.");
-      return;
-    }
-
-    $result = sendPush(
-      $pushClient->uuid,
+    $results = sendCustomerPush(
+      $customerId,
       "Your order #{$orderId} has been confirmed.",
       'Order Confirmed'
     );
-    $httpStatus = is_array($result) && isset($result['status']) ? (int)$result['status'] : 0;
-    if ($httpStatus < 200 || $httpStatus >= 300) {
-      error_log("Customer order approval push failed for order {$orderId} (HTTP {$httpStatus}).");
+    if ($results === false) {
+      error_log("Customer order approval push had no registered subscription for order {$orderId}.");
     }
   } catch (Throwable $error) {
     error_log("Customer order approval push failed for order {$orderId}: " . $error->getMessage());

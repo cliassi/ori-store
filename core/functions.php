@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/customer_balance.php';
+require_once __DIR__ . '/push_delivery_log.php';
 
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
@@ -57,20 +58,44 @@ function notifyUsers($message, $title = "ORI : Customer Order")
 {
     $users = R::find('sys_user', 'order_notification=1');
     foreach ($users as $user) {
-        $sub = R::findOne("push_client", "`type`='a' AND id=$user->id");
-        if ($sub) {
-            sendPush($sub->uuid, $message, $title);
+        $subscriptions = R::find(
+            'push_client',
+            '`type` = ? AND id = ?',
+            ['a', (int) $user->id]
+        );
+        if (!$subscriptions) {
+            logPushDeliveryAttempt('a', (int) $user->id, null, $title, $message, 'no_subscription');
+            continue;
+        }
+
+        foreach ($subscriptions as $subscription) {
+            sendPush($subscription->uuid, $message, $title, 'a', (int) $user->id);
         }
     }
 }
 
-function sendPush($tag, $message, $title = "ORI : Customer Order")
+function sendPush($tag, $message, $title = "ORI : Customer Order", $recipientType = null, $recipientId = null)
 {
     $payload = [
         'tag' => (string) $tag,
         'message' => (string) $message,
         'title' => (string) $title,
     ];
+
+    if (!function_exists('curl_init')) {
+        logPushDeliveryAttempt(
+            $recipientType,
+            $recipientId,
+            $tag,
+            $title,
+            $message,
+            'transport_error',
+            null,
+            null,
+            'cURL extension is unavailable.'
+        );
+        return false;
+    }
 
     $url = 'http://localhost:88';
     $ch = curl_init($url);
@@ -87,6 +112,17 @@ function sendPush($tag, $message, $title = "ORI : Customer Order")
     $response = curl_exec($ch);
     if ($response === false) {
         $err = curl_error($ch);
+        logPushDeliveryAttempt(
+            $recipientType,
+            $recipientId,
+            $tag,
+            $title,
+            $message,
+            'transport_error',
+            null,
+            null,
+            $err
+        );
         $logLine = $logPrefix
             . "URL=$url | payload=" . json_encode($payload)
             . " | curl_error=" . $err
@@ -98,6 +134,18 @@ function sendPush($tag, $message, $title = "ORI : Customer Order")
 
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+    $outcome = $status >= 200 && $status < 300 ? 'relay_accepted' : 'relay_rejected';
+    logPushDeliveryAttempt(
+        $recipientType,
+        $recipientId,
+        $tag,
+        $title,
+        $message,
+        $outcome,
+        $status,
+        $response,
+        $status >= 200 && $status < 300 ? null : "Push relay returned HTTP {$status}."
+    );
 
     $logLine = $logPrefix
         . "URL=$url | payload=" . json_encode($payload)
@@ -119,18 +167,19 @@ function sendCustomerPush($customerId, $message, $title = "ORI : Order Update")
     }
 
     try {
-        $subscription = R::findOne('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
-        if (!$subscription || empty($subscription->uuid)) {
+        $subscriptions = R::find('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+        if (!$subscriptions) {
             error_log("No OneSignal subscription found for customer {$customerId}.");
+            logPushDeliveryAttempt('c', $customerId, null, $title, $message, 'no_subscription');
             return false;
         }
 
-        $result = sendPush($subscription->uuid, $message, $title);
-        $status = is_array($result) && isset($result['status']) ? (int) $result['status'] : 0;
-        if ($status < 200 || $status >= 300) {
-            error_log("Customer push failed for customer {$customerId} (HTTP {$status}).");
+        $results = [];
+        foreach ($subscriptions as $subscription) {
+            $result = sendPush($subscription->uuid, $message, $title, 'c', $customerId);
+            $results[] = $result;
         }
-        return $result;
+        return $results;
     } catch (Throwable $error) {
         error_log("Customer push failed for customer {$customerId}: " . $error->getMessage());
         return false;
@@ -145,18 +194,18 @@ function sendPushToUser($userId, $message, $title = "ORI : Order Update")
     }
 
     try {
-        $subscription = R::findOne('push_client', '`type` = ? AND id = ?', ['a', $userId]);
-        if (!$subscription || empty($subscription->uuid)) {
+        $subscriptions = R::find('push_client', '`type` = ? AND id = ?', ['a', $userId]);
+        if (!$subscriptions) {
             error_log("No OneSignal subscription found for user {$userId}.");
+            logPushDeliveryAttempt('a', $userId, null, $title, $message, 'no_subscription');
             return false;
         }
 
-        $result = sendPush($subscription->uuid, $message, $title);
-        $status = is_array($result) && isset($result['status']) ? (int) $result['status'] : 0;
-        if ($status < 200 || $status >= 300) {
-            error_log("User push failed for user {$userId} (HTTP {$status}).");
+        $results = [];
+        foreach ($subscriptions as $subscription) {
+            $results[] = sendPush($subscription->uuid, $message, $title, 'a', $userId);
         }
-        return $result;
+        return $results;
     } catch (Throwable $error) {
         error_log("User push failed for user {$userId}: " . $error->getMessage());
         return false;
