@@ -134,7 +134,10 @@ function orderadminNotifyCustomer($customerId, $message, $title = 'ORI : Custome
     }
 
     try {
-        $subscriptions = R::find('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+        $subscriptions = R::getAll(
+            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
+            ['c', $customerId]
+        );
         if (!$subscriptions) {
             error_log("No OneSignal subscription found for customer {$customerId}.");
             logPushDeliveryAttempt('c', $customerId, null, $title, $message, 'no_subscription');
@@ -144,14 +147,14 @@ function orderadminNotifyCustomer($customerId, $message, $title = 'ORI : Custome
         $results = [];
         foreach ($subscriptions as $subscription) {
             $results[] = orderadminSendPush(
-                $subscription->uuid,
+                $subscription['uuid'],
                 $message,
                 $title,
                 'c',
                 $customerId
             );
         }
-        return $results;
+        return count($results) === 1 ? $results[0] : $results;
     } catch (Throwable $error) {
         error_log("Order-admin customer push failed for customer {$customerId}: " . $error->getMessage());
         logPushDeliveryAttempt('c', $customerId, null, $title, $message, 'lookup_error', null, null, $error->getMessage());

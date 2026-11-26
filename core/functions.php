@@ -58,9 +58,8 @@ function notifyUsers($message, $title = "ORI : Customer Order")
 {
     $users = R::find('sys_user', 'order_notification=1');
     foreach ($users as $user) {
-        $subscriptions = R::find(
-            'push_client',
-            '`type` = ? AND id = ?',
+        $subscriptions = R::getAll(
+            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
             ['a', (int) $user->id]
         );
         if (!$subscriptions) {
@@ -167,7 +166,10 @@ function sendCustomerPush($customerId, $message, $title = "ORI : Order Update")
     }
 
     try {
-        $subscriptions = R::find('push_client', '`type` = ? AND id = ?', ['c', $customerId]);
+        $subscriptions = R::getAll(
+            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
+            ['c', $customerId]
+        );
         if (!$subscriptions) {
             error_log("No OneSignal subscription found for customer {$customerId}.");
             logPushDeliveryAttempt('c', $customerId, null, $title, $message, 'no_subscription');
@@ -176,12 +178,23 @@ function sendCustomerPush($customerId, $message, $title = "ORI : Order Update")
 
         $results = [];
         foreach ($subscriptions as $subscription) {
-            $result = sendPush($subscription->uuid, $message, $title, 'c', $customerId);
+            $result = sendPush($subscription['uuid'], $message, $title, 'c', $customerId);
             $results[] = $result;
         }
-        return $results;
+        return count($results) === 1 ? $results[0] : $results;
     } catch (Throwable $error) {
         error_log("Customer push failed for customer {$customerId}: " . $error->getMessage());
+        logPushDeliveryAttempt(
+            'c',
+            $customerId,
+            null,
+            $title,
+            $message,
+            'lookup_error',
+            null,
+            null,
+            $error->getMessage()
+        );
         return false;
     }
 }
@@ -194,7 +207,10 @@ function sendPushToUser($userId, $message, $title = "ORI : Order Update")
     }
 
     try {
-        $subscriptions = R::find('push_client', '`type` = ? AND id = ?', ['a', $userId]);
+        $subscriptions = R::getAll(
+            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
+            ['a', $userId]
+        );
         if (!$subscriptions) {
             error_log("No OneSignal subscription found for user {$userId}.");
             logPushDeliveryAttempt('a', $userId, null, $title, $message, 'no_subscription');
@@ -203,11 +219,22 @@ function sendPushToUser($userId, $message, $title = "ORI : Order Update")
 
         $results = [];
         foreach ($subscriptions as $subscription) {
-            $results[] = sendPush($subscription->uuid, $message, $title, 'a', $userId);
+            $results[] = sendPush($subscription['uuid'], $message, $title, 'a', $userId);
         }
-        return $results;
+        return count($results) === 1 ? $results[0] : $results;
     } catch (Throwable $error) {
         error_log("User push failed for user {$userId}: " . $error->getMessage());
+        logPushDeliveryAttempt(
+            'a',
+            $userId,
+            null,
+            $title,
+            $message,
+            'lookup_error',
+            null,
+            null,
+            $error->getMessage()
+        );
         return false;
     }
 }

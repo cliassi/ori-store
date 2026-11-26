@@ -55,25 +55,27 @@ if (
     exit;
 }
 
-$statement = $c->prepare(
-    'INSERT INTO push_client (type, id, uuid) VALUES (?, ?, ?) '
-    . 'ON DUPLICATE KEY UPDATE type = VALUES(type), id = VALUES(id), uuid = VALUES(uuid)'
-);
-if (!$statement) {
-    error_log('Push subscription registration prepare failed: ' . $c->error);
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Registration failed.']);
-    exit;
-}
+$statement = null;
+try {
+    $statement = $c->prepare(
+        'INSERT INTO push_client (type, id, uuid) VALUES (?, ?, ?) '
+        . 'ON DUPLICATE KEY UPDATE type = VALUES(type), id = VALUES(id), uuid = VALUES(uuid)'
+    );
+    if (!$statement) {
+        throw new RuntimeException($c->error);
+    }
 
-$statement->bind_param('sis', $type, $id, $uuid);
-if (!$statement->execute()) {
-    error_log('Push subscription registration failed: ' . $statement->error);
+    if (!$statement->bind_param('sis', $type, $id, $uuid) || !$statement->execute()) {
+        throw new RuntimeException($statement->error);
+    }
+
     $statement->close();
+    echo json_encode(['success' => true]);
+} catch (Throwable $error) {
+    if (is_object($statement) && method_exists($statement, 'close')) {
+        $statement->close();
+    }
+    error_log('Push subscription registration failed: ' . $error->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Registration failed.']);
-    exit;
 }
-
-$statement->close();
-echo json_encode(['success' => true]);
