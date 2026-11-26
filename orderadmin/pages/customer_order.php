@@ -492,12 +492,29 @@ $res = mysqli_query($c, $sql);
     });
 
     window.deleteOrder = function (id) {
-      if (!confirm('Delete this order? This cannot be undone.')) return;
       var input = document.getElementById('coDeleteId');
       var form = document.getElementById('coDeleteForm');
       if (!input || !form) return;
-      input.value = id;
-      form.submit();
+
+      if (typeof Swal === 'undefined') {
+        console.error('SweetAlert2 did not load; order deletion was not submitted.');
+        return;
+      }
+
+      Swal.fire({
+        title: 'Delete this order?',
+        text: 'This cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel'
+      }).then(function (result) {
+        if (!result.isConfirmed) return;
+        input.value = id;
+        form.submit();
+      });
     };
 
     document.addEventListener('click', function (e) {

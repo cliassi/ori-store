@@ -1,4 +1,6 @@
 <?php
+global $c;
+
 $button = "<a href='' class='has-checkbox hidden'><span><input type='checkbox' id='all-order' checked data-type='all'> Order</span></a>";
 
 // Determine if logged-in user is Delivery Staff and get their staff name
@@ -47,6 +49,16 @@ if(isset($post->assign) && nn($post->delivery_staff)){
   }
   
   if ($selectedIids) {
+    orderadminNotifyDeliveryStaff(
+      $deliveryStaff,
+      'You have been assigned new items for delivery.',
+      'New Delivery Assignment'
+    );
+    orderadminNotifyInvoiceItemCustomers(
+      $selectedIids,
+      "Your order has been assigned to {$deliveryStaff} for delivery.",
+      'Delivery Assigned'
+    );
     redir("?page=order&uid=" . uid() . "&assigned=1");
   } else {
     redir("?page=order&uid=" . uid());
@@ -131,8 +143,6 @@ if(isset($post->assign) && nn($post->delivery_staff)){
         gap: 10px;
       }
 
-      select {}
-
       /* Cards inside .orders */
       .orders {
         padding-bottom: 90px
@@ -212,13 +222,26 @@ if(isset($post->assign) && nn($post->delivery_staff)){
 
     if (isset($post->deliver)) {
       // dd($post);
+      $deliveredIids = [];
       foreach ($post->iid as $key => $qty) {
         if ($qty > 0) {
           $ii = R::load("invoice_item", $key);
+          if (!$ii || !$ii->id) continue;
           $inv = R::load("invoice", $ii->invoice_id);
+          $remainingQty = (float)$ii->quantity - (float)$ii->delivered;
+          if ($remainingQty <= 0) continue;
           update("invoice_item", "delivered=quantity, delivered_by=" . uid() . ", delivered_at=NOW(),delivery_staff='$post->delivery_staff'", "product_variance_id=$ii->product_variance_id AND delivery_date='$ii->delivery_date' AND invoice_id IN (select id FROM invoice WHERE customer_id=$inv->customer_id)");
           insert("invoice_item_delviery", "`invoice_item_id`, `quantity`, `delivered_by`, delivery_staff", "$key, $qty, " . uid() . ",'$post->delivery_staff'");
+          $deliveredIids[] = (int) $key;
         }
+      }
+
+      if ($deliveredIids) {
+        orderadminNotifyInvoiceItemCustomers(
+          $deliveredIids,
+          'Your items have been delivered.',
+          'Items Delivered'
+        );
       }
     }
 
@@ -324,10 +347,6 @@ if(isset($post->assign) && nn($post->delivery_staff)){
       td span {
         display: inline-block;
         /*		border: solid 1px #ccc;*/
-      }
-
-      th span:nth-child(n+0) {
-        /* width: 55px; */
       }
 
       td span:nth-child(n+0) {

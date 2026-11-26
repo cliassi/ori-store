@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/functions.php';
+
 $button = "<a href='' class='has-checkbox hidden'><span><input type='checkbox' id='all-order' checked data-type='all'> Order</span></a>";
 
 if (isset($post->deliver)) {
@@ -10,6 +12,7 @@ if (isset($post->deliver)) {
 
   $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaff);
   $selectedItems = (isset($post->iid) && is_array($post->iid)) ? array_keys($post->iid) : [];
+  $deliveredIids = [];
 
   foreach ($selectedItems as $iid) {
     $iid = (int)$iid;
@@ -31,6 +34,15 @@ if (isset($post->deliver)) {
       'invoice_item_delviery',
       '`invoice_item_id`, `quantity`, `delivered_by`, `delivered_at`, delivery_staff',
       "$iid, $remainingQty, " . uid() . ", NOW(), '$deliveryStaffSql'"
+    );
+    $deliveredIids[] = $iid;
+  }
+
+  if ($deliveredIids) {
+    orderadminNotifyInvoiceItemCustomers(
+      $deliveredIids,
+      'Your items have been delivered.',
+      'Items Delivered'
     );
   }
 

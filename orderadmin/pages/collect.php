@@ -44,6 +44,18 @@ if(isset($post->delivery_staff) && isset($post->assign)){
   }
   
   if ($selectedIids) {
+    if (!$isUnassign) {
+      orderadminNotifyDeliveryStaff(
+        $deliveryStaff,
+        'You have been assigned new items for delivery.',
+        'New Delivery Assignment'
+      );
+      orderadminNotifyInvoiceItemCustomers(
+        $selectedIids,
+        "Your order has been assigned to {$deliveryStaff} for delivery.",
+        'Delivery Assigned'
+      );
+    }
     // redir("?assigned=1");
   } else {
     // redir("?");
@@ -191,6 +203,13 @@ if (isset($post->collect)) {
       // exit;
     }
 
+    if ($selectedIids) {
+      orderadminNotifyInvoiceItemCustomers(
+        $selectedIids,
+        'Your items have been collected and are out for delivery.',
+        'Out for Delivery'
+      );
+    }
     // redir(ROOT . "/dcollect_collect");
     // redir(ROOT . "/dcollect_delivery");
     // exit;

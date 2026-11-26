@@ -1,4 +1,6 @@
 <?php
+global $c;
+
 $button = "<a href='' class='has-checkbox hidden'><span><input type='checkbox' id='all-order' checked data-type='all'> Order</span></a>";
 
 if (isset($post->deliver)) {
@@ -10,6 +12,7 @@ if (isset($post->deliver)) {
 
   $deliveryStaffSql = mysqli_real_escape_string($c, $deliveryStaff);
   $selectedItems = (isset($post->iid) && is_array($post->iid)) ? array_keys($post->iid) : [];
+  $deliveredIids = [];
   if (empty($selectedItems)) {
     echo "<script>alert('Please select at least one item before submitting.');window.history.back();</script>";
     exit;
@@ -34,6 +37,15 @@ if (isset($post->deliver)) {
       'invoice_item_delviery',
       '`invoice_item_id`, `quantity`, `delivered_by`, `delivered_at`, delivery_staff',
       "$iid, $remainingQty, " . uid() . ", NOW(), '$deliveryStaffSql'"
+    );
+    $deliveredIids[] = $iid;
+  }
+
+  if ($deliveredIids) {
+    orderadminNotifyInvoiceItemCustomers(
+      $deliveredIids,
+      'Your items have been delivered.',
+      'Items Delivered'
     );
   }
 
@@ -118,8 +130,6 @@ if (isset($post->deliver)) {
         flex-direction: row;
         gap: 10px;
       }
-
-      select {}
 
       /* Cards inside .orders */
       .orders {
@@ -333,10 +343,6 @@ if (isset($post->deliver)) {
         /*		border: solid 1px #ccc;*/
       }
 
-      th span:nth-child(n+0) {
-        /* width: 55px; */
-      }
-
       td span:nth-child(n+0) {
         width: 20px;
       }
@@ -408,7 +414,7 @@ if (isset($post->deliver)) {
         </table>
       </div>
     </div>
-    <div class='orders'></div>
+    <div class="orders" data-uid="<?php echo isset($_SESSION['UID']) ? (int) $_SESSION['UID'] : 0; ?>"></div>
 
     <?php
     $deliveryStaff = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
@@ -654,7 +660,7 @@ if (isset($post->deliver)) {
             collection: collection,
             pendingList: pendingList,
             deliveryStaff: deliveryStaff,
-              UID: <?php print $_SESSION['UID']; ?>
+              UID: $('.orders').data('uid')
           })
           .done((response) => {
             $('.orders').html(response);
@@ -690,7 +696,7 @@ if (isset($post->deliver)) {
             collection: collection,
             pendingList: pendingList,
             deliveryStaff: deliveryStaff,
-              UID: <?php print $_SESSION['UID']; ?>
+              UID: $('.orders').data('uid')
           })
           .done((response) => {
             $('.orders').html(response);
@@ -768,7 +774,7 @@ if (isset($post->deliver)) {
               collection: collection,
               pendingList: pendingList,
               deliveryStaff: deliveryStaff,
-              UID: <?php print $_SESSION['UID']; ?>
+              UID: $('.orders').data('uid')
             })
             .done((response) => {
               $('.orders').html(response);

@@ -162,6 +162,55 @@ function orderadminNotifyCustomer($customerId, $message, $title = 'ORI : Custome
     }
 }
 
+function orderadminNotifyDeliveryStaff($staffName, $message, $title = 'ORI : Delivery Assignment')
+{
+    $staffName = trim((string) $staffName);
+    if ($staffName === '') {
+        return false;
+    }
+
+    try {
+        $userId = (int) R::getCell(
+            "SELECT user_id
+             FROM staff_salary
+             WHERE category = 'Delivery Staff' AND name = ? AND user_id IS NOT NULL
+             ORDER BY id DESC
+             LIMIT 1",
+            [$staffName]
+        );
+        if ($userId <= 0) {
+            error_log("No app user is linked to delivery staff '{$staffName}'.");
+            return false;
+        }
+
+        $subscriptions = R::getAll(
+            'SELECT uuid FROM push_client WHERE `type` = ? AND id = ?',
+            ['a', $userId]
+        );
+        if (!$subscriptions) {
+            error_log("No push subscription found for delivery staff user {$userId}.");
+            logPushDeliveryAttempt('a', $userId, null, $title, $message, 'no_subscription');
+            return false;
+        }
+
+        $results = [];
+        foreach ($subscriptions as $subscription) {
+            $results[] = orderadminSendPush(
+                $subscription['uuid'],
+                $message,
+                $title,
+                'a',
+                $userId
+            );
+        }
+        return count($results) === 1 ? $results[0] : $results;
+    } catch (Throwable $error) {
+        error_log("Could not notify delivery staff '{$staffName}': " . $error->getMessage());
+        logPushDeliveryAttempt('a', null, null, $title, $message, 'lookup_error', null, null, $error->getMessage());
+        return false;
+    }
+}
+
 function orderadminNotifyInvoiceItemCustomers($invoiceItemIds, $message, $title = 'ORI : Order Update')
 {
     $invoiceItemIds = array_values(array_unique(array_filter(
