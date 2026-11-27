@@ -414,7 +414,7 @@ if (isset($post->deliver)) {
         </table>
       </div>
     </div>
-    <div class="orders" data-uid="<?php echo isset($_SESSION['UID']) ? (int) $_SESSION['UID'] : 0; ?>"></div>
+    <div class="orders"></div>
 
     <?php
     $deliveryStaff = select('distinct name, incentive', 'staff_salary', "category='Delivery Staff'");
@@ -660,7 +660,7 @@ if (isset($post->deliver)) {
             collection: collection,
             pendingList: pendingList,
             deliveryStaff: deliveryStaff,
-              UID: $('.orders').data('uid')
+              UID: <?php echo isset($_SESSION['UID']) ? (int) $_SESSION['UID'] : 0; ?>
           })
           .done((response) => {
             $('.orders').html(response);
@@ -696,7 +696,7 @@ if (isset($post->deliver)) {
             collection: collection,
             pendingList: pendingList,
             deliveryStaff: deliveryStaff,
-              UID: $('.orders').data('uid')
+              UID: <?php echo isset($_SESSION['UID']) ? (int) $_SESSION['UID'] : 0; ?>
           })
           .done((response) => {
             $('.orders').html(response);
@@ -774,7 +774,7 @@ if (isset($post->deliver)) {
               collection: collection,
               pendingList: pendingList,
               deliveryStaff: deliveryStaff,
-              UID: $('.orders').data('uid')
+              UID: <?php echo isset($_SESSION['UID']) ? (int) $_SESSION['UID'] : 0; ?>
             })
             .done((response) => {
               $('.orders').html(response);
