@@ -1,6 +1,27 @@
 <?php
 require_once "f.inc.php";
 require_once __DIR__ . '/push_delivery_log.php';
+
+if (!function_exists('canEditPriceAndQuantity')) {
+    function canEditPriceAndQuantity()
+    {
+        return function_exists('hasAccess')
+            && (hasAccess('dcollect', 'edit_price') || hasAccess('dcollect', 'edit_quantity'));
+    }
+}
+
+if (!function_exists('canEditAnything')) {
+    function canEditAnything()
+    {
+        return function_exists('hasAccess')
+            && (
+                hasAccess('dcollect', 'edit_date')
+                || hasAccess('dcollect', 'edit_price')
+                || hasAccess('dcollect', 'edit_quantity')
+            );
+    }
+}
+
 function upload($files, $name = '', $dir = '', $_name = 'file')
 {
     $dir = $dir == '' ? 'uploads_files' : $dir;
