@@ -144,7 +144,7 @@ if (!function_exists('triggerPushQueueRunner')) {
             return false;
         }
 
-        $ch = curl_init('http://localhost:88/run.php');
+        $ch = curl_init('http://43.216.235.55/store/run.php');
         curl_setopt($ch, CURLOPT_HTTPGET, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
