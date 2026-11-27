@@ -41,20 +41,25 @@ if (isset($post->type) && isset($post->id) && isset($post->uuid)) {
     $type = (string) $post->type;
     $id = (int) $post->id;
     $uuid = (string) $post->uuid;
-    $lastIp = isset($post->last_ip) && is_scalar($post->last_ip) && trim((string) $post->last_ip) !== ''
-        ? substr(trim((string) $post->last_ip), 0, 15)
+    $ipValue = isset($post->last_ip) && is_scalar($post->last_ip)
+        ? trim((string) $post->last_ip)
+        : '';
+    $lastIp = $ipValue !== '' && filter_var($ipValue, FILTER_VALIDATE_IP)
+        ? $ipValue
         : null;
-    $lastDevice = isset($post->last_device) && is_scalar($post->last_device) && trim((string) $post->last_device) !== ''
-        ? substr(trim((string) $post->last_device), 0, 128)
-        : null;
+    $deviceValue = isset($post->last_device) && is_scalar($post->last_device)
+        ? trim((string) $post->last_device)
+        : '';
+    $lastDevice = $deviceValue !== '' ? substr($deviceValue, 0, 255) : null;
 
     $statement = $c->prepare(
         'INSERT INTO push_client '
-        . '(`type`, id, uuid, created_at, modified_at, last_ip, last_device) '
-        . 'VALUES (?, ?, ?, NOW(), NOW(), ?, ?) '
+        . '(`type`, id, uuid, last_ip, last_device) '
+        . 'VALUES (?, ?, ?, ?, ?) '
         . 'ON DUPLICATE KEY UPDATE '
         . '`type` = VALUES(`type`), id = VALUES(id), uuid = VALUES(uuid), '
-        . 'modified_at = NOW(), last_ip = VALUES(last_ip), last_device = VALUES(last_device)'
+        . 'last_ip = COALESCE(VALUES(last_ip), last_ip), '
+        . 'last_device = COALESCE(VALUES(last_device), last_device)'
     );
     if ($statement) {
         $statement->bind_param('sisss', $type, $id, $uuid, $lastIp, $lastDevice);
