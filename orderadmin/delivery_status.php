@@ -483,6 +483,15 @@ if (isset($post->deliver)) {
     </div>
 
     <script type="text/javascript">
+      function showDeliveryLoadError(xhr) {
+        const status = xhr && xhr.status ? ` (HTTP ${xhr.status})` : '';
+        $('.orders').html($('<div>', {
+          class: 'alert alert-danger m-2',
+          role: 'alert',
+          text: 'Could not load delivery items' + status + '.'
+        }));
+      }
+
       function setItemId(id) {
         $('#invoice_item_id').val(id);
       }
@@ -621,7 +630,7 @@ if (isset($post->deliver)) {
             syncDeliveryStaffToForm();
             updateActionBar();
           })
-          .fail(() => {});
+          .fail(showDeliveryLoadError);
       });
 
       function load() {
@@ -657,7 +666,7 @@ if (isset($post->deliver)) {
             syncDeliveryStaffToForm();
             updateActionBar();
           })
-          .fail(() => {});
+          .fail(showDeliveryLoadError);
       }
 
       load();
@@ -735,7 +744,7 @@ if (isset($post->deliver)) {
               syncDeliveryStaffToForm();
               updateActionBar();
             })
-            .fail(() => {});
+            .fail(showDeliveryLoadError);
         });
       });
 

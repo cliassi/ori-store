@@ -15,13 +15,16 @@ require_once("../f.inc.php");
 // var_dump($post);
 
 // Determine logged-in delivery staff name (if applicable)
+$userId = isset($_SESSION['UID'])
+  ? (int) $_SESSION['UID']
+  : (isset($_POST['UID']) ? (int) $_POST['UID'] : 0);
 $staff_name = '';
-$rid = getFieldValue('sys_user_role', 'ur_role_id', "ur_user_id=" . $_POST['UID']);
+$rid = getFieldValue('sys_user_role', 'ur_role_id', "ur_user_id=$userId");
 $rolename = getFieldValue('sys_role', 'r_name', "id=" . $rid);
 
 // print $rolename;
 if ($rolename === 'Delivery Staff') {
-  $staff_name = getFieldValue('staff_salary', 'name', "user_id=" . $_POST['UID']);
+  $staff_name = getFieldValue('staff_salary', 'name', "user_id=$userId");
 }
 
 
@@ -34,12 +37,10 @@ $products = isset($_POST['products']) ? $_POST['products'] : '';
 extract($_POST);
 
 $branch_id = isset($_SESSION['branch_id']) ? $_SESSION['branch_id'] : null;
-
-// Initialize variables to avoid undefined warnings
-$pending = isset($pending) ? $pending : 'false';
-$delivery = isset($delivery) ? $delivery : 'false';
-$collection = isset($collection) ? $collection : 'false';
-$order = isset($order) ? $order : 'false';
+$pending = filter_var($_POST['pending'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$delivery = filter_var($_POST['delivery'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$collection = filter_var($_POST['collection'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$order = filter_var($_POST['order'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 // Get delivery staff filter (will be overridden if role is Delivery Staff)
 $deliveryStaff = isset($_POST['deliveryStaff']) ? trim($_POST['deliveryStaff']) : '';
@@ -75,8 +76,8 @@ if (function_exists('nn')) {
   }
 }
 
-$filter .= ($filter != " WHERE " ? " AND " : " ") . ($pending == 'true' ? " IFNULL(ii.delivery_date,i.invoice_date) < curdate()" : " IFNULL(ii.delivery_date,i.invoice_date) = curdate()");
-$filter .= ($filter != " WHERE " ? " AND " : " ") . " ii.quantity >= ii.delivered AND ii.collected_by > 0";
+$filter .= ($filter != " WHERE " ? " AND " : " ") . ($pending ? " IFNULL(ii.delivery_date,i.invoice_date) < curdate()" : " IFNULL(ii.delivery_date,i.invoice_date) = curdate()");
+$filter .= ($filter != " WHERE " ? " AND " : " ") . " COALESCE(ii.delivered, 0) < ii.quantity AND ii.collected_by > 0";
 
 // Add delivery staff filter if specified
 if (function_exists('nn') && nn($deliveryStaff)) {
@@ -101,6 +102,11 @@ $query = "SELECT distinct c.* FROM customer c
           $filter";
 
 $customers = select($query);
+if (!$customers) {
+  error_log('Delivery status customer query failed: ' . mysqli_error($c));
+  http_response_code(500);
+  exit('Unable to load delivery items.');
+}
 
 ?>
 <style>
@@ -146,16 +152,6 @@ $customers = select($query);
   .customer-item th:nth-child(1) {
     padding: 0;
     vertical-align: middle;
-  }
-
-  .customer-item td:nth-child(1) {
-    /* white-space: nowrap;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px; */
   }
 
   .customer-item td:nth-child(1) div {
@@ -283,6 +279,7 @@ $customers = select($query);
   <div class="customer-container">
     <?php
     $customerSerial = 1;
+    $renderedItemCount = 0;
     while ($customer = mysqli_fetch_object($customers)) {
       // Calculate collection meta (Collect Time and Pending Time)
       $collectionMeta = "<div class='collect-meta'>";
@@ -381,7 +378,7 @@ $con .= "<th colspan='5' style='text-align:center; text-transform:uppercase'>
       $cat = "";
       $itemFilter = "i.customer_id=$customer->id ";
       if ($pending) {
-        $itemFilter .= " AND ii.delivered = 0 AND IFNULL(ii.delivery_date,i.invoice_date) < curdate()";
+        $itemFilter .= " AND COALESCE(ii.delivered, 0) < ii.quantity AND IFNULL(ii.delivery_date,i.invoice_date) < curdate()";
       } else {
         $itemFilter .= " AND IFNULL(ii.delivery_date,i.invoice_date) = curdate()";
       }
@@ -400,7 +397,7 @@ $con .= "<th colspan='5' style='text-align:center; text-transform:uppercase'>
       // if($delivery) $stField = 'stockCurrent';
       // if($pendingList) $stField = 'stockPending';
       $pq = "SELECT stock(pv.id) stock, i.customer_id, i.id, p.name, pc.name pc_name, ii.id iid, p.id pid, p.name, pv.id vid, pv.particulars, pv.min_stock, SUM(ii.quantity) quantity, 
-						ii.delivered delivered, ii.price, ii.old_price, IFNULL(ii.delivery_date,i.invoice_date) dd FROM invoice i 
+						COALESCE(ii.delivered, 0) delivered, ii.price, ii.old_price, IFNULL(ii.delivery_date,i.invoice_date) dd FROM invoice i
 						INNER JOIN invoice_item ii ON i.id=ii.invoice_id
 						INNER JOIN customer c ON c.id=i.customer_id
 						LEFT JOIN city ON c.city=city.name
@@ -412,6 +409,10 @@ $con .= "<th colspan='5' style='text-align:center; text-transform:uppercase'>
       // $pq .= "GROUP BY pc.name, ii.product_variance_id, ii.id";
       // if($customer->id == 3) print $pq;
       $items = select($pq);
+      if (!$items) {
+        error_log("Delivery status item query failed for customer {$customer->id}: " . mysqli_error($c));
+        continue;
+      }
 
       $printedCon = false;
 
@@ -457,6 +458,7 @@ if ($i->pc_name != $cat) {
         }
         print "</tr>";
         $ic++;
+        $renderedItemCount++;
 
         $ci++;
       }
@@ -483,6 +485,11 @@ if (!$printedCon) continue;
     }
     ?>
 
+    <?php if ($renderedItemCount === 0) { ?>
+      <div class="alert alert-info m-2" role="status">
+        No collected items match the current filters.
+      </div>
+    <?php } ?>
     <div id='consolidated-container' class='customer-item' style='display:none;'>
       <table class='table table-bordered toggle-store-info hide-info'>
         <thead>
